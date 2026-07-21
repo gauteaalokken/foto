@@ -1,0 +1,26 @@
+---
+const allPhotos = await Astro.glob('../content/photos/*.md');
+---
+<html>
+  <head>
+    <title>My Photography</title>
+    <style>
+      body { font-family: sans-serif; max-width: 900px; margin: 0 auto; padding: 20px; background: #fafafa; }
+      .gallery { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 40px; }
+      .photo-card { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+      img { max-width: 100%; border-radius: 4px; }
+    </style>
+  </head>
+  <body>
+    <h1>My Photography Portfolio</h1>
+    <div class="gallery">
+      {allPhotos.map(photo => (
+        <div class="photo-card">
+          <img src={photo.frontmatter.image} alt={photo.frontmatter.title} />
+          <h2>{photo.frontmatter.title}</h2>
+          <p>{photo.frontmatter.description}</p>
+        </div>
+      ))}
+    </div>
+  </body>
+</html>
