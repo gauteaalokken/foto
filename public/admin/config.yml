@@ -1,0 +1,18 @@
+backend:
+  name: github
+  repo: YOUR-USERNAME/YOUR-REPO-NAME
+  branch: main
+
+media_folder: "public/images"
+public_folder: "/images"
+
+collections:
+  - name: "photos"
+    label: "Photography Portfolio"
+    folder: "src/content/photos"
+    create: true
+    slug: "{{year}}-{{month}}-{{slug}}"
+    fields:
+      - { label: "Title", name: "title", widget: "string" }
+      - { label: "Photo", name: "image", widget: "image" }
+      - { label: "Description", name: "description", widget: "text" }
