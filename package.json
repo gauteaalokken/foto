@@ -1,0 +1,9 @@
+{
+  "name": "photo-portfolio",
+  "scripts": {
+    "build": "astro build"
+  },
+  "dependencies": {
+    "astro": "^4.0.0"
+  }
+}
