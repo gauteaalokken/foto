@@ -1,6 +1,13 @@
 ---
 const allPhotos = await Astro.glob('../content/photos/*.md');
 ---
+astro
+---
+import Layout from '../layouts/Layout.astro';
+---
+<Layout>
+  <p>Your homepage content goes here</p>
+
 <html>
   <head>
     <title>My Photography</title>
@@ -24,3 +31,4 @@ const allPhotos = await Astro.glob('../content/photos/*.md');
     </div>
   </body>
 </html>
+</Layout>
