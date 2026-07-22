@@ -7,13 +7,22 @@ media_folder: "public/images"
 public_folder: "/images"
 
 collections:
-  - name: "photos"
-    label: "Photos"
-    folder: "src/content/photos"
+  - name: "gallery"
+    label: "Homepage Gallery"
+    files:
+      - name: "main"
+        label: "Homepage Gallery"
+        file: "src/content/gallery/index.yml"
+        fields:
+          - { label: "Photos", name: "photos", widget: "image", multiple: true }
+
+  - name: "blog"
+    label: "Blog (ukens bilder)"
+    folder: "src/content/blog"
     create: true
-    slug: "{{slug}}"
+    slug: "{{year}}-{{month}}-{{day}}-{{slug}}"
     fields:
       - { label: "Title", name: "title", widget: "string" }
-      - { label: "Description", name: "description", widget: "string" }
-      - { label: "Image", name: "image", widget: "image" }
-      - { label: "Date", name: "date", widget: "datetime", format: "YYYY-MM-DD" }
+      - { label: "Date", name: "date", widget: "datetime" }
+      - { label: "Photos", name: "photos", widget: "image", multiple: true }
+      - { label: "Text", name: "body", widget: "markdown" }
