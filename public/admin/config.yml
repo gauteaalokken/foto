@@ -3,10 +3,8 @@ backend:
   repo: gauteaalokken/foto # MUST match your exact username/repository name on GitHub
   branch: main
 
-media_folder: "public/images"
-public_folder: "/images"
-
 media_libraries:
+  default: false
   cloudflare_r2:
     bucket: foto-photos
     account_id: 1904e782382751217d6103b2d39a41da
