@@ -6,6 +6,13 @@ backend:
 media_folder: "public/images"
 public_folder: "/images"
 
+media_libraries:
+  cloudflare_r2:
+    bucket: foto-photos
+    account_id: 1904e782382751217d6103b2d39a41da
+    public_url: https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev
+    access_key_id: 05e8a109454a6afe1301b08ac7f8b2f6
+
 collections:
   - name: "gallery"
     label: "Homepage Gallery"
