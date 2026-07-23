@@ -13,13 +13,22 @@ media_libraries:
 
 collections:
   - name: "gallery"
-    label: "Homepage Gallery"
+    label: "Portfolio (Homepage)"
     files:
       - name: "main"
-        label: "Homepage Gallery"
+        label: "Portfolio (Homepage)"
         file: "src/content/gallery/index.yml"
         fields:
-          - { label: "Photos", name: "photos", widget: "image", multiple: true }
+          - { label: "Photos", name: "photos", widget: "image", multiple: true, hint: "These show on your homepage, in this order, at high quality. Keep this a small curated selection." }
+
+  - name: "feed"
+    label: "Feed"
+    files:
+      - name: "main"
+        label: "Feed"
+        file: "src/content/feed/index.yml"
+        fields:
+          - { label: "Photos", name: "photos", widget: "image", multiple: true, hint: "All your photos for the scrolling Feed page. You can keep adding more here over time — shown at lower quality for fast loading." }
 
   - name: "blog"
     label: "Blog (ukens bilder)"

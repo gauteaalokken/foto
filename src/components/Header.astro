@@ -1,4 +1,7 @@
 ---
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const withBase = (path: string) => `${base}/${path.replace(/^\//, '')}`;
+
 const navLinks = [
   { label: "Flaksjøen Fjellmaraton", href: "/fjellmaraton" },
   { label: "Prints", href: "/prints" },
@@ -10,11 +13,11 @@ const navLinks = [
 ---
 
 <header class="site-header">
-  <a href="/" class="site-title">Gaute Aaløkken</a>
+  <a href={base || "/"} class="site-title">Gaute Aaløkken</a>
 
   <nav class="site-nav">
     {navLinks.map((link) => (
-      <a href={link.href}>{link.label}</a>
+      <a href={withBase(link.href)}>{link.label}</a>
     ))}
 
     <a href="mailto:gauteaalokken@gmail.com" aria-label="Email" class="icon-link">

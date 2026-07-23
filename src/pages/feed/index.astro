@@ -1,0 +1,159 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { getEntry } from 'astro:content';
+import { getImage } from 'astro:assets';
+
+const feed = await getEntry('feed', 'index');
+const photos = feed?.data.photos ?? [];
+
+const withBase = (path: string) =>
+  `${import.meta.env.BASE_URL.replace(/\/$/, '')}/${path.replace(/^\//, '')}`;
+
+const isRemote = (path: string) => /^https?:\/\//.test(path);
+
+const THUMB_WIDTH = 480;
+const INITIAL_BATCH = 40;
+const BATCH_SIZE = 24;
+
+const optimized = await Promise.all(
+  photos.map(async (photo) => {
+    if (!isRemote(photo)) {
+      return { src: withBase(photo), width: undefined, height: undefined };
+    }
+
+    const img = await getImage({
+      src: photo,
+      inferSize: true,
+      width: THUMB_WIDTH,
+      quality: 60,
+      format: 'webp',
+    });
+
+    return { src: img.src, width: img.attributes.width, height: img.attributes.height };
+  })
+);
+
+const initialPhotos = optimized.slice(0, INITIAL_BATCH);
+const remainingPhotos = optimized.slice(INITIAL_BATCH);
+---
+
+<Layout title="Feed — Gaute Aaløkken">
+  <div class="masonry" id="feed-grid">
+    {initialPhotos.map((photo) => (
+      <img
+        class="photo"
+        src={photo.src}
+        width={photo.width}
+        height={photo.height}
+        alt=""
+        loading="lazy"
+        decoding="async"
+      />
+    ))}
+  </div>
+
+  {photos.length === 0 && <p class="empty">No photos in the feed yet.</p>}
+
+  <div id="feed-sentinel"></div>
+
+  <script type="application/json" id="feed-remaining" set:html={JSON.stringify(remainingPhotos)} />
+
+  <script define:vars={{ batchSize: BATCH_SIZE }}>
+    const grid = document.getElementById('feed-grid');
+    const sentinel = document.getElementById('feed-sentinel');
+    const dataEl = document.getElementById('feed-remaining');
+    const remaining = dataEl ? JSON.parse(dataEl.textContent || '[]') : [];
+    let cursor = 0;
+
+    const loadMore = () => {
+      const next = remaining.slice(cursor, cursor + batchSize);
+
+      if (next.length === 0) {
+        window.removeEventListener('scroll', onScroll);
+        window.removeEventListener('resize', onScroll);
+        sentinel?.remove();
+        return;
+      }
+
+      for (const photo of next) {
+        const img = document.createElement('img');
+        img.className = 'photo';
+        img.src = photo.src;
+        if (photo.width) img.width = photo.width;
+        if (photo.height) img.height = photo.height;
+        img.alt = '';
+        img.loading = 'lazy';
+        img.decoding = 'async';
+        grid?.appendChild(img);
+      }
+
+      cursor += batchSize;
+    };
+
+    let ticking = false;
+
+    const checkScroll = () => {
+      ticking = false;
+
+      if (!sentinel) return;
+
+      const nearViewport = sentinel.getBoundingClientRect().top < window.innerHeight + 600;
+
+      if (nearViewport) loadMore();
+    };
+
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(checkScroll);
+    };
+
+    if (sentinel && remaining.length > 0) {
+      window.addEventListener('scroll', onScroll, { passive: true });
+      window.addEventListener('resize', onScroll);
+      checkScroll();
+    } else {
+      sentinel?.remove();
+    }
+  </script>
+</Layout>
+
+<style is:global>
+  .masonry {
+    column-count: 2;
+    column-gap: 8px;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+
+  @media (min-width: 640px) {
+    .masonry {
+      column-count: 3;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .masonry {
+      column-count: 4;
+    }
+  }
+
+  .photo {
+    width: 100%;
+    display: block;
+    margin-bottom: 8px;
+    border-radius: 4px;
+    break-inside: avoid;
+  }
+
+  .empty {
+    text-align: center;
+    color: #666;
+    padding: 40px 20px;
+  }
+
+  #feed-sentinel {
+    height: 1px;
+  }
+</style>

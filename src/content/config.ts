@@ -1,10 +1,17 @@
 import { defineCollection, z } from 'astro:content';
 
-const gallery = defineCollection({
-  type: 'data',
-  schema: z.object({
-    photos: z.array(z.string()),
-  }),
+const photoListSchema = z.object({
+  photos: z.array(z.string()),
 });
 
-export const collections = { gallery };
+const gallery = defineCollection({
+  type: 'data',
+  schema: photoListSchema,
+});
+
+const feed = defineCollection({
+  type: 'data',
+  schema: photoListSchema,
+});
+
+export const collections = { gallery, feed };
