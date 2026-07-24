@@ -1,0 +1,161 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { getCollection } from 'astro:content';
+import { getImage } from 'astro:assets';
+
+export async function getStaticPaths() {
+  const entries = await getCollection('prints');
+
+  return entries.map((entry) => ({
+    params: { slug: entry.id },
+    props: { entry },
+  }));
+}
+
+const { entry } = Astro.props;
+const { title, photo } = entry.data;
+
+const withBase = (path: string) =>
+  `${import.meta.env.BASE_URL.replace(/\/$/, '')}/${path.replace(/^\//, '')}`;
+
+const isRemote = (path: string) => /^https?:\/\//.test(path);
+
+let photoSrc: string;
+
+if (isRemote(photo)) {
+  const img = await getImage({ src: photo, inferSize: true, width: 1000, quality: 90, format: 'webp' });
+  photoSrc = img.src;
+} else {
+  photoSrc = withBase(photo);
+}
+
+const email = 'gaute.aalokken@gmail.com';
+const mailtoHref = `mailto:${email}?subject=${encodeURIComponent(`Print order: ${title}`)}`;
+---
+
+<Layout title={`${title} print — Gaute Aaløkken`}>
+  <div class="print-page">
+    <div class="image-side">
+      <img class="photo" src={photoSrc} alt={title} />
+    </div>
+
+    <div class="details">
+      <h1>{title}</h1>
+
+      <p>English below</p>
+
+      <p>Bildet printes i følgende størrelser:</p>
+      <p class="prices">
+        A2 - 420 x 594 mm - 3500,-<br />
+        A3 - 297 x 420 mm - 2000,-<br />
+        A4 - 210 x 297 mm - 1000,-
+      </p>
+
+      <p>
+        Bildet kan også kjøpes med ramme i eik og glass for:<br />
+      </p>
+      <p class="prices">
+        50x70 cm - 3500,-<br />
+        40x50 cm - 2500,-<br />
+        30x40 cm - 1500,-
+      </p>
+
+      <p>Flere bilder kan selges til pakkepris.</p>
+
+      <p>Bildet vil bli printet på fine-art fotopapir, og printes på fotoprinter.</p>
+
+      <p>Ta kontakt på e-post eller Instagram for å bestille. Betaling skjer på Vipps eller bankoverføring.</p>
+
+      <hr />
+
+      <p><strong>English</strong></p>
+
+      <p>The print is available in the following sizes on fine art paper:</p>
+      <p class="prices">
+        A2 - 420 x 594 mm - 3500,- NOK<br />
+        A3 - 297 x 420 mm - 2000,- NOK<br />
+        A4 - 210 x 297 mm - 1000,- NOK
+      </p>
+
+      <p>The pictures can also be bought with frames of oak and glass for:</p>
+      <p class="prices">
+        50x70 cm - 3500,- NOK<br />
+        40x50 cm - 2500,- NOK<br />
+        30x40 cm - 1500,- NOK
+      </p>
+
+      <p>If you want to buy more pictures we can find a package deal.</p>
+
+      <p>Payment is done via Vipps or bank transfer.</p>
+
+      <a class="order-button" href={mailtoHref}>Order by email</a>
+    </div>
+  </div>
+</Layout>
+
+<style>
+  .print-page {
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 40px 20px;
+  }
+
+  @media (min-width: 900px) {
+    .print-page {
+      flex-direction: row;
+      align-items: flex-start;
+    }
+  }
+
+  .image-side {
+    background: #f2f2f2;
+    padding: 30px;
+    flex: 1 1 50%;
+    box-sizing: border-box;
+  }
+
+  .photo {
+    width: 100%;
+    display: block;
+  }
+
+  .details {
+    flex: 1 1 50%;
+  }
+
+  .details h1 {
+    font-size: 2.5rem;
+    margin: 0 0 24px;
+  }
+
+  .details p {
+    line-height: 1.6;
+  }
+
+  .prices {
+    font-weight: 600;
+  }
+
+  hr {
+    border: none;
+    border-top: 1px solid #ddd;
+    margin: 32px 0;
+  }
+
+  .order-button {
+    display: inline-block;
+    margin-top: 16px;
+    padding: 12px 24px;
+    background: #111;
+    color: #fff;
+    text-decoration: none;
+    border-radius: 4px;
+  }
+
+  .order-button:hover {
+    opacity: 0.85;
+  }
+</style>

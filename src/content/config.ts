@@ -14,4 +14,12 @@ const feed = defineCollection({
   schema: photoListSchema,
 });
 
-export const collections = { gallery, feed };
+const prints = defineCollection({
+  type: 'data',
+  schema: z.object({
+    title: z.string(),
+    photo: z.string(),
+  }),
+});
+
+export const collections = { gallery, feed, prints };

@@ -1,0 +1,97 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { getCollection } from 'astro:content';
+import { getImage } from 'astro:assets';
+import { mapWithConcurrency } from '../../lib/concurrency';
+
+const entries = await getCollection('prints');
+entries.sort((a, b) => a.data.title.localeCompare(b.data.title));
+
+const withBase = (path: string) =>
+  `${import.meta.env.BASE_URL.replace(/\/$/, '')}/${path.replace(/^\//, '')}`;
+
+const isRemote = (path: string) => /^https?:\/\//.test(path);
+
+const PHOTO_WIDTH = 900;
+
+const prints = await mapWithConcurrency(entries, 4, async (entry) => {
+  const { title, photo } = entry.data;
+
+  if (!isRemote(photo)) {
+    return { slug: entry.id, title, src: withBase(photo) };
+  }
+
+  // No explicit height: see note in homepage index.astro about the Astro
+  // inferSize + width bug. Leaving height unset avoids it entirely.
+  const img = await getImage({ src: photo, inferSize: true, width: PHOTO_WIDTH, quality: 85, format: 'webp' });
+
+  return { slug: entry.id, title, src: img.src };
+});
+---
+
+<Layout title="Prints — Gaute Aaløkken">
+  <div class="grid">
+    {prints.map((print) => (
+      <a class="print-card" href={withBase(`prints/${print.slug}`)}>
+        <img class="photo" src={print.src} alt={print.title} loading="lazy" />
+        <span class="title">{print.title}</span>
+      </a>
+    ))}
+  </div>
+
+  {prints.length === 0 && <p class="empty">No prints listed yet.</p>}
+</Layout>
+
+<style>
+  .grid {
+    column-count: 1;
+    column-gap: 24px;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 40px 20px;
+  }
+
+  @media (min-width: 768px) {
+    .grid {
+      column-count: 2;
+    }
+  }
+
+  @media (min-width: 1400px) {
+    .grid {
+      column-count: 3;
+    }
+  }
+
+  .print-card {
+    display: block;
+    width: 100%;
+    margin-bottom: 24px;
+    break-inside: avoid;
+    text-decoration: none;
+    color: inherit;
+    background: #f2f2f2;
+    padding: 40px;
+    box-sizing: border-box;
+  }
+
+  .photo {
+    width: 100%;
+    display: block;
+  }
+
+  .title {
+    display: block;
+    margin-top: 16px;
+    text-align: center;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+  }
+
+  .empty {
+    text-align: center;
+    color: #666;
+    padding: 40px 20px;
+  }
+</style>

@@ -2,7 +2,6 @@
 import Layout from '../layouts/Layout.astro';
 import { getEntry } from 'astro:content';
 import { getImage } from 'astro:assets';
-import { getDominantHue } from '../lib/photoColor';
 import { mapWithConcurrency } from '../lib/concurrency';
 
 const gallery = await getEntry('gallery', 'index');
@@ -15,11 +14,12 @@ const isRemote = (path: string) => /^https?:\/\//.test(path);
 
 const PHOTO_WIDTH = 1400;
 
+// Trusts the order photos are already in (run `npm run sort-feed color gallery`
+// locally to color-sort them) instead of re-analyzing every photo's color on
+// every single build, which was making builds take several minutes.
 const resolved = await mapWithConcurrency(photos, 4, async (photo) => {
-  const hue = isRemote(photo) ? await getDominantHue(photo).catch(() => 0) : 0;
-
   if (!isRemote(photo)) {
-    return { src: withBase(photo), hue };
+    return { src: withBase(photo) };
   }
 
   // No explicit height here on purpose: Astro's inferSize + width combo has a bug
@@ -34,10 +34,8 @@ const resolved = await mapWithConcurrency(photos, 4, async (photo) => {
     format: 'webp',
   });
 
-  return { src: img.src, hue };
+  return { src: img.src };
 });
-
-resolved.sort((a, b) => a.hue - b.hue);
 ---
 
 <Layout>

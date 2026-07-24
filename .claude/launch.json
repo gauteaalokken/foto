@@ -3,9 +3,10 @@
   "configurations": [
     {
       "name": "foto-dev",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
-      "port": 4321
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["astro", "dev", "--port", "${PORT}"],
+      "port": 4321,
+      "autoPort": true
     }
   ]
 }

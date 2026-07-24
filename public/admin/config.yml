@@ -23,7 +23,7 @@ collections:
             name: "photos"
             widget: "image"
             multiple: true
-            hint: "These show on your homepage, in this order, at high quality. Keep this a small curated selection."
+            hint: "These show on your homepage, in this order, at high quality. Keep this a small curated selection. Run 'npm run sort-feed color gallery' on your computer to automatically reorder them by color."
             media_libraries:
               cloudflare_r2:
                 bucket: foto-photos
@@ -51,6 +51,24 @@ collections:
                 public_url: https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev
                 access_key_id: 05e8a109454a6afe1301b08ac7f8b2f6
                 prefix: "feed/"
+
+  - name: "prints"
+    label: "Prints"
+    folder: "src/content/prints"
+    create: true
+    fields:
+      - { label: "Title", name: "title", widget: "string", hint: "e.g. Algorobo — becomes the page title and web address (/prints/algorobo)." }
+      - label: "Photo"
+        name: "photo"
+        widget: "image"
+        hint: "A photo of the framed print, or your own mockup — this is what shows on the Prints page and the print's own page."
+        media_libraries:
+          cloudflare_r2:
+            bucket: foto-photos
+            account_id: 1904e782382751217d6103b2d39a41da
+            public_url: https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev
+            access_key_id: 05e8a109454a6afe1301b08ac7f8b2f6
+            prefix: "prints/"
 
   - name: "blog"
     label: "Blog (ukens bilder)"
