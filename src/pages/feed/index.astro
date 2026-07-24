@@ -121,22 +121,34 @@ const remainingPhotos = optimized.slice(INITIAL_BATCH);
 
 <style is:global>
   .masonry {
-    column-count: 2;
-    column-gap: 8px;
-    max-width: 1400px;
+    column-count: 3;
+    column-gap: 6px;
+    max-width: 1800px;
     margin: 0 auto;
     padding: 20px;
   }
 
   @media (min-width: 640px) {
     .masonry {
-      column-count: 3;
+      column-count: 5;
     }
   }
 
   @media (min-width: 1024px) {
     .masonry {
-      column-count: 4;
+      column-count: 8;
+    }
+  }
+
+  @media (min-width: 1440px) {
+    .masonry {
+      column-count: 10;
+    }
+  }
+
+  @media (min-width: 1800px) {
+    .masonry {
+      column-count: 12;
     }
   }
 
@@ -146,7 +158,6 @@ const remainingPhotos = optimized.slice(INITIAL_BATCH);
     margin-bottom: 8px;
     border-radius: 4px;
     break-inside: avoid;
-    object-fit: cover;
   }
 
   .empty {

@@ -27,24 +27,78 @@ const resolved = await mapWithConcurrency(photos, 4, async (photo) => {
 
 <Layout>
   <div class="masonry">
-    {resolved.map((item) =>
-      item.remote ? (
-        <Image
-          class="photo"
-          src={item.photo}
-          width={item.width}
-          height={item.height}
-          quality={82}
-          format="webp"
-          alt=""
-          loading="lazy"
-        />
-      ) : (
-        <img class="photo" src={withBase(item.photo)} alt="" loading="lazy" />
-      )
-    )}
+    {resolved.map((item, index) => (
+      <button type="button" class="photo-button" data-index={index} aria-label="View photo full screen">
+        {item.remote ? (
+          <Image
+            class="photo"
+            src={item.photo}
+            width={item.width}
+            height={item.height}
+            quality={82}
+            format="webp"
+            alt=""
+            loading="lazy"
+          />
+        ) : (
+          <img class="photo" src={withBase(item.photo)} alt="" loading="lazy" />
+        )}
+      </button>
+    ))}
+  </div>
+
+  <div id="lightbox" class="lightbox" hidden>
+    <button type="button" id="lightbox-close" class="lightbox-close" aria-label="Close">&times;</button>
+    <button type="button" id="lightbox-prev" class="lightbox-nav lightbox-prev" aria-label="Previous photo">&#8249;</button>
+    <img id="lightbox-img" class="lightbox-img" alt="" />
+    <button type="button" id="lightbox-next" class="lightbox-nav lightbox-next" aria-label="Next photo">&#8250;</button>
   </div>
 </Layout>
+
+<script>
+  const buttons = Array.from(document.querySelectorAll<HTMLButtonElement>('.photo-button'));
+  const lightbox = document.getElementById('lightbox') as HTMLDivElement;
+  const lightboxImg = document.getElementById('lightbox-img') as HTMLImageElement;
+  let currentIndex = -1;
+
+  const show = (index: number) => {
+    currentIndex = (index + buttons.length) % buttons.length;
+    const img = buttons[currentIndex].querySelector('img');
+    if (!img) return;
+    lightboxImg.src = img.currentSrc || img.src;
+    lightboxImg.alt = img.alt;
+  };
+
+  const open = (index: number) => {
+    show(index);
+    lightbox.hidden = false;
+    document.body.style.overflow = 'hidden';
+  };
+
+  const close = () => {
+    lightbox.hidden = true;
+    document.body.style.overflow = '';
+  };
+
+  buttons.forEach((button, index) => {
+    button.addEventListener('click', () => open(index));
+  });
+
+  document.getElementById('lightbox-close')?.addEventListener('click', close);
+  document.getElementById('lightbox-prev')?.addEventListener('click', () => show(currentIndex - 1));
+  document.getElementById('lightbox-next')?.addEventListener('click', () => show(currentIndex + 1));
+
+  lightbox.addEventListener('click', (event) => {
+    if (event.target === lightbox) close();
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (lightbox.hidden) return;
+    if (event.key === 'Escape') close();
+    if (event.key === 'ArrowLeft') show(currentIndex - 1);
+    if (event.key === 'ArrowRight') show(currentIndex + 1);
+  });
+</script>
 
 <style>
   .masonry {
@@ -67,12 +121,69 @@ const resolved = await mapWithConcurrency(photos, 4, async (photo) => {
     }
   }
 
+  .photo-button {
+    display: block;
+    width: 100%;
+    margin: 0 0 16px;
+    padding: 0;
+    border: none;
+    background: none;
+    cursor: zoom-in;
+    break-inside: avoid;
+  }
+
   .photo {
     width: 100%;
     display: block;
-    margin-bottom: 16px;
     border-radius: 4px;
-    break-inside: avoid;
-    object-fit: cover;
+  }
+
+  .lightbox {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.92);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+
+  .lightbox[hidden] {
+    display: none;
+  }
+
+  .lightbox-img {
+    max-width: 90vw;
+    max-height: 90vh;
+    object-fit: contain;
+  }
+
+  .lightbox-close,
+  .lightbox-nav {
+    position: absolute;
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 2.5rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0.5rem 1rem;
+  }
+
+  .lightbox-close {
+    top: 1rem;
+    right: 1.5rem;
+  }
+
+  .lightbox-prev {
+    left: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+
+  .lightbox-next {
+    right: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
   }
 </style>
