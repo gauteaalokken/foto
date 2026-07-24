@@ -1,8 +1,9 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import { getEntry } from 'astro:content';
-import { Image } from 'astro:assets';
-import { getScaledDimensions, mapWithConcurrency } from '../lib/imageSize';
+import { getImage } from 'astro:assets';
+import { getDominantHue } from '../lib/photoColor';
+import { mapWithConcurrency } from '../lib/concurrency';
 
 const gallery = await getEntry('gallery', 'index');
 const photos = gallery?.data.photos ?? [];
@@ -15,34 +16,35 @@ const isRemote = (path: string) => /^https?:\/\//.test(path);
 const PHOTO_WIDTH = 1400;
 
 const resolved = await mapWithConcurrency(photos, 4, async (photo) => {
+  const hue = isRemote(photo) ? await getDominantHue(photo).catch(() => 0) : 0;
+
   if (!isRemote(photo)) {
-    return { photo, remote: false as const };
+    return { src: withBase(photo), hue };
   }
 
-  const { width, height } = await getScaledDimensions(photo, PHOTO_WIDTH);
+  // No explicit height here on purpose: Astro's inferSize + width combo has a bug
+  // where the reported height attribute doesn't match the real resized file, which
+  // caused photos to render squeezed/cropped. Leaving height unset lets the browser
+  // just use the image's real proportions once it loads.
+  const img = await getImage({
+    src: photo,
+    inferSize: true,
+    width: PHOTO_WIDTH,
+    quality: 82,
+    format: 'webp',
+  });
 
-  return { photo, remote: true as const, width, height };
+  return { src: img.src, hue };
 });
+
+resolved.sort((a, b) => a.hue - b.hue);
 ---
 
 <Layout>
   <div class="masonry">
     {resolved.map((item, index) => (
       <button type="button" class="photo-button" data-index={index} aria-label="View photo full screen">
-        {item.remote ? (
-          <Image
-            class="photo"
-            src={item.photo}
-            width={item.width}
-            height={item.height}
-            quality={82}
-            format="webp"
-            alt=""
-            loading="lazy"
-          />
-        ) : (
-          <img class="photo" src={withBase(item.photo)} alt="" loading="lazy" />
-        )}
+        <img class="photo" src={item.src} alt="" loading="lazy" />
       </button>
     ))}
   </div>
@@ -102,29 +104,34 @@ const resolved = await mapWithConcurrency(photos, 4, async (photo) => {
 
 <style>
   .masonry {
-    column-count: 1;
-    column-gap: 16px;
-    max-width: 1400px;
+    column-count: 2;
+    column-gap: 4px;
+    max-width: 1600px;
     margin: 0 auto;
-    padding: 20px;
   }
 
   @media (min-width: 640px) {
     .masonry {
-      column-count: 2;
+      column-count: 3;
     }
   }
 
   @media (min-width: 1024px) {
     .masonry {
-      column-count: 3;
+      column-count: 4;
+    }
+  }
+
+  @media (min-width: 1440px) {
+    .masonry {
+      column-count: 5;
     }
   }
 
   .photo-button {
     display: block;
     width: 100%;
-    margin: 0 0 16px;
+    margin: 0 0 4px;
     padding: 0;
     border: none;
     background: none;
@@ -135,7 +142,6 @@ const resolved = await mapWithConcurrency(photos, 4, async (photo) => {
   .photo {
     width: 100%;
     display: block;
-    border-radius: 4px;
   }
 
   .lightbox {
