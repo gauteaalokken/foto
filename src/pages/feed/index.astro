@@ -67,12 +67,12 @@ const remainingPhotos = optimized.slice(INITIAL_BATCH);
 
     const getTargetRowHeight = (containerWidth) => {
       let columns;
-      if (containerWidth >= 1728) columns = 18;
-      else if (containerWidth >= 1440) columns = 12;
-      else if (containerWidth >= 1200) columns = 8;
-      else if (containerWidth >= 768) columns = 6;
-      else if (containerWidth >= 480) columns = 4;
-      else columns = 3;
+      if (containerWidth >= 1728) columns = 23;
+      else if (containerWidth >= 1440) columns = 15;
+      else if (containerWidth >= 1200) columns = 10;
+      else if (containerWidth >= 768) columns = 7;
+      else if (containerWidth >= 480) columns = 5;
+      else columns = 4;
 
       const cellWidth = (containerWidth - gap * (columns - 1)) / columns;
       return cellWidth * (4 / 3);
