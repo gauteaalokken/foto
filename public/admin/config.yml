@@ -19,7 +19,18 @@ collections:
         label: "Portfolio (Homepage)"
         file: "src/content/gallery/index.yml"
         fields:
-          - { label: "Photos", name: "photos", widget: "image", multiple: true, hint: "These show on your homepage, in this order, at high quality. Keep this a small curated selection." }
+          - label: "Photos"
+            name: "photos"
+            widget: "image"
+            multiple: true
+            hint: "These show on your homepage, in this order, at high quality. Keep this a small curated selection."
+            media_libraries:
+              cloudflare_r2:
+                bucket: foto-photos
+                account_id: 1904e782382751217d6103b2d39a41da
+                public_url: https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev
+                access_key_id: 05e8a109454a6afe1301b08ac7f8b2f6
+                prefix: "homepage/"
 
   - name: "feed"
     label: "Feed"
@@ -28,7 +39,18 @@ collections:
         label: "Feed"
         file: "src/content/feed/index.yml"
         fields:
-          - { label: "Photos", name: "photos", widget: "image", multiple: true, hint: "All your photos for the scrolling Feed page. You can keep adding more here over time — shown at lower quality for fast loading." }
+          - label: "Photos"
+            name: "photos"
+            widget: "image"
+            multiple: true
+            hint: "All your photos for the scrolling Feed page. You can keep adding more here over time — shown at lower quality for fast loading."
+            media_libraries:
+              cloudflare_r2:
+                bucket: foto-photos
+                account_id: 1904e782382751217d6103b2d39a41da
+                public_url: https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev
+                access_key_id: 05e8a109454a6afe1301b08ac7f8b2f6
+                prefix: "feed/"
 
   - name: "blog"
     label: "Blog (ukens bilder)"
@@ -38,5 +60,15 @@ collections:
     fields:
       - { label: "Title", name: "title", widget: "string" }
       - { label: "Date", name: "date", widget: "datetime" }
-      - { label: "Photos", name: "photos", widget: "image", multiple: true }
+      - label: "Photos"
+        name: "photos"
+        widget: "image"
+        multiple: true
+        media_libraries:
+          cloudflare_r2:
+            bucket: foto-photos
+            account_id: 1904e782382751217d6103b2d39a41da
+            public_url: https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev
+            access_key_id: 05e8a109454a6afe1301b08ac7f8b2f6
+            prefix: "blog/"
       - { label: "Text", name: "body", widget: "markdown" }
