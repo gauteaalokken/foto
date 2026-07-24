@@ -2,6 +2,7 @@
 import Layout from '../layouts/Layout.astro';
 import { getEntry } from 'astro:content';
 import { Image } from 'astro:assets';
+import { getScaledDimensions, mapWithConcurrency } from '../lib/imageSize';
 
 const gallery = await getEntry('gallery', 'index');
 const photos = gallery?.data.photos ?? [];
@@ -10,24 +11,36 @@ const withBase = (path: string) =>
   `${import.meta.env.BASE_URL.replace(/\/$/, '')}/${path.replace(/^\//, '')}`;
 
 const isRemote = (path: string) => /^https?:\/\//.test(path);
+
+const PHOTO_WIDTH = 1400;
+
+const resolved = await mapWithConcurrency(photos, 4, async (photo) => {
+  if (!isRemote(photo)) {
+    return { photo, remote: false as const };
+  }
+
+  const { width, height } = await getScaledDimensions(photo, PHOTO_WIDTH);
+
+  return { photo, remote: true as const, width, height };
+});
 ---
 
 <Layout>
   <div class="masonry">
-    {photos.map((photo) =>
-      isRemote(photo) ? (
+    {resolved.map((item) =>
+      item.remote ? (
         <Image
           class="photo"
-          src={photo}
-          inferSize
-          width={1400}
+          src={item.photo}
+          width={item.width}
+          height={item.height}
           quality={82}
           format="webp"
           alt=""
           loading="lazy"
         />
       ) : (
-        <img class="photo" src={withBase(photo)} alt="" loading="lazy" />
+        <img class="photo" src={withBase(item.photo)} alt="" loading="lazy" />
       )
     )}
   </div>
@@ -60,5 +73,6 @@ const isRemote = (path: string) => /^https?:\/\//.test(path);
     margin-bottom: 16px;
     border-radius: 4px;
     break-inside: avoid;
+    object-fit: cover;
   }
 </style>

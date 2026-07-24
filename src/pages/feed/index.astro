@@ -2,6 +2,7 @@
 import Layout from '../../layouts/Layout.astro';
 import { getEntry } from 'astro:content';
 import { getImage } from 'astro:assets';
+import { getScaledDimensions, mapWithConcurrency } from '../../lib/imageSize';
 
 const feed = await getEntry('feed', 'index');
 const photos = feed?.data.photos ?? [];
@@ -15,23 +16,23 @@ const THUMB_WIDTH = 480;
 const INITIAL_BATCH = 40;
 const BATCH_SIZE = 24;
 
-const optimized = await Promise.all(
-  photos.map(async (photo) => {
-    if (!isRemote(photo)) {
-      return { src: withBase(photo), width: undefined, height: undefined };
-    }
+const optimized = await mapWithConcurrency(photos, 4, async (photo) => {
+  if (!isRemote(photo)) {
+    return { src: withBase(photo), width: undefined, height: undefined };
+  }
 
-    const img = await getImage({
-      src: photo,
-      inferSize: true,
-      width: THUMB_WIDTH,
-      quality: 60,
-      format: 'webp',
-    });
+  const { width, height } = await getScaledDimensions(photo, THUMB_WIDTH);
 
-    return { src: img.src, width: img.attributes.width, height: img.attributes.height };
-  })
-);
+  const img = await getImage({
+    src: photo,
+    width,
+    height,
+    quality: 60,
+    format: 'webp',
+  });
+
+  return { src: img.src, width: img.attributes.width, height: img.attributes.height };
+});
 
 const initialPhotos = optimized.slice(0, INITIAL_BATCH);
 const remainingPhotos = optimized.slice(INITIAL_BATCH);
@@ -145,6 +146,7 @@ const remainingPhotos = optimized.slice(INITIAL_BATCH);
     margin-bottom: 8px;
     border-radius: 4px;
     break-inside: avoid;
+    object-fit: cover;
   }
 
   .empty {
