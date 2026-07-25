@@ -44,9 +44,11 @@ const remainingPhotos = optimized.slice(INITIAL_BATCH);
 <Layout title="Feed — Gaute Aaløkken">
   <div class="feed-wrap">
     <div class="grid" id="feed-grid">
-      {initialPhotos.map((photo) => (
+      {initialPhotos.map((photo, i) => (
         <div class="cell" data-ratio={photo.ratio} style={`aspect-ratio: ${photo.ratio}`}>
-          <img class="photo" src={photo.src} alt="" loading="lazy" decoding="async" />
+          <button type="button" class="photo-button" data-index={i} aria-label="View photo full screen">
+            <img class="photo" src={photo.src} alt="" loading="lazy" decoding="async" />
+          </button>
         </div>
       ))}
     </div>
@@ -56,9 +58,16 @@ const remainingPhotos = optimized.slice(INITIAL_BATCH);
 
   <div id="feed-sentinel"></div>
 
+  <div id="lightbox" class="lightbox" hidden>
+    <button type="button" id="lightbox-close" class="lightbox-close" aria-label="Close">&times;</button>
+    <button type="button" id="lightbox-prev" class="lightbox-nav lightbox-prev" aria-label="Previous photo">&#8249;</button>
+    <img id="lightbox-img" class="lightbox-img" alt="" />
+    <button type="button" id="lightbox-next" class="lightbox-nav lightbox-next" aria-label="Next photo">&#8250;</button>
+  </div>
+
   <script type="application/json" id="feed-remaining" set:html={JSON.stringify(remainingPhotos)} />
 
-  <script define:vars={{ batchSize: BATCH_SIZE, gap: GAP }}>
+  <script define:vars={{ batchSize: BATCH_SIZE, gap: GAP, initialCount: initialPhotos.length }}>
     const grid = document.getElementById('feed-grid');
     const sentinel = document.getElementById('feed-sentinel');
     const dataEl = document.getElementById('feed-remaining');
@@ -127,11 +136,17 @@ const remainingPhotos = optimized.slice(INITIAL_BATCH);
       flushRow(true);
     };
 
-    const addCell = (photo) => {
+    const addCell = (photo, index) => {
       const cell = document.createElement('div');
       cell.className = 'cell';
       cell.dataset.ratio = String(photo.ratio);
       cell.style.aspectRatio = String(photo.ratio);
+
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'photo-button';
+      button.dataset.index = String(index);
+      button.setAttribute('aria-label', 'View photo full screen');
 
       const img = document.createElement('img');
       img.className = 'photo';
@@ -140,7 +155,8 @@ const remainingPhotos = optimized.slice(INITIAL_BATCH);
       img.loading = 'lazy';
       img.decoding = 'async';
 
-      cell.appendChild(img);
+      button.appendChild(img);
+      cell.appendChild(button);
       grid?.appendChild(cell);
     };
 
@@ -154,7 +170,7 @@ const remainingPhotos = optimized.slice(INITIAL_BATCH);
         return;
       }
 
-      for (const photo of next) addCell(photo);
+      next.forEach((photo, i) => addCell(photo, initialCount + cursor + i));
 
       cursor += batchSize;
       layout();
@@ -193,6 +209,51 @@ const remainingPhotos = optimized.slice(INITIAL_BATCH);
     } else {
       sentinel?.remove();
     }
+
+    const allPhotoSrcs = Array.from(grid?.querySelectorAll('.photo') ?? [])
+      .map((img) => img.src)
+      .concat(remaining.map((photo) => photo.src));
+
+    const lightbox = document.getElementById('lightbox');
+    const lightboxImg = document.getElementById('lightbox-img');
+    let currentIndex = -1;
+
+    const show = (index) => {
+      currentIndex = (index + allPhotoSrcs.length) % allPhotoSrcs.length;
+      if (lightboxImg) lightboxImg.src = allPhotoSrcs[currentIndex];
+    };
+
+    const openLightbox = (index) => {
+      show(index);
+      if (lightbox) lightbox.hidden = false;
+      document.body.style.overflow = 'hidden';
+    };
+
+    const closeLightbox = () => {
+      if (lightbox) lightbox.hidden = true;
+      document.body.style.overflow = '';
+    };
+
+    grid?.addEventListener('click', (event) => {
+      const button = event.target.closest('.photo-button');
+      if (!button) return;
+      openLightbox(Number(button.dataset.index));
+    });
+
+    document.getElementById('lightbox-close')?.addEventListener('click', closeLightbox);
+    document.getElementById('lightbox-prev')?.addEventListener('click', () => show(currentIndex - 1));
+    document.getElementById('lightbox-next')?.addEventListener('click', () => show(currentIndex + 1));
+
+    lightbox?.addEventListener('click', (event) => {
+      if (event.target === lightbox) closeLightbox();
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (!lightbox || lightbox.hidden) return;
+      if (event.key === 'Escape') closeLightbox();
+      if (event.key === 'ArrowLeft') show(currentIndex - 1);
+      if (event.key === 'ArrowRight') show(currentIndex + 1);
+    });
   </script>
 </Layout>
 
@@ -215,6 +276,16 @@ const remainingPhotos = optimized.slice(INITIAL_BATCH);
     background: #eee;
   }
 
+  .photo-button {
+    display: block;
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    border: none;
+    background: none;
+    cursor: zoom-in;
+  }
+
   .photo {
     width: 100%;
     height: 100%;
@@ -230,5 +301,54 @@ const remainingPhotos = optimized.slice(INITIAL_BATCH);
 
   #feed-sentinel {
     height: 1px;
+  }
+
+  .lightbox {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.92);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+
+  .lightbox[hidden] {
+    display: none;
+  }
+
+  .lightbox-img {
+    max-width: 90vw;
+    max-height: 90vh;
+    object-fit: contain;
+  }
+
+  .lightbox-close,
+  .lightbox-nav {
+    position: absolute;
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 2.5rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0.5rem 1rem;
+  }
+
+  .lightbox-close {
+    top: 1rem;
+    right: 1.5rem;
+  }
+
+  .lightbox-prev {
+    left: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+
+  .lightbox-next {
+    right: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
   }
 </style>
