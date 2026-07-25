@@ -16,6 +16,8 @@ collections:
     label: "Projects"
     folder: "src/content/projects"
     create: true
+    extension: "yml"
+    format: "yml"
     fields:
       - { label: "Title", name: "title", widget: "string", hint: "e.g. My Book Title" }
       - label: "Pages"
@@ -75,6 +77,8 @@ collections:
     label: "Prints"
     folder: "src/content/prints"
     create: true
+    extension: "yml"
+    format: "yml"
     fields:
       - { label: "Title", name: "title", widget: "string", hint: "e.g. Algorobo — becomes the page title and web address (/prints/algorobo)." }
       - label: "Photo"
