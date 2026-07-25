@@ -1,6 +1,6 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import { getEntry } from 'astro:content';
+import { getEntry, getCollection } from 'astro:content';
 import { getImage } from 'astro:assets';
 import { mapWithConcurrency } from '../lib/concurrency';
 
@@ -12,33 +12,56 @@ const withBase = (path: string) =>
 
 const isRemote = (path: string) => /^https?:\/\//.test(path);
 
+// No explicit height on any of the resized images on purpose: Astro's inferSize +
+// width combo has a bug where the reported height attribute doesn't match the
+// real resized file, which caused photos to render squeezed/cropped. Leaving
+// height unset lets the browser just use the image's real proportions once it loads.
+const resolveImage = async (src: string, width: number, quality: number) => {
+  if (!isRemote(src)) return withBase(src);
+
+  const img = await getImage({ src, inferSize: true, width, quality, format: 'webp' });
+
+  return img.src;
+};
+
 const PHOTO_WIDTH = 1400;
 
 // Trusts the order photos are already in (run `npm run sort-feed color gallery`
 // locally to color-sort them) instead of re-analyzing every photo's color on
 // every single build, which was making builds take several minutes.
-const resolved = await mapWithConcurrency(photos, 4, async (photo) => {
-  if (!isRemote(photo)) {
-    return { src: withBase(photo) };
-  }
+const resolved = await mapWithConcurrency(photos, 4, async (photo) => ({
+  src: await resolveImage(photo, PHOTO_WIDTH, 82),
+}));
 
-  // No explicit height here on purpose: Astro's inferSize + width combo has a bug
-  // where the reported height attribute doesn't match the real resized file, which
-  // caused photos to render squeezed/cropped. Leaving height unset lets the browser
-  // just use the image's real proportions once it loads.
-  const img = await getImage({
-    src: photo,
-    inferSize: true,
-    width: PHOTO_WIDTH,
-    quality: 82,
-    format: 'webp',
-  });
+const projectEntries = await getCollection('projects');
+projectEntries.sort((a, b) => a.data.title.localeCompare(b.data.title));
 
-  return { src: img.src };
+const COVER_WIDTH = 500;
+const PAGE_WIDTH = 1600;
+
+const projects = await mapWithConcurrency(projectEntries, 2, async (entry) => {
+  const { title, pages } = entry.data;
+  const cover = pages[0] ? await resolveImage(pages[0], COVER_WIDTH, 75) : '';
+  const pageSrcs = await mapWithConcurrency(pages, 4, (page) => resolveImage(page, PAGE_WIDTH, 85));
+
+  return { title, cover, pages: pageSrcs };
 });
 ---
 
 <Layout>
+  {projects.length > 0 && (
+    <section class="projects-section">
+      <div class="projects-scroll">
+        {projects.map((project, index) => (
+          <button type="button" class="project-card" data-project-index={index}>
+            <img class="project-cover" src={project.cover} alt={project.title} loading="lazy" />
+            <span class="project-title">{project.title}</span>
+          </button>
+        ))}
+      </div>
+    </section>
+  )}
+
   <div class="masonry">
     {resolved.map((item, index) => (
       <button type="button" class="photo-button" data-index={index} aria-label="View photo full screen">
@@ -53,6 +76,16 @@ const resolved = await mapWithConcurrency(photos, 4, async (photo) => {
     <img id="lightbox-img" class="lightbox-img" alt="" />
     <button type="button" id="lightbox-next" class="lightbox-nav lightbox-next" aria-label="Next photo">&#8250;</button>
   </div>
+
+  <div id="project-lightbox" class="lightbox" hidden>
+    <button type="button" id="project-lightbox-close" class="lightbox-close" aria-label="Close">&times;</button>
+    <button type="button" id="project-lightbox-prev" class="lightbox-nav lightbox-prev" aria-label="Previous page">&#8249;</button>
+    <img id="project-lightbox-img" class="lightbox-img" alt="" />
+    <button type="button" id="project-lightbox-next" class="lightbox-nav lightbox-next" aria-label="Next page">&#8250;</button>
+    <div id="project-lightbox-counter" class="lightbox-counter"></div>
+  </div>
+
+  <script type="application/json" id="projects-data" set:html={JSON.stringify(projects.map((p) => p.pages))} />
 </Layout>
 
 <script>
@@ -98,14 +131,117 @@ const resolved = await mapWithConcurrency(photos, 4, async (photo) => {
     if (event.key === 'ArrowLeft') show(currentIndex - 1);
     if (event.key === 'ArrowRight') show(currentIndex + 1);
   });
+
+  // Project (book) lightbox: navigates pages within one project.
+  const projectDataEl = document.getElementById('projects-data');
+  const projectPages: string[][] = projectDataEl ? JSON.parse(projectDataEl.textContent || '[]') : [];
+  const projectButtons = Array.from(document.querySelectorAll<HTMLButtonElement>('.project-card'));
+  const projectLightbox = document.getElementById('project-lightbox') as HTMLDivElement;
+  const projectLightboxImg = document.getElementById('project-lightbox-img') as HTMLImageElement;
+  const projectLightboxCounter = document.getElementById('project-lightbox-counter') as HTMLDivElement;
+  let currentProject = -1;
+  let currentPage = 0;
+
+  const showPage = () => {
+    const pages = projectPages[currentProject];
+    if (!pages || pages.length === 0) return;
+    currentPage = (currentPage + pages.length) % pages.length;
+    projectLightboxImg.src = pages[currentPage];
+    projectLightboxCounter.textContent = `${currentPage + 1} / ${pages.length}`;
+  };
+
+  const openProject = (index: number) => {
+    currentProject = index;
+    currentPage = 0;
+    showPage();
+    projectLightbox.hidden = false;
+    document.body.style.overflow = 'hidden';
+  };
+
+  const closeProject = () => {
+    projectLightbox.hidden = true;
+    document.body.style.overflow = '';
+  };
+
+  projectButtons.forEach((button, index) => {
+    button.addEventListener('click', () => openProject(index));
+  });
+
+  document.getElementById('project-lightbox-close')?.addEventListener('click', closeProject);
+  document.getElementById('project-lightbox-prev')?.addEventListener('click', () => {
+    currentPage -= 1;
+    showPage();
+  });
+  document.getElementById('project-lightbox-next')?.addEventListener('click', () => {
+    currentPage += 1;
+    showPage();
+  });
+
+  projectLightbox.addEventListener('click', (event) => {
+    if (event.target === projectLightbox) closeProject();
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (projectLightbox.hidden) return;
+    if (event.key === 'Escape') closeProject();
+    if (event.key === 'ArrowLeft') {
+      currentPage -= 1;
+      showPage();
+    }
+    if (event.key === 'ArrowRight') {
+      currentPage += 1;
+      showPage();
+    }
+  });
 </script>
 
 <style>
+  .projects-section {
+    max-width: 1600px;
+    margin: 0 auto;
+    padding: 20px 20px 0;
+  }
+
+  .projects-scroll {
+    display: flex;
+    gap: 16px;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    padding-bottom: 16px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .project-card {
+    flex: 0 0 auto;
+    width: 200px;
+    scroll-snap-align: start;
+    border: none;
+    background: none;
+    padding: 0;
+    cursor: zoom-in;
+    text-align: left;
+  }
+
+  .project-cover {
+    width: 100%;
+    aspect-ratio: 3 / 4;
+    object-fit: cover;
+    display: block;
+    border-radius: 4px;
+  }
+
+  .project-title {
+    display: block;
+    margin-top: 8px;
+    font-size: 0.85rem;
+    letter-spacing: 0.03em;
+  }
+
   .masonry {
     column-count: 2;
     column-gap: 4px;
     max-width: 1600px;
-    margin: 0 auto;
+    margin: 20px auto 0;
   }
 
   @media (min-width: 640px) {
@@ -189,5 +325,15 @@ const resolved = await mapWithConcurrency(photos, 4, async (photo) => {
     right: 0.5rem;
     top: 50%;
     transform: translateY(-50%);
+  }
+
+  .lightbox-counter {
+    position: absolute;
+    bottom: 1.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #fff;
+    font-size: 0.9rem;
+    opacity: 0.8;
   }
 </style>

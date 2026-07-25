@@ -22,4 +22,12 @@ const prints = defineCollection({
   }),
 });
 
-export const collections = { gallery, feed, prints };
+const projects = defineCollection({
+  type: 'data',
+  schema: z.object({
+    title: z.string(),
+    pages: z.array(z.string()),
+  }),
+});
+
+export const collections = { gallery, feed, prints, projects };

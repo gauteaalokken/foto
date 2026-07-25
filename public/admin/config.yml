@@ -12,6 +12,25 @@ media_libraries:
     access_key_id: 05e8a109454a6afe1301b08ac7f8b2f6
 
 collections:
+  - name: "projects"
+    label: "Projects"
+    folder: "src/content/projects"
+    create: true
+    fields:
+      - { label: "Title", name: "title", widget: "string", hint: "e.g. My Book Title" }
+      - label: "Pages"
+        name: "pages"
+        widget: "image"
+        multiple: true
+        hint: "Upload each page of the book, in order, as JPGs. The first page is used as the cover thumbnail on the homepage."
+        media_libraries:
+          cloudflare_r2:
+            bucket: foto-photos
+            account_id: 1904e782382751217d6103b2d39a41da
+            public_url: https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev
+            access_key_id: 05e8a109454a6afe1301b08ac7f8b2f6
+            prefix: "projects/"
+
   - name: "gallery"
     label: "Portfolio (Homepage)"
     files:
