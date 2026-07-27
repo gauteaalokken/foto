@@ -3,10 +3,10 @@ import sharp from 'sharp';
 import { fetchWithRetry } from './fetchBuffer';
 import { hasStagedFile, markReferenced, stageImageWrite } from './imageOutputQueue';
 
-const withBase = (path: string) =>
+export const withBase = (path: string) =>
   `${import.meta.env.BASE_URL.replace(/\/$/, '')}/${path.replace(/^\//, '')}`;
 
-const isRemote = (path: string) => /^https?:\/\//.test(path);
+export const isRemote = (path: string) => /^https?:\/\//.test(path);
 
 /**
  * Resizes a photo with sharp and stages the bytes on disk (see imageOutputQueue.ts)

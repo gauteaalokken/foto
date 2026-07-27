@@ -2,7 +2,7 @@
 import Layout from '../../layouts/Layout.astro';
 import { getEntry } from 'astro:content';
 import { mapWithConcurrency } from '../../lib/concurrency';
-import { resolveImage } from '../../lib/resolveImage';
+import { isRemote, resolveImage, withBase } from '../../lib/resolveImage';
 
 const feed = await getEntry('feed', 'index');
 const photos = feed?.data.photos ?? [];
@@ -19,9 +19,11 @@ const GAP = 9;
 //
 // resolveImage (not Astro's own getImage()) does the actual resizing, since it
 // skips photos already resized in a previous build instead of redoing all of
-// them every time — see src/lib/resolveImage.ts.
+// them every time — see src/lib/resolveImage.ts. The lightbox links straight
+// to the original R2 file for full quality — no extra resize/fetch needed.
 const optimized = await mapWithConcurrency(photos, 4, async (photo) => ({
   src: await resolveImage(photo, THUMB_WIDTH, 60),
+  full: isRemote(photo) ? photo : withBase(photo),
 }));
 
 const initialPhotos = optimized.slice(0, INITIAL_BATCH);
@@ -53,6 +55,7 @@ const remainingPhotos = optimized.slice(INITIAL_BATCH);
   </div>
 
   <script type="application/json" id="feed-remaining" set:html={JSON.stringify(remainingPhotos)} />
+  <script type="application/json" id="feed-full" set:html={JSON.stringify(optimized.map((p) => p.full))} />
 
   <script define:vars={{ batchSize: BATCH_SIZE, gap: GAP, initialCount: initialPhotos.length }}>
     const grid = document.getElementById('feed-grid');
@@ -225,9 +228,8 @@ const remainingPhotos = optimized.slice(INITIAL_BATCH);
       sentinel?.remove();
     }
 
-    const allPhotoSrcs = Array.from(grid?.querySelectorAll('.photo') ?? [])
-      .map((img) => img.src)
-      .concat(remaining.map((photo) => photo.src));
+    const fullDataEl = document.getElementById('feed-full');
+    const allPhotoSrcs = fullDataEl ? JSON.parse(fullDataEl.textContent || '[]') : [];
 
     const lightbox = document.getElementById('lightbox');
     const lightboxImg = document.getElementById('lightbox-img');
