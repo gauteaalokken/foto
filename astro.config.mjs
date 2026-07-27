@@ -12,8 +12,7 @@ setGlobalDispatcher(new Agent({
 }));
 
 export default defineConfig({
-  site: 'https://gauteaalokken.github.io',
-  base: '/foto',
+  site: 'https://gauteaalokken.com',
   image: {
     remotePatterns: [{ protocol: 'https', hostname: 'pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev' }],
   },
