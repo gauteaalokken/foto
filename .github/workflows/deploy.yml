@@ -18,9 +18,11 @@ jobs:
       - run: npm install
       - uses: actions/cache@v4
         with:
-          path: node_modules/.astro
-          key: astro-image-cache-${{ github.run_id }}
-          restore-keys: astro-image-cache-
+          path: |
+            node_modules/.astro
+            node_modules/.image-staging
+          key: image-cache-${{ github.run_id }}
+          restore-keys: image-cache-
       - run: npm run build
       - uses: actions/upload-pages-artifact@v3
         with:

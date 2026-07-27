@@ -1,41 +1,28 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import { getEntry } from 'astro:content';
-import { getImage } from 'astro:assets';
 import { mapWithConcurrency } from '../../lib/concurrency';
-import { getImageAspectRatio } from '../../lib/imageAspectRatio';
+import { resolveImage } from '../../lib/resolveImage';
 
 const feed = await getEntry('feed', 'index');
 const photos = feed?.data.photos ?? [];
-
-const withBase = (path: string) =>
-  `${import.meta.env.BASE_URL.replace(/\/$/, '')}/${path.replace(/^\//, '')}`;
-
-const isRemote = (path: string) => /^https?:\/\//.test(path);
 
 const THUMB_WIDTH = 500;
 const INITIAL_BATCH = 60;
 const BATCH_SIZE = 40;
 const GAP = 9;
 
-const optimized = await mapWithConcurrency(photos, 4, async (photo) => {
-  if (!isRemote(photo)) {
-    return { src: withBase(photo), ratio: 3 / 4 };
-  }
-
-  const [img, ratio] = await Promise.all([
-    getImage({
-      src: photo,
-      inferSize: true,
-      width: THUMB_WIDTH,
-      quality: 60,
-      format: 'webp',
-    }),
-    getImageAspectRatio(photo).catch(() => 3 / 4),
-  ]);
-
-  return { src: img.src, ratio };
-});
+// Each photo's true aspect ratio is measured in the browser once its thumbnail
+// loads (see bindImage in the script below), not here at build time. Fetching
+// every original photo a second time just to measure it doesn't scale past a
+// few dozen photos — at 900+ it roughly doubled build-time R2 traffic.
+//
+// resolveImage (not Astro's own getImage()) does the actual resizing, since it
+// skips photos already resized in a previous build instead of redoing all of
+// them every time — see src/lib/resolveImage.ts.
+const optimized = await mapWithConcurrency(photos, 4, async (photo) => ({
+  src: await resolveImage(photo, THUMB_WIDTH, 60),
+}));
 
 const initialPhotos = optimized.slice(0, INITIAL_BATCH);
 const remainingPhotos = optimized.slice(INITIAL_BATCH);
@@ -45,7 +32,7 @@ const remainingPhotos = optimized.slice(INITIAL_BATCH);
   <div class="feed-wrap">
     <div class="grid" id="feed-grid">
       {initialPhotos.map((photo, i) => (
-        <div class="cell" data-ratio={photo.ratio} style={`aspect-ratio: ${photo.ratio}`}>
+        <div class="cell" data-ratio="1">
           <button type="button" class="photo-button" data-index={i} aria-label="View photo full screen">
             <img class="photo" src={photo.src} alt="" loading="lazy" decoding="async" />
           </button>
@@ -136,11 +123,33 @@ const remainingPhotos = optimized.slice(INITIAL_BATCH);
       flushRow(true);
     };
 
+    let layoutScheduled = false;
+    const scheduleLayout = () => {
+      if (layoutScheduled) return;
+      layoutScheduled = true;
+      requestAnimationFrame(() => {
+        layoutScheduled = false;
+        layout();
+      });
+    };
+
+    // Measures each photo's real shape once its thumbnail has actually loaded,
+    // instead of fetching the original again at build time just to find out.
+    const bindImage = (img, cell) => {
+      const applyRatio = () => {
+        if (!img.naturalWidth || !img.naturalHeight) return;
+        cell.dataset.ratio = String(img.naturalWidth / img.naturalHeight);
+        scheduleLayout();
+      };
+
+      if (img.complete) applyRatio();
+      else img.addEventListener('load', applyRatio, { once: true });
+    };
+
     const addCell = (photo, index) => {
       const cell = document.createElement('div');
       cell.className = 'cell';
-      cell.dataset.ratio = String(photo.ratio);
-      cell.style.aspectRatio = String(photo.ratio);
+      cell.dataset.ratio = '1';
 
       const button = document.createElement('button');
       button.type = 'button';
@@ -158,6 +167,7 @@ const remainingPhotos = optimized.slice(INITIAL_BATCH);
       button.appendChild(img);
       cell.appendChild(button);
       grid?.appendChild(cell);
+      bindImage(img, cell);
     };
 
     const loadMore = () => {
@@ -198,6 +208,11 @@ const remainingPhotos = optimized.slice(INITIAL_BATCH);
     window.addEventListener('resize', () => {
       clearTimeout(resizeTimer);
       resizeTimer = setTimeout(layout, 150);
+    });
+
+    grid?.querySelectorAll('.cell').forEach((cell) => {
+      const img = cell.querySelector('.photo');
+      if (img) bindImage(img, cell);
     });
 
     layout();
@@ -272,6 +287,7 @@ const remainingPhotos = optimized.slice(INITIAL_BATCH);
 
   .cell {
     width: 200px;
+    aspect-ratio: 1;
     overflow: hidden;
     background: #eee;
   }

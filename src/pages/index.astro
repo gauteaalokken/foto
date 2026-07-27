@@ -1,28 +1,11 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import { getEntry, getCollection } from 'astro:content';
-import { getImage } from 'astro:assets';
 import { mapWithConcurrency } from '../lib/concurrency';
+import { resolveImage } from '../lib/resolveImage';
 
 const gallery = await getEntry('gallery', 'index');
 const photos = gallery?.data.photos ?? [];
-
-const withBase = (path: string) =>
-  `${import.meta.env.BASE_URL.replace(/\/$/, '')}/${path.replace(/^\//, '')}`;
-
-const isRemote = (path: string) => /^https?:\/\//.test(path);
-
-// No explicit height on any of the resized images on purpose: Astro's inferSize +
-// width combo has a bug where the reported height attribute doesn't match the
-// real resized file, which caused photos to render squeezed/cropped. Leaving
-// height unset lets the browser just use the image's real proportions once it loads.
-const resolveImage = async (src: string, width: number, quality: number) => {
-  if (!isRemote(src)) return withBase(src);
-
-  const img = await getImage({ src, inferSize: true, width, quality, format: 'webp' });
-
-  return img.src;
-};
 
 const PHOTO_WIDTH = 1400;
 
