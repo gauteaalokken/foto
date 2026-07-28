@@ -65,6 +65,9 @@ const remainingPhotos = optimized.slice(INITIAL_BATCH);
     let cursor = 0;
 
     const getTargetRowHeight = (containerWidth) => {
+      // 31 is the max column count — beyond 1728px, cells just get bigger with
+      // the extra width rather than packing in even more columns, so photos
+      // never get smaller on a wider screen.
       let columns;
       if (containerWidth >= 1728) columns = 31;
       else if (containerWidth >= 1440) columns = 20;
@@ -276,7 +279,6 @@ const remainingPhotos = optimized.slice(INITIAL_BATCH);
 
 <style is:global>
   .feed-wrap {
-    max-width: 1800px;
     margin: 0 auto;
     padding: 20px;
   }
