@@ -90,20 +90,20 @@ const remainingPhotos = optimized.slice(INITIAL_BATCH);
       let row = [];
       let rowRatioSum = 0;
 
-      const flushRow = (isTrailing) => {
+      // Always stretches the row (including the last, incomplete one) to fill the
+      // full width exactly, capped at maxHeight so a near-empty last row doesn't
+      // blow up too large.
+      const flushRow = () => {
         if (row.length === 0) return;
 
-        const height = isTrailing
-          ? targetHeight
-          : Math.min((containerWidth - gap * (row.length - 1)) / rowRatioSum, maxHeight);
+        const height = Math.min((containerWidth - gap * (row.length - 1)) / rowRatioSum, maxHeight);
 
         let usedWidth = 0;
 
         row.forEach((cell, i) => {
           const ratio = parseFloat(cell.dataset.ratio) || 1;
           const isLastInRow = i === row.length - 1;
-          const width =
-            !isTrailing && isLastInRow ? containerWidth - usedWidth : Math.round(ratio * height);
+          const width = isLastInRow ? containerWidth - usedWidth : Math.round(ratio * height);
 
           cell.style.width = `${width}px`;
           cell.style.height = `${height}px`;
@@ -120,10 +120,10 @@ const remainingPhotos = optimized.slice(INITIAL_BATCH);
         rowRatioSum += ratio;
 
         const widthAtTarget = rowRatioSum * targetHeight + gap * (row.length - 1);
-        if (widthAtTarget >= containerWidth) flushRow(false);
+        if (widthAtTarget >= containerWidth) flushRow();
       }
 
-      flushRow(true);
+      flushRow();
     };
 
     let layoutScheduled = false;
