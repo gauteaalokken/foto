@@ -94,18 +94,23 @@ const remainingPhotos = optimized.slice(INITIAL_BATCH);
 
       // Always stretches the row (including the last, incomplete one) to fill the
       // full width exactly, capped at maxHeight so a near-empty last row doesn't
-      // blow up too large.
+      // blow up too large. When the cap kicks in, the row's natural width at that
+      // height falls short of the container — so cells fall back to their normal
+      // ratio-based width instead of the last one being stretched to fill the
+      // remainder (which would make it absurdly wide for its capped height).
       const flushRow = () => {
         if (row.length === 0) return;
 
-        const height = Math.min((containerWidth - gap * (row.length - 1)) / rowRatioSum, maxHeight);
+        const naturalHeight = (containerWidth - gap * (row.length - 1)) / rowRatioSum;
+        const height = Math.min(naturalHeight, maxHeight);
+        const isCapped = height < naturalHeight;
 
         let usedWidth = 0;
 
         row.forEach((cell, i) => {
           const ratio = parseFloat(cell.dataset.ratio) || 1;
           const isLastInRow = i === row.length - 1;
-          const width = isLastInRow ? containerWidth - usedWidth : Math.round(ratio * height);
+          const width = !isCapped && isLastInRow ? containerWidth - usedWidth : Math.round(ratio * height);
 
           cell.style.width = `${width}px`;
           cell.style.height = `${height}px`;
