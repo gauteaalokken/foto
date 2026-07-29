@@ -185,7 +185,7 @@ const remainingPhotos = optimized.slice(INITIAL_BATCH);
 
       if (next.length === 0) {
         window.removeEventListener('scroll', onScroll);
-        window.removeEventListener('resize', onResize);
+        window.removeEventListener('resize', onScroll);
         sentinel?.remove();
         return;
       }
@@ -196,11 +196,7 @@ const remainingPhotos = optimized.slice(INITIAL_BATCH);
       layout();
     };
 
-    let ticking = false;
-
     const checkScroll = () => {
-      ticking = false;
-
       if (!sentinel) return;
 
       const nearViewport = sentinel.getBoundingClientRect().top < window.innerHeight + 600;
@@ -208,11 +204,13 @@ const remainingPhotos = optimized.slice(INITIAL_BATCH);
       if (nearViewport) loadMore();
     };
 
-    const onScroll = () => {
-      if (ticking) return;
-      ticking = true;
-      requestAnimationFrame(checkScroll);
-    };
+    // Deliberately not rAF-throttled: if the one scheduled frame gets dropped
+    // (e.g. the tab loses focus/visibility mid-scroll), that throttle flag can
+    // get stuck forever and silently stop all future loading until something
+    // else (like a resize) happens to reset it. checkScroll itself is cheap
+    // (one getBoundingClientRect check), so calling it directly on every
+    // scroll event is safe and can't get permanently stuck.
+    const onScroll = () => checkScroll();
 
     let resizeTimer;
     window.addEventListener('resize', () => {
