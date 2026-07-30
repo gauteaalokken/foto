@@ -133,14 +133,21 @@ const remainingPhotos = optimized.slice(INITIAL_BATCH);
       flushRow();
     };
 
+    // setTimeout, not requestAnimationFrame: rAF callbacks are paused
+    // indefinitely while the tab is backgrounded/hidden, so a flag reset only
+    // inside that callback can get stuck true forever, silently stopping all
+    // future layout recalculation. setTimeout is only ever delayed in that
+    // situation, never paused forever, so this always eventually runs while
+    // still coalescing bursts of image-load events (e.g. many photos
+    // finishing at once) into a single layout() call.
     let layoutScheduled = false;
     const scheduleLayout = () => {
       if (layoutScheduled) return;
       layoutScheduled = true;
-      requestAnimationFrame(() => {
+      setTimeout(() => {
         layoutScheduled = false;
         layout();
-      });
+      }, 50);
     };
 
     // Measures each photo's real shape once its thumbnail has actually loaded,
@@ -204,12 +211,13 @@ const remainingPhotos = optimized.slice(INITIAL_BATCH);
       if (nearViewport) loadMore();
     };
 
-    // Deliberately not rAF-throttled: if the one scheduled frame gets dropped
-    // (e.g. the tab loses focus/visibility mid-scroll), that throttle flag can
-    // get stuck forever and silently stop all future loading until something
-    // else (like a resize) happens to reset it. checkScroll itself is cheap
-    // (one getBoundingClientRect check), so calling it directly on every
-    // scroll event is safe and can't get permanently stuck.
+    // Deliberately un-throttled: a debounce that resets on every event never
+    // fires at all during continuous scrolling (each new event pushes it back
+    // further), and a requestAnimationFrame-based throttle can get a "ticking"
+    // flag stuck forever if a frame is dropped (e.g. tab loses focus) — both
+    // silently stop all future loading. checkScroll itself is cheap (one
+    // getBoundingClientRect check), so calling it directly on every event is
+    // safe and can't get stuck under any of these conditions.
     const onScroll = () => checkScroll();
 
     let resizeTimer;
