@@ -192,6 +192,7 @@ const remainingPhotos = optimized.slice(INITIAL_BATCH);
 
       if (next.length === 0) {
         sentinelObserver?.disconnect();
+        clearInterval(sentinelPoll);
         sentinel?.remove();
         return;
       }
@@ -220,7 +221,15 @@ const remainingPhotos = optimized.slice(INITIAL_BATCH);
     // own compositor rather than depending on scroll events actually firing
     // and being handled in time, so it can't silently stop working the way
     // scroll-position polling could.
+    //
+    // Belt-and-suspenders: also poll on a plain timer, independent of scroll,
+    // resize, or intersection events entirely. Some real-world reports of the
+    // feed getting stuck loading — even after moving to IntersectionObserver —
+    // could not be reproduced or root-caused in testing, so this backstop
+    // guarantees loading resumes within a second regardless of why any
+    // event-driven path might not be firing for a given browser/session.
     let sentinelObserver;
+    let sentinelPoll;
     if (sentinel && remaining.length > 0) {
       sentinelObserver = new IntersectionObserver(
         (entries) => {
@@ -229,6 +238,11 @@ const remainingPhotos = optimized.slice(INITIAL_BATCH);
         { rootMargin: '600px' }
       );
       sentinelObserver.observe(sentinel);
+
+      sentinelPoll = setInterval(() => {
+        if (!sentinel) return;
+        if (sentinel.getBoundingClientRect().top < window.innerHeight + 600) loadMore();
+      }, 700);
     } else {
       sentinel?.remove();
     }
