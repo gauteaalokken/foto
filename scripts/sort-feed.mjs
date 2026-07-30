@@ -24,7 +24,7 @@ process.loadEnvFile?.('.env.local');
 
 const ACCOUNT_ID = process.env.R2_ACCOUNT_ID ?? '1904e782382751217d6103b2d39a41da';
 const BUCKET = process.env.R2_BUCKET ?? 'foto-photos';
-const ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID ?? '05e8a109454a6afe1301b08ac7f8b2f6';
+const ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID ?? 'a74d879decb219fc298c10edd12ecda5';
 const SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY;
 const PUBLIC_URL = process.env.R2_PUBLIC_URL ?? 'https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev';
 

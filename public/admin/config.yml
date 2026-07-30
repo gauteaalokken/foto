@@ -9,7 +9,7 @@ media_libraries:
     bucket: foto-photos
     account_id: 1904e782382751217d6103b2d39a41da
     public_url: https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev
-    access_key_id: 05e8a109454a6afe1301b08ac7f8b2f6
+    access_key_id: a74d879decb219fc298c10edd12ecda5
 
 collections:
   - name: "projects"
@@ -30,7 +30,7 @@ collections:
             bucket: foto-photos
             account_id: 1904e782382751217d6103b2d39a41da
             public_url: https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev
-            access_key_id: 05e8a109454a6afe1301b08ac7f8b2f6
+            access_key_id: a74d879decb219fc298c10edd12ecda5
             prefix: "projects/"
 
   - name: "gallery"
@@ -50,7 +50,7 @@ collections:
                 bucket: foto-photos
                 account_id: 1904e782382751217d6103b2d39a41da
                 public_url: https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev
-                access_key_id: 05e8a109454a6afe1301b08ac7f8b2f6
+                access_key_id: a74d879decb219fc298c10edd12ecda5
                 prefix: "homepage/"
 
   - name: "feed"
@@ -70,7 +70,7 @@ collections:
                 bucket: foto-photos
                 account_id: 1904e782382751217d6103b2d39a41da
                 public_url: https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev
-                access_key_id: 05e8a109454a6afe1301b08ac7f8b2f6
+                access_key_id: a74d879decb219fc298c10edd12ecda5
                 prefix: "feed/"
 
   - name: "prints"
@@ -90,7 +90,7 @@ collections:
             bucket: foto-photos
             account_id: 1904e782382751217d6103b2d39a41da
             public_url: https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev
-            access_key_id: 05e8a109454a6afe1301b08ac7f8b2f6
+            access_key_id: a74d879decb219fc298c10edd12ecda5
             prefix: "prints/"
 
   - name: "blog"
@@ -110,6 +110,6 @@ collections:
             bucket: foto-photos
             account_id: 1904e782382751217d6103b2d39a41da
             public_url: https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev
-            access_key_id: 05e8a109454a6afe1301b08ac7f8b2f6
+            access_key_id: a74d879decb219fc298c10edd12ecda5
             prefix: "blog/"
       - { label: "Text", name: "body", widget: "markdown" }
