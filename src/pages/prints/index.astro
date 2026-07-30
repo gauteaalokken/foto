@@ -87,6 +87,13 @@ const prints = await mapWithConcurrency(entries, 4, async (entry) => {
     letter-spacing: 0.05em;
     text-transform: uppercase;
     font-size: 0.85rem;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+  }
+
+  .print-card:hover .title,
+  .print-card:focus-visible .title {
+    opacity: 1;
   }
 
   .empty {
