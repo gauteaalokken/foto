@@ -191,8 +191,7 @@ const remainingPhotos = optimized.slice(INITIAL_BATCH);
       const next = remaining.slice(cursor, cursor + batchSize);
 
       if (next.length === 0) {
-        window.removeEventListener('scroll', onScroll);
-        window.removeEventListener('resize', onScroll);
+        sentinelObserver?.disconnect();
         sentinel?.remove();
         return;
       }
@@ -202,23 +201,6 @@ const remainingPhotos = optimized.slice(INITIAL_BATCH);
       cursor += batchSize;
       layout();
     };
-
-    const checkScroll = () => {
-      if (!sentinel) return;
-
-      const nearViewport = sentinel.getBoundingClientRect().top < window.innerHeight + 600;
-
-      if (nearViewport) loadMore();
-    };
-
-    // Deliberately un-throttled: a debounce that resets on every event never
-    // fires at all during continuous scrolling (each new event pushes it back
-    // further), and a requestAnimationFrame-based throttle can get a "ticking"
-    // flag stuck forever if a frame is dropped (e.g. tab loses focus) — both
-    // silently stop all future loading. checkScroll itself is cheap (one
-    // getBoundingClientRect check), so calling it directly on every event is
-    // safe and can't get stuck under any of these conditions.
-    const onScroll = () => checkScroll();
 
     let resizeTimer;
     window.addEventListener('resize', () => {
@@ -233,10 +215,20 @@ const remainingPhotos = optimized.slice(INITIAL_BATCH);
 
     layout();
 
+    // IntersectionObserver instead of manually checking the sentinel's
+    // position on scroll/resize events: it's driven directly by the browser's
+    // own compositor rather than depending on scroll events actually firing
+    // and being handled in time, so it can't silently stop working the way
+    // scroll-position polling could.
+    let sentinelObserver;
     if (sentinel && remaining.length > 0) {
-      window.addEventListener('scroll', onScroll, { passive: true });
-      window.addEventListener('resize', onScroll);
-      checkScroll();
+      sentinelObserver = new IntersectionObserver(
+        (entries) => {
+          if (entries[0].isIntersecting) loadMore();
+        },
+        { rootMargin: '600px' }
+      );
+      sentinelObserver.observe(sentinel);
     } else {
       sentinel?.remove();
     }
