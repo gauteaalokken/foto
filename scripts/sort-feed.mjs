@@ -86,31 +86,99 @@ async function downloadObject(key) {
   return Buffer.concat(chunks);
 }
 
-/** Get a 0-360 hue for an image by averaging its pixels. */
-async function getDominantHue(buffer) {
-  const { data } = await sharp(buffer)
+/**
+ * HSL of a single RGB pixel (0-255 channels). Matches the algorithm in
+ * public/fotoverktoy/grid.html's "Sorter etter farge" so the homepage/feed
+ * pre-sort and the Fotogrid tool order photos the same way.
+ */
+function rgbToHsl(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h, s, l = (max + min) / 2;
+
+  if (max === min) {
+    h = s = 0;
+  } else {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    if (max === r) h = (g - b) / d + (g < b ? 6 : 0);
+    else if (max === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    h /= 6;
+  }
+
+  return { h: h * 360, s, l };
+}
+
+/**
+ * Dominant color of an image, sampled from every pixel of a small resize.
+ * Averaging RGB first (the old approach — resizing straight to 1x1) muddies
+ * mixed-color scenes toward brown/olive: a red flower on green leaves
+ * averages to neither. Instead, convert each pixel to HSL and take a
+ * circular mean of hue weighted by sat^2, so a small saturated subject
+ * against a duller background still sets the photo's sort color, and hues
+ * near the 0/360 seam average correctly (a plain numeric mean of e.g. 350°
+ * and 10° would wrongly give 180°).
+ */
+async function getDominantColor(buffer) {
+  const { data, info } = await sharp(buffer)
     .rotate()
-    .resize(1, 1, { fit: 'cover' })
+    .flatten({ background: '#ffffff' })
+    .resize(48, 48, { fit: 'cover' })
     .raw()
     .toBuffer({ resolveWithObject: true });
 
-  const [r, g, b] = data;
-  const max = Math.max(r, g, b);
-  const min = Math.min(r, g, b);
-  const delta = max - min;
+  const channels = info.channels;
+  let sumX = 0, sumY = 0, sumWeight = 0, sumL = 0, sumS = 0, count = 0;
 
-  if (delta === 0) return 0;
+  for (let i = 0; i + 2 < data.length; i += channels) {
+    const hsl = rgbToHsl(data[i], data[i + 1], data[i + 2]);
+    const weight = hsl.s * hsl.s;
+    const rad = (hsl.h * Math.PI) / 180;
+    sumX += weight * Math.cos(rad);
+    sumY += weight * Math.sin(rad);
+    sumWeight += weight;
+    sumL += hsl.l;
+    sumS += hsl.s;
+    count++;
+  }
 
-  let hue;
+  if (count === 0) return { hue: 0, sat: 0, light: 0.5 };
 
-  if (max === r) hue = ((g - b) / delta) % 6;
-  else if (max === g) hue = (b - r) / delta + 2;
-  else hue = (r - g) / delta + 4;
+  let hue = 0;
+  if (sumWeight > 1e-6) {
+    hue = (Math.atan2(sumY, sumX) * 180) / Math.PI;
+    if (hue < 0) hue += 360;
+  }
 
-  hue *= 60;
-
-  return hue < 0 ? hue + 360 : hue;
+  return { hue, sat: sumS / count, light: sumL / count };
 }
+
+/**
+ * Hue is circular (0deg and 360deg are the same color), so a plain ascending
+ * sort splits near-identical reds to opposite ends of the sequence. Rotates
+ * the array to start right after the single largest gap between consecutive
+ * hues, so that seam lands where there are the fewest photos.
+ */
+function rotateAtLargestHueGap(colored) {
+  if (colored.length <= 2) return colored;
+
+  let maxGap = -1;
+  let gapIndex = colored.length - 1;
+
+  for (let i = 0; i < colored.length - 1; i++) {
+    const gap = colored[i + 1].hue - colored[i].hue;
+    if (gap > maxGap) { maxGap = gap; gapIndex = i; }
+  }
+
+  const wrapGap = colored[0].hue + 360 - colored[colored.length - 1].hue;
+  if (wrapGap > maxGap) gapIndex = colored.length - 1;
+
+  return [...colored.slice(gapIndex + 1), ...colored.slice(0, gapIndex + 1)];
+}
+
+const SAT_THRESHOLD = 0.15;
+const COLOR_CACHE_VERSION = 2;
 
 const CACHE_PATH = path.join('scripts', '.color-cache.json');
 
@@ -130,7 +198,7 @@ async function saveCache(cache) {
 async function main() {
   console.log(`Listing objects in bucket "${BUCKET}"...`);
 
-  const objects = await listAllObjects();
+  let objects = await listAllObjects();
 
   console.log(`Found ${objects.length} photo(s).`);
 
@@ -142,9 +210,12 @@ async function main() {
 
     for (const obj of objects) {
       const cacheKey = `${obj.Key}:${obj.ETag}`;
+      const cached = cache[cacheKey];
 
-      if (cache[cacheKey] !== undefined) {
-        obj.hue = cache[cacheKey];
+      if (cached && cached.v === COLOR_CACHE_VERSION) {
+        obj.hue = cached.hue;
+        obj.sat = cached.sat;
+        obj.light = cached.light;
         continue;
       }
 
@@ -152,15 +223,25 @@ async function main() {
       process.stdout.write(`\rAnalyzing colors... ${downloaded} new photo(s) processed`);
 
       const buffer = await downloadObject(obj.Key);
+      const color = await getDominantColor(buffer);
 
-      obj.hue = await getDominantHue(buffer);
-      cache[cacheKey] = obj.hue;
+      obj.hue = color.hue;
+      obj.sat = color.sat;
+      obj.light = color.light;
+      cache[cacheKey] = { ...color, v: COLOR_CACHE_VERSION };
     }
 
     if (downloaded > 0) console.log('');
 
     await saveCache(cache);
-    objects.sort((a, b) => a.hue - b.hue);
+
+    const grayscale = objects.filter((obj) => obj.sat < SAT_THRESHOLD);
+    const colored = objects.filter((obj) => obj.sat >= SAT_THRESHOLD);
+
+    grayscale.sort((a, b) => a.light - b.light);
+    colored.sort((a, b) => a.hue - b.hue || a.light - b.light);
+
+    objects = [...grayscale, ...rotateAtLargestHueGap(colored)];
   }
 
   const photoUrls = objects.map((obj) => `${PUBLIC_URL}/${obj.Key}`);
