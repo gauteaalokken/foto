@@ -30,4 +30,9 @@ const projects = defineCollection({
   }),
 });
 
-export const collections = { gallery, feed, prints, projects };
+const fjellmaraton = defineCollection({
+  type: 'data',
+  schema: photoListSchema,
+});
+
+export const collections = { gallery, feed, prints, projects, fjellmaraton };

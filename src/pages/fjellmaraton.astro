@@ -1,5 +1,17 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import { getEntry } from 'astro:content';
+import { mapWithConcurrency } from '../lib/concurrency';
+import { resolveImage } from '../lib/resolveImage';
+
+const raceGallery = await getEntry('fjellmaraton', 'index');
+const racePhotos = raceGallery?.data.photos ?? [];
+
+const GRID_PHOTO_WIDTH = 900;
+
+const resolvedRacePhotos = await mapWithConcurrency(racePhotos, 4, async (photo) => ({
+  src: await resolveImage(photo, GRID_PHOTO_WIDTH, 78),
+}));
 ---
 
 <Layout title="Flaksjøen Fjellmaraton — Gaute Aaløkken">
@@ -12,18 +24,18 @@ import Layout from '../layouts/Layout.astro';
         <span class="group-label">Navn</span>
         <div class="row">
           <label>
-            First Name <span class="required">(required)</span>
+            First Name
             <input type="text" name="firstName" required />
           </label>
           <label>
-            Last Name <span class="required">(required)</span>
+            Last Name
             <input type="text" name="lastName" required />
           </label>
         </div>
       </div>
 
       <label class="field">
-        Email <span class="required">(required)</span>
+        Email
         <input type="email" name="email" required />
       </label>
 
@@ -35,10 +47,8 @@ import Layout from '../layouts/Layout.astro';
       <label class="field">
         Hvilken runde ser du for deg å løpe neste år?
         <select name="runde" required>
-          <option value="" selected disabled>Select an option</option>
           <option value="Korte runden 12k">Korte runden 12k</option>
           <option value="Mellomrunden 21k">Mellomrunden 21k</option>
-          <option value="Lange runden 46k">Lange runden 46k</option>
         </select>
       </label>
 
@@ -62,7 +72,69 @@ import Layout from '../layouts/Layout.astro';
       <p id="form-status" role="status"></p>
     </form>
   </div>
+
+  {resolvedRacePhotos.length > 0 && (
+    <div class="race-grid">
+      {resolvedRacePhotos.map((photo, i) => (
+        <button type="button" class="grid-cell" data-index={i} aria-label="Vis bilde i fullskjerm">
+          <img src={photo.src} alt="" loading="lazy" decoding="async" />
+        </button>
+      ))}
+    </div>
+  )}
+
+  <div id="race-lightbox" class="lightbox" hidden>
+    <button type="button" id="race-lightbox-close" class="lightbox-close" aria-label="Lukk">&times;</button>
+    <button type="button" id="race-lightbox-prev" class="lightbox-nav lightbox-prev" aria-label="Forrige bilde">&#8249;</button>
+    <img id="race-lightbox-img" class="lightbox-img" alt="" />
+    <button type="button" id="race-lightbox-next" class="lightbox-nav lightbox-next" aria-label="Neste bilde">&#8250;</button>
+  </div>
 </Layout>
+
+<script>
+  const cells = Array.from(document.querySelectorAll<HTMLButtonElement>('.grid-cell'));
+  const lightbox = document.getElementById('race-lightbox') as HTMLDivElement | null;
+  const lightboxImg = document.getElementById('race-lightbox-img') as HTMLImageElement | null;
+  let currentIndex = -1;
+
+  const show = (index: number) => {
+    if (!lightboxImg || cells.length === 0) return;
+    currentIndex = (index + cells.length) % cells.length;
+    const img = cells[currentIndex].querySelector('img');
+    if (!img) return;
+    lightboxImg.src = img.currentSrc || img.src;
+  };
+
+  const open = (index: number) => {
+    show(index);
+    if (lightbox) lightbox.hidden = false;
+    document.body.style.overflow = 'hidden';
+  };
+
+  const close = () => {
+    if (lightbox) lightbox.hidden = true;
+    document.body.style.overflow = '';
+  };
+
+  cells.forEach((cell, index) => {
+    cell.addEventListener('click', () => open(index));
+  });
+
+  document.getElementById('race-lightbox-close')?.addEventListener('click', close);
+  document.getElementById('race-lightbox-prev')?.addEventListener('click', () => show(currentIndex - 1));
+  document.getElementById('race-lightbox-next')?.addEventListener('click', () => show(currentIndex + 1));
+
+  lightbox?.addEventListener('click', (event) => {
+    if (event.target === lightbox) close();
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (!lightbox || lightbox.hidden) return;
+    if (event.key === 'Escape') close();
+    if (event.key === 'ArrowLeft') show(currentIndex - 1);
+    if (event.key === 'ArrowRight') show(currentIndex + 1);
+  });
+</script>
 
 <script>
   // Replace with the URL from your Google Apps Script deployment (see scripts/google-apps-script-paamelding.gs)
@@ -115,6 +187,99 @@ import Layout from '../layouts/Layout.astro';
     padding: 0 20px;
   }
 
+  /* A middle ground between the homepage's freeform masonry (natural aspect
+     ratio, uneven column heights) and the feed's uniform justified rows:
+     masonry columns for that same organic flow, but each cell cropped to a
+     consistent aspect ratio so the grid doesn't feel as wild as the homepage. */
+  .race-grid {
+    column-count: 2;
+    column-gap: 6px;
+    max-width: 1100px;
+    margin: 0 auto 100px;
+    padding: 0 20px;
+  }
+
+  @media (min-width: 640px) {
+    .race-grid {
+      column-count: 3;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .race-grid {
+      column-count: 4;
+    }
+  }
+
+  .grid-cell {
+    display: block;
+    width: 100%;
+    aspect-ratio: 4 / 5;
+    margin: 0 0 6px;
+    padding: 0;
+    border: none;
+    background: #eee;
+    cursor: zoom-in;
+    break-inside: avoid;
+    overflow: hidden;
+  }
+
+  .grid-cell img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .lightbox {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.92);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+
+  .lightbox[hidden] {
+    display: none;
+  }
+
+  .lightbox-img {
+    max-width: 90vw;
+    max-height: 90vh;
+    object-fit: contain;
+  }
+
+  .lightbox-close,
+  .lightbox-nav {
+    position: absolute;
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 2.5rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0.5rem 1rem;
+  }
+
+  .lightbox-close {
+    top: 1rem;
+    right: 1.5rem;
+  }
+
+  .lightbox-prev {
+    left: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+
+  .lightbox-next {
+    right: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+
   h1 {
     font-weight: 500;
     margin-bottom: 0.25rem;
@@ -159,12 +324,6 @@ import Layout from '../layouts/Layout.astro';
     flex-direction: column;
     gap: 0.5rem;
     font-size: 1.1rem;
-  }
-
-  .required {
-    color: #999;
-    font-weight: 400;
-    font-size: 0.95rem;
   }
 
   input,
