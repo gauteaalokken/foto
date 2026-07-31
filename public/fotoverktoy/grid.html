@@ -208,6 +208,26 @@
         </div>
 
         <div class="control-group">
+            <label>Maks sider</label>
+            <select id="maxPages" onchange="debouncedAutoFlow()">
+              <option value="0">Ingen grense</option>
+              <option value="1">1 side</option>
+              <option value="2">2 sider</option>
+              <option value="3">3 sider</option>
+              <option value="4">4 sider</option>
+              <option value="5">5 sider</option>
+              <option value="6">6 sider</option>
+              <option value="7">7 sider</option>
+              <option value="8">8 sider</option>
+              <option value="9">9 sider</option>
+              <option value="10">10 sider</option>
+              <option value="12">12 sider</option>
+              <option value="15">15 sider</option>
+              <option value="20">20 sider</option>
+            </select>
+        </div>
+
+        <div class="control-group">
             <label>Toleranse (+/-): <span id="toleranceValue">0</span></label>
             <input type="range" id="pageTolerance" min="0" max="10" value="0" oninput="handleSliderChange('tolerance', this.value)">
             <input type="hidden" id="pageToleranceInput" value="0">
@@ -515,6 +535,7 @@
         depotStructure: depotStructure, 
         projectName: document.getElementById('projectName').value,
         photosPerPage: document.getElementById('photosPerPage').value,
+        maxPages: document.getElementById('maxPages').value,
         paperSize: document.getElementById('paperSize').value,
         customDimensions: customDimensions,
         orientation: orientation,
@@ -600,6 +621,19 @@
         renderGrid(true);
     }
 
+    // "Maks sider" overrides "Bilder pr side" only when the manual value
+    // would otherwise produce more pages than the cap allows — it raises the
+    // target, it never lowers it below what the user set.
+    function getEffectivePhotosPerPage(totalCount) {
+        const manual = parseInt(document.getElementById('photosPerPage').value) || 10;
+        const maxPages = parseInt(document.getElementById('maxPages').value) || 0;
+        if (maxPages > 0 && totalCount > 0) {
+            const requiredForCap = Math.ceil(totalCount / maxPages);
+            return Math.max(manual, requiredForCap);
+        }
+        return manual;
+    }
+
     // --- NEW: Empty Depot to Pages ---
     function moveDepotToPages() {
         if (depotPhotos.length === 0) return;
@@ -609,9 +643,9 @@
         pages.forEach(p => allPhotos.push(...p));
         allPhotos.push(...depotPhotos);
         depotPhotos = []; // Clear depot
-        
+
         // Use partition logic to redistribute everything
-        const photosPerPage = parseInt(document.getElementById('photosPerPage').value) || 10;
+        const photosPerPage = getEffectivePhotosPerPage(allPhotos.length);
         const tolerance = parseInt(document.getElementById('pageTolerance').value) || 0;
         const paper = getPaperDimensions();
         const margin = parseFloat(document.getElementById('margin').value) || 0;
@@ -627,22 +661,22 @@
 
     function autoFlow(includeDepot = false) {
         pushHistory();
-        const photosPerPage = parseInt(document.getElementById('photosPerPage').value) || 10;
         const tolerance = parseInt(document.getElementById('pageTolerance').value) || 0;
         const paper = getPaperDimensions();
         const margin = parseFloat(document.getElementById('margin').value) || 0;
         const gap = parseFloat(document.getElementById('gap').value) || 0;
-        const availableWidth = paper.width - (2*margin); 
+        const availableWidth = paper.width - (2*margin);
         const availableHeight = paper.height - (2*margin);
-        
+
         const allPagePhotos = [];
         pages.forEach(p => allPagePhotos.push(...p));
-        
+
         if (includeDepot) {
             allPagePhotos.push(...depotPhotos);
             depotPhotos = [];
         }
-        
+
+        const photosPerPage = getEffectivePhotosPerPage(allPagePhotos.length);
         pages = partitionPhotosIntoPages(allPagePhotos, photosPerPage, tolerance, availableWidth, availableHeight, gap);
         if (pages.length === 0) pages = [[]]; 
         renderGrid(true);
@@ -708,6 +742,7 @@
         if (savedSettings) {
             document.getElementById('projectName').value = savedSettings.projectName || '';
             document.getElementById('photosPerPage').value = savedSettings.photosPerPage;
+            document.getElementById('maxPages').value = savedSettings.maxPages || '0';
             document.getElementById('paperSize').value = savedSettings.paperSize;
             if (savedSettings.customDimensions) {
                 customDimensions = savedSettings.customDimensions;
@@ -897,8 +932,8 @@
         }
 
         allPhotos = [...grayscale, ...colored];
-        
-        const photosPerPage = parseInt(document.getElementById('photosPerPage').value) || 10;
+
+        const photosPerPage = getEffectivePhotosPerPage(allPhotos.length);
         const tolerance = parseInt(document.getElementById('pageTolerance').value) || 0;
         const paper = getPaperDimensions();
         const margin = parseFloat(document.getElementById('margin').value) || 0;
