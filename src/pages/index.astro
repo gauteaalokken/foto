@@ -73,6 +73,46 @@ const projects = await mapWithConcurrency(projectEntries, 2, async (entry) => {
 
 <script>
   const buttons = Array.from(document.querySelectorAll<HTMLButtonElement>('.photo-button'));
+
+  // Distributes the (color-sorted) photo buttons round-robin across N
+  // masonry columns, so a row holds consecutive photos from the sort and the
+  // color gradient reads top-to-bottom instead of column-by-column. Matches
+  // the column counts the old CSS `column-count` breakpoints used.
+  const masonry = document.querySelector<HTMLDivElement>('.masonry');
+
+  const getColumnCount = () => {
+    const width = window.innerWidth;
+    if (width >= 1440) return 5;
+    if (width >= 1024) return 4;
+    if (width >= 640) return 3;
+    return 2;
+  };
+
+  const layoutMasonry = () => {
+    if (!masonry || buttons.length === 0) return;
+    const columnCount = getColumnCount();
+
+    masonry.innerHTML = '';
+    const columns = Array.from({ length: columnCount }, () => {
+      const column = document.createElement('div');
+      column.className = 'masonry-column';
+      masonry.appendChild(column);
+      return column;
+    });
+
+    buttons.forEach((button, index) => {
+      columns[index % columnCount].appendChild(button);
+    });
+  };
+
+  layoutMasonry();
+
+  let masonryResizeTimer: ReturnType<typeof setTimeout>;
+  window.addEventListener('resize', () => {
+    clearTimeout(masonryResizeTimer);
+    masonryResizeTimer = setTimeout(layoutMasonry, 150);
+  });
+
   const lightbox = document.getElementById('lightbox') as HTMLDivElement;
   const lightboxImg = document.getElementById('lightbox-img') as HTMLImageElement;
   let currentIndex = -1;
@@ -220,40 +260,42 @@ const projects = await mapWithConcurrency(projectEntries, 2, async (entry) => {
     letter-spacing: 0.03em;
   }
 
+  /*
+   * Photos are pre-sorted by color into one smooth sequence (see
+   * scripts/sort-feed.mjs). A plain CSS `column-count` masonry fills one
+   * whole column top-to-bottom before starting the next, so consecutive
+   * (similarly-colored) photos end up stacked in the same column instead of
+   * next to each other — the color reads as blocks left-to-right rather than
+   * a gradient top-to-bottom. The .masonry/.masonry-column split below is
+   * filled by JS instead, round-robin across columns, so each row holds
+   * consecutive photos from the sorted sequence and the color flows down
+   * the page the way the sequence intends.
+   */
   .masonry {
-    column-count: 2;
-    column-gap: 4px;
+    display: flex;
+    gap: 4px;
     max-width: 1600px;
     margin: 20px auto 0;
   }
 
-  @media (min-width: 640px) {
-    .masonry {
-      column-count: 3;
-    }
-  }
-
-  @media (min-width: 1024px) {
-    .masonry {
-      column-count: 4;
-    }
-  }
-
-  @media (min-width: 1440px) {
-    .masonry {
-      column-count: 5;
-    }
+  /* Global: these column divs are created by client-side JS, so they never
+     get Astro's scoped-style attribute and a scoped rule wouldn't match. */
+  :global(.masonry-column) {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+    min-width: 0;
   }
 
   .photo-button {
     display: block;
     width: 100%;
-    margin: 0 0 4px;
+    margin: 0;
     padding: 0;
     border: none;
     background: none;
     cursor: zoom-in;
-    break-inside: avoid;
   }
 
   .photo {
