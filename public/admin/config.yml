@@ -20,6 +20,7 @@ collections:
     format: "yml"
     fields:
       - { label: "Title", name: "title", widget: "string", hint: "e.g. My Book Title" }
+      - { label: "Year", name: "year", widget: "string", hint: "e.g. 2024 — shown under the cover on the homepage" }
       - label: "Pages"
         name: "pages"
         widget: "image"

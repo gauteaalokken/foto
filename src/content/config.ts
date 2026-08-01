@@ -26,6 +26,7 @@ const projects = defineCollection({
   type: 'data',
   schema: z.object({
     title: z.string(),
+    year: z.string(),
     pages: z.array(z.string()),
   }),
 });

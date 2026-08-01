@@ -1,444 +1,115 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import { getEntry, getCollection } from 'astro:content';
+import { getCollection } from 'astro:content';
 import { mapWithConcurrency } from '../lib/concurrency';
-import { resolveImage, resolveImageWithAspectRatio } from '../lib/resolveImage';
-
-const gallery = await getEntry('gallery', 'index');
-const photos = gallery?.data.photos ?? [];
-
-const PHOTO_WIDTH = 1400;
-
-// Trusts the order photos are already in (run `npm run sort-feed color gallery`
-// locally to color-sort them) instead of re-analyzing every photo's color on
-// every single build, which was making builds take several minutes.
-//
-// Aspect ratio (not just src) so the masonry can reserve each photo's real
-// height via CSS before it loads — otherwise every unloaded loading="lazy"
-// <img> collapses to 0 height, which can starve photos further down the
-// page from ever intersecting the viewport and loading at all.
-const resolved = await mapWithConcurrency(photos, 4, (photo) => resolveImageWithAspectRatio(photo, PHOTO_WIDTH, 82));
+import { resolveImage, withBase } from '../lib/resolveImage';
 
 const projectEntries = await getCollection('projects');
-projectEntries.sort((a, b) => a.data.title.localeCompare(b.data.title));
 
-const COVER_WIDTH = 500;
-const PAGE_WIDTH = 1600;
+const leadingYear = (year: string) => parseInt(year.match(/\d+/)?.[0] ?? '0', 10);
 
-const projects = await mapWithConcurrency(projectEntries, 2, async (entry) => {
-  const { title, pages } = entry.data;
-  const cover = pages[0] ? await resolveImage(pages[0], COVER_WIDTH, 75) : '';
-  const pageSrcs = await mapWithConcurrency(pages, 4, (page) => resolveImage(page, PAGE_WIDTH, 85));
+projectEntries.sort((a, b) => {
+  const byYear = leadingYear(b.data.year) - leadingYear(a.data.year);
+  return byYear !== 0 ? byYear : a.data.title.localeCompare(b.data.title);
+});
 
-  return { title, cover, pages: pageSrcs };
+const COVER_WIDTH = 1100;
+
+const projects = await mapWithConcurrency(projectEntries, 3, async (entry) => {
+  const { title, year, pages } = entry.data;
+  const cover = pages[0] ? await resolveImage(pages[0], COVER_WIDTH, 80) : '';
+
+  return { slug: entry.id, title, year, cover };
 });
 ---
 
 <Layout>
-  {projects.length > 0 && (
-    <section class="projects-section">
-      <div class="projects-scroll">
-        {projects.map((project, index) => (
-          <button type="button" class="project-card" data-project-index={index}>
-            <img class="project-cover" src={project.cover} alt={project.title} loading="lazy" />
-            <span class="project-title">{project.title}</span>
-          </button>
-        ))}
-      </div>
-    </section>
-  )}
-
-  <div class="masonry">
-    {resolved.map((item, index) => (
-      <button type="button" class="photo-button" data-index={index} aria-label="View photo full screen">
-        <img class="photo" src={item.src} alt="" loading="lazy" style={`aspect-ratio: ${item.aspectRatio}`} />
-      </button>
+  <div class="projects-grid">
+    {projects.map((project) => (
+      <a class="project-card" href={withBase(`/prosjekter/${project.slug}`)}>
+        <div class="cover-wrap">
+          {project.cover && <img class="cover" src={project.cover} alt={project.title} loading="lazy" />}
+        </div>
+        <div class="caption">
+          <span class="year">{project.year}</span>
+          <span class="title">{project.title}</span>
+        </div>
+      </a>
     ))}
   </div>
-  <div id="masonry-bottom-sentinel" aria-hidden="true"></div>
-  <noscript>
-    <style>
-      .masonry { visibility: visible; }
-    </style>
-  </noscript>
 
-  <div id="lightbox" class="lightbox" hidden>
-    <button type="button" id="lightbox-close" class="lightbox-close" aria-label="Close">&times;</button>
-    <button type="button" id="lightbox-prev" class="lightbox-nav lightbox-prev" aria-label="Previous photo">&#8249;</button>
-    <img id="lightbox-img" class="lightbox-img" alt="" />
-    <button type="button" id="lightbox-next" class="lightbox-nav lightbox-next" aria-label="Next photo">&#8250;</button>
-  </div>
-
-  <div id="project-lightbox" class="lightbox" hidden>
-    <button type="button" id="project-lightbox-close" class="lightbox-close" aria-label="Close">&times;</button>
-    <button type="button" id="project-lightbox-prev" class="lightbox-nav lightbox-prev" aria-label="Previous page">&#8249;</button>
-    <img id="project-lightbox-img" class="lightbox-img" alt="" />
-    <button type="button" id="project-lightbox-next" class="lightbox-nav lightbox-next" aria-label="Next page">&#8250;</button>
-    <div id="project-lightbox-counter" class="lightbox-counter"></div>
-  </div>
-
-  <script type="application/json" id="projects-data" set:html={JSON.stringify(projects.map((p) => p.pages))} />
+  {projects.length === 0 && <p class="empty">Ingen prosjekter ennå.</p>}
 </Layout>
 
-<script>
-  const buttons = Array.from(document.querySelectorAll<HTMLButtonElement>('.photo-button'));
-
-  // Distributes the (color-sorted) photo buttons round-robin across N
-  // masonry columns, so a row holds consecutive photos from the sort and the
-  // color gradient reads top-to-bottom instead of column-by-column. Matches
-  // the column counts the old CSS `column-count` breakpoints used.
-  const masonry = document.querySelector<HTMLDivElement>('.masonry');
-
-  const getColumnCount = () => {
-    const width = window.innerWidth;
-    if (width >= 1440) return 5;
-    if (width >= 1024) return 4;
-    if (width >= 640) return 3;
-    return 2;
-  };
-
-  const layoutMasonry = () => {
-    if (!masonry || buttons.length === 0) return;
-    const columnCount = getColumnCount();
-
-    masonry.innerHTML = '';
-    const columns = Array.from({ length: columnCount }, () => {
-      const column = document.createElement('div');
-      column.className = 'masonry-column';
-      masonry.appendChild(column);
-      return column;
-    });
-
-    buttons.forEach((button, index) => {
-      columns[index % columnCount].appendChild(button);
-    });
-  };
-
-  layoutMasonry();
-  // Before this runs, the photo buttons sit directly in .masonry (a nowrap
-  // flex row) each wanting width:100% — squished into slivers until this
-  // reorganizes them into columns. Reveal only once that's done, so nobody
-  // sees that in-between state.
-  masonry?.classList.add('is-ready');
-
-  // Round-robin columns rarely end at the same pixel height — different
-  // photo counts (when totalPhotos isn't divisible by columnCount) and
-  // varying aspect ratios both leave a ragged bottom edge. Once the user is
-  // actually near the bottom (so lazy-loaded photos above it have had a
-  // chance to load), stretch just the last photo of each shorter column
-  // down to the tallest column's edge, cropping via object-fit instead of
-  // distorting it.
-  const MAX_STRETCH_RATIO = 0.25; // don't crop more than this fraction of a photo away
-
-  const equalizeColumnBottoms = () => {
-    if (!masonry) return;
-    const columns = Array.from(masonry.querySelectorAll<HTMLDivElement>(':scope > .masonry-column'));
-    if (columns.length < 2) return;
-
-    // Undo any previous stretch before re-measuring natural heights. A
-    // previously-stretched photo might not be its column's last child
-    // anymore if the column count changed (resize), so this checks every
-    // photo, not just each column's current last one.
-    masonry.querySelectorAll<HTMLImageElement>('img[data-stretched]').forEach((img) => {
-      img.style.height = '';
-      img.style.objectFit = '';
-      delete img.dataset.stretched;
-    });
-
-    const heights = columns.map((column) => column.getBoundingClientRect().height);
-    const maxHeight = Math.max(...heights);
-
-    columns.forEach((column, i) => {
-      const deficit = maxHeight - heights[i];
-      if (deficit <= 1) return;
-
-      const img = column.lastElementChild?.querySelector<HTMLImageElement>('img');
-      if (!img) return;
-
-      const currentHeight = img.getBoundingClientRect().height;
-      if (deficit > currentHeight * MAX_STRETCH_RATIO) return;
-
-      img.style.height = `${currentHeight + deficit}px`;
-      img.style.objectFit = 'cover';
-      img.dataset.stretched = 'true';
-    });
-  };
-
-  const sentinel = document.getElementById('masonry-bottom-sentinel');
-  if (sentinel) {
-    const bottomObserver = new IntersectionObserver(
-      (entries) => {
-        if (entries[0]?.isIntersecting) {
-          setTimeout(equalizeColumnBottoms, 250);
-        }
-      },
-      { rootMargin: '400px' }
-    );
-    bottomObserver.observe(sentinel);
-  }
-
-  let masonryResizeTimer: ReturnType<typeof setTimeout>;
-  window.addEventListener('resize', () => {
-    clearTimeout(masonryResizeTimer);
-    masonryResizeTimer = setTimeout(() => {
-      layoutMasonry();
-      equalizeColumnBottoms();
-    }, 150);
-  });
-
-  const lightbox = document.getElementById('lightbox') as HTMLDivElement;
-  const lightboxImg = document.getElementById('lightbox-img') as HTMLImageElement;
-  let currentIndex = -1;
-
-  const show = (index: number) => {
-    currentIndex = (index + buttons.length) % buttons.length;
-    const img = buttons[currentIndex].querySelector('img');
-    if (!img) return;
-    lightboxImg.src = img.currentSrc || img.src;
-    lightboxImg.alt = img.alt;
-  };
-
-  const open = (index: number) => {
-    show(index);
-    lightbox.hidden = false;
-    document.body.style.overflow = 'hidden';
-  };
-
-  const close = () => {
-    lightbox.hidden = true;
-    document.body.style.overflow = '';
-  };
-
-  buttons.forEach((button, index) => {
-    button.addEventListener('click', () => open(index));
-  });
-
-  document.getElementById('lightbox-close')?.addEventListener('click', close);
-  document.getElementById('lightbox-prev')?.addEventListener('click', () => show(currentIndex - 1));
-  document.getElementById('lightbox-next')?.addEventListener('click', () => show(currentIndex + 1));
-
-  lightbox.addEventListener('click', (event) => {
-    if (event.target === lightbox) close();
-  });
-
-  document.addEventListener('keydown', (event) => {
-    if (lightbox.hidden) return;
-    if (event.key === 'Escape') close();
-    if (event.key === 'ArrowLeft') show(currentIndex - 1);
-    if (event.key === 'ArrowRight') show(currentIndex + 1);
-  });
-
-  // Project (book) lightbox: navigates pages within one project.
-  const projectDataEl = document.getElementById('projects-data');
-  const projectPages: string[][] = projectDataEl ? JSON.parse(projectDataEl.textContent || '[]') : [];
-  const projectButtons = Array.from(document.querySelectorAll<HTMLButtonElement>('.project-card'));
-  const projectLightbox = document.getElementById('project-lightbox') as HTMLDivElement;
-  const projectLightboxImg = document.getElementById('project-lightbox-img') as HTMLImageElement;
-  const projectLightboxCounter = document.getElementById('project-lightbox-counter') as HTMLDivElement;
-  let currentProject = -1;
-  let currentPage = 0;
-
-  const showPage = () => {
-    const pages = projectPages[currentProject];
-    if (!pages || pages.length === 0) return;
-    currentPage = (currentPage + pages.length) % pages.length;
-    projectLightboxImg.src = pages[currentPage];
-    projectLightboxCounter.textContent = `${currentPage + 1} / ${pages.length}`;
-  };
-
-  const openProject = (index: number) => {
-    currentProject = index;
-    currentPage = 0;
-    showPage();
-    projectLightbox.hidden = false;
-    document.body.style.overflow = 'hidden';
-  };
-
-  const closeProject = () => {
-    projectLightbox.hidden = true;
-    document.body.style.overflow = '';
-  };
-
-  projectButtons.forEach((button, index) => {
-    button.addEventListener('click', () => openProject(index));
-  });
-
-  document.getElementById('project-lightbox-close')?.addEventListener('click', closeProject);
-  document.getElementById('project-lightbox-prev')?.addEventListener('click', () => {
-    currentPage -= 1;
-    showPage();
-  });
-  document.getElementById('project-lightbox-next')?.addEventListener('click', () => {
-    currentPage += 1;
-    showPage();
-  });
-
-  projectLightbox.addEventListener('click', (event) => {
-    if (event.target === projectLightbox) closeProject();
-  });
-
-  document.addEventListener('keydown', (event) => {
-    if (projectLightbox.hidden) return;
-    if (event.key === 'Escape') closeProject();
-    if (event.key === 'ArrowLeft') {
-      currentPage -= 1;
-      showPage();
-    }
-    if (event.key === 'ArrowRight') {
-      currentPage += 1;
-      showPage();
-    }
-  });
-</script>
-
 <style>
-  .projects-section {
-    max-width: 1600px;
+  .projects-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 48px 32px;
+    max-width: 1800px;
     margin: 0 auto;
-    padding: 20px 20px 0;
+    padding: 40px 32px 80px;
   }
 
-  .projects-scroll {
-    display: flex;
-    gap: 16px;
-    overflow-x: auto;
-    scroll-snap-type: x proximity;
-    padding-bottom: 16px;
-    -webkit-overflow-scrolling: touch;
+  @media (min-width: 640px) {
+    .projects-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .projects-grid {
+      grid-template-columns: repeat(3, 1fr);
+      gap: 64px 40px;
+    }
   }
 
   .project-card {
-    flex: 0 0 auto;
-    width: 200px;
-    scroll-snap-align: start;
-    border: none;
-    background: none;
-    padding: 0;
-    cursor: zoom-in;
-    text-align: left;
+    display: block;
+    color: inherit;
+    text-decoration: none;
   }
 
-  .project-cover {
+  .cover-wrap {
+    aspect-ratio: 4 / 5;
+    overflow: hidden;
+    background: #eee;
+  }
+
+  .cover {
     width: 100%;
-    aspect-ratio: 3 / 4;
+    height: 100%;
     object-fit: cover;
     display: block;
-    border-radius: 4px;
+    transition: transform 0.4s ease;
   }
 
-  .project-title {
-    display: block;
-    margin-top: 8px;
-    font-size: 0.85rem;
-    letter-spacing: 0.03em;
+  .project-card:hover .cover {
+    transform: scale(1.02);
   }
 
-  /*
-   * Photos are pre-sorted by color into one smooth sequence (see
-   * scripts/sort-feed.mjs). A plain CSS `column-count` masonry fills one
-   * whole column top-to-bottom before starting the next, so consecutive
-   * (similarly-colored) photos end up stacked in the same column instead of
-   * next to each other — the color reads as blocks left-to-right rather than
-   * a gradient top-to-bottom. The .masonry/.masonry-column split below is
-   * filled by JS instead, round-robin across columns, so each row holds
-   * consecutive photos from the sorted sequence and the color flows down
-   * the page the way the sequence intends.
-   */
-  .masonry {
-    display: flex;
-    gap: 4px;
-    max-width: 1600px;
-    margin: 20px auto 0;
-    visibility: hidden;
-  }
-
-  /* JS adds this right after sorting photos into columns — see the flash
-     this avoids in the comment above the layoutMasonry() call below. */
-  .masonry.is-ready {
-    visibility: visible;
-  }
-
-  /* Global: these column divs are created by client-side JS, so they never
-     get Astro's scoped-style attribute and a scoped rule wouldn't match. */
-  :global(.masonry-column) {
+  .caption {
+    margin-top: 14px;
     display: flex;
     flex-direction: column;
-    gap: 4px;
-    flex: 1;
-    min-width: 0;
+    gap: 2px;
   }
 
-  .photo-button {
-    display: block;
-    width: 100%;
-    margin: 0;
-    padding: 0;
-    border: none;
-    background: none;
-    cursor: zoom-in;
+  .year {
+    font-size: 0.8rem;
+    letter-spacing: 0.04em;
+    color: #888;
   }
 
-  .photo {
-    width: 100%;
-    display: block;
+  .title {
+    font-family: 'Fraunces', serif;
+    font-size: 1.35rem;
+    font-weight: 400;
   }
 
-  .lightbox {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.92);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-  }
-
-  .lightbox[hidden] {
-    display: none;
-  }
-
-  .lightbox-img {
-    max-width: 90vw;
-    max-height: 90vh;
-    object-fit: contain;
-  }
-
-  .lightbox-close,
-  .lightbox-nav {
-    position: absolute;
-    background: none;
-    border: none;
-    color: #fff;
-    font-size: 2.5rem;
-    line-height: 1;
-    cursor: pointer;
-    padding: 0.5rem 1rem;
-  }
-
-  .lightbox-close {
-    top: 1rem;
-    right: 1.5rem;
-  }
-
-  .lightbox-prev {
-    left: 0.5rem;
-    top: 50%;
-    transform: translateY(-50%);
-  }
-
-  .lightbox-next {
-    right: 0.5rem;
-    top: 50%;
-    transform: translateY(-50%);
-  }
-
-  .lightbox-counter {
-    position: absolute;
-    bottom: 1.5rem;
-    left: 50%;
-    transform: translateX(-50%);
-    color: #fff;
-    font-size: 0.9rem;
-    opacity: 0.8;
+  .empty {
+    text-align: center;
+    color: #666;
+    padding: 80px 20px;
   }
 </style>

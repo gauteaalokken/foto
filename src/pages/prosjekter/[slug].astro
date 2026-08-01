@@ -1,0 +1,239 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { getCollection } from 'astro:content';
+import { mapWithConcurrency } from '../../lib/concurrency';
+import { resolveImage, isRemote, withBase } from '../../lib/resolveImage';
+
+export async function getStaticPaths() {
+  const projects = await getCollection('projects');
+
+  return projects.map((entry) => ({
+    params: { slug: entry.id },
+    props: { entry },
+  }));
+}
+
+const { entry } = Astro.props;
+const { title, year, pages } = entry.data;
+
+// Fewer photos means each one can afford to be bigger; more photos means more
+// columns so the page doesn't turn into an endless single-file scroll.
+const columnsForCount = (count: number) => {
+  if (count <= 9) return 3;
+  if (count <= 19) return 4;
+  if (count <= 29) return 5;
+  return 6;
+};
+
+const GRID_WIDTH_BY_COLUMNS: Record<number, number> = { 3: 900, 4: 700, 5: 600, 6: 500 };
+
+const columns = columnsForCount(pages.length);
+const gridWidth = GRID_WIDTH_BY_COLUMNS[columns] ?? 600;
+
+// The lightbox links to the original R2 file for full quality — no extra resize needed.
+const photos = await mapWithConcurrency(pages, 4, async (page) => ({
+  src: await resolveImage(page, gridWidth, 82),
+  full: isRemote(page) ? page : withBase(page),
+}));
+---
+
+<Layout title={`${title} — Gaute Aaløkken`}>
+  <div class="project-page">
+    <a href={withBase('/')} class="back-link">&larr; Tilbake</a>
+
+    <header class="project-header">
+      <h1>{title}</h1>
+      <span class="project-year">{year}</span>
+    </header>
+
+    <div class="masonry" style={`--cols: ${columns}`}>
+      {photos.map((photo, index) => (
+        <button type="button" class="photo-button" data-index={index} aria-label="Vis bilde i fullskjerm">
+          <img class="photo" src={photo.src} alt="" loading="lazy" decoding="async" />
+        </button>
+      ))}
+    </div>
+
+    {photos.length === 0 && <p class="empty">Ingen bilder i dette prosjektet ennå.</p>}
+  </div>
+
+  <div id="lightbox" class="lightbox" hidden>
+    <button type="button" id="lightbox-close" class="lightbox-close" aria-label="Lukk">&times;</button>
+    <button type="button" id="lightbox-prev" class="lightbox-nav lightbox-prev" aria-label="Forrige bilde">&#8249;</button>
+    <img id="lightbox-img" class="lightbox-img" alt="" />
+    <button type="button" id="lightbox-next" class="lightbox-nav lightbox-next" aria-label="Neste bilde">&#8250;</button>
+  </div>
+
+  <script type="application/json" id="project-photos" set:html={JSON.stringify(photos.map((p) => p.full))} />
+</Layout>
+
+<script>
+  const dataEl = document.getElementById('project-photos');
+  const fullPhotos: string[] = dataEl ? JSON.parse(dataEl.textContent || '[]') : [];
+  const buttons = Array.from(document.querySelectorAll<HTMLButtonElement>('.photo-button'));
+  const lightbox = document.getElementById('lightbox') as HTMLDivElement;
+  const lightboxImg = document.getElementById('lightbox-img') as HTMLImageElement;
+  let currentIndex = -1;
+
+  const show = (index: number) => {
+    currentIndex = (index + fullPhotos.length) % fullPhotos.length;
+    lightboxImg.src = fullPhotos[currentIndex];
+  };
+
+  const open = (index: number) => {
+    show(index);
+    lightbox.hidden = false;
+    document.body.style.overflow = 'hidden';
+  };
+
+  const close = () => {
+    lightbox.hidden = true;
+    document.body.style.overflow = '';
+  };
+
+  buttons.forEach((button, index) => {
+    button.addEventListener('click', () => open(index));
+  });
+
+  document.getElementById('lightbox-close')?.addEventListener('click', close);
+  document.getElementById('lightbox-prev')?.addEventListener('click', () => show(currentIndex - 1));
+  document.getElementById('lightbox-next')?.addEventListener('click', () => show(currentIndex + 1));
+
+  lightbox.addEventListener('click', (event) => {
+    if (event.target === lightbox) close();
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (lightbox.hidden) return;
+    if (event.key === 'Escape') close();
+    if (event.key === 'ArrowLeft') show(currentIndex - 1);
+    if (event.key === 'ArrowRight') show(currentIndex + 1);
+  });
+</script>
+
+<style>
+  .project-page {
+    max-width: 1800px;
+    margin: 0 auto;
+    padding: 20px 20px 60px;
+  }
+
+  .back-link {
+    display: inline-block;
+    margin-bottom: 2.5rem;
+    color: #111;
+    text-decoration: none;
+    font-size: 0.9rem;
+  }
+
+  .back-link:hover {
+    opacity: 0.6;
+  }
+
+  .project-header {
+    display: flex;
+    align-items: baseline;
+    gap: 1rem;
+    margin-bottom: 2.5rem;
+  }
+
+  .project-header h1 {
+    font-family: 'Fraunces', serif;
+    font-size: clamp(2rem, 5vw, 3.25rem);
+    font-weight: 400;
+    margin: 0;
+  }
+
+  .project-year {
+    font-size: 1rem;
+    color: #888;
+  }
+
+  .empty {
+    text-align: center;
+    color: #666;
+    padding: 40px 20px;
+  }
+
+  .masonry {
+    column-count: 2;
+    column-gap: 24px;
+  }
+
+  @media (min-width: 640px) {
+    .masonry {
+      column-count: min(3, var(--cols));
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .masonry {
+      column-count: var(--cols);
+    }
+  }
+
+  .photo-button {
+    display: block;
+    width: 100%;
+    margin: 0 0 24px;
+    padding: 0;
+    border: none;
+    background: none;
+    cursor: zoom-in;
+    break-inside: avoid;
+  }
+
+  .photo {
+    width: 100%;
+    display: block;
+  }
+
+  .lightbox {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.92);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+
+  .lightbox[hidden] {
+    display: none;
+  }
+
+  .lightbox-img {
+    max-width: 90vw;
+    max-height: 90vh;
+    object-fit: contain;
+  }
+
+  .lightbox-close,
+  .lightbox-nav {
+    position: absolute;
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 2.5rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0.5rem 1rem;
+  }
+
+  .lightbox-close {
+    top: 1rem;
+    right: 1.5rem;
+  }
+
+  .lightbox-prev {
+    left: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+
+  .lightbox-next {
+    right: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+</style>
