@@ -1,7 +1,8 @@
 import { createHash } from 'node:crypto';
+import path from 'node:path';
 import sharp from 'sharp';
 import { fetchWithRetry } from './fetchBuffer';
-import { hasStagedFile, markReferenced, stageImageWrite } from './imageOutputQueue';
+import { hasStagedFile, markReferenced, stageImageWrite, STAGING_DIR } from './imageOutputQueue';
 
 export const withBase = (path: string) =>
   `${import.meta.env.BASE_URL.replace(/\/$/, '')}/${path.replace(/^\//, '')}`;
@@ -24,9 +25,7 @@ export const isRemote = (path: string) => /^https?:\/\//.test(path);
  * resized file, which caused photos to render squeezed/cropped. Leaving height
  * unset lets the browser just use the image's real proportions once it loads.
  */
-export async function resolveImage(src: string, width: number, quality: number): Promise<string> {
-  if (!isRemote(src)) return withBase(src);
-
+async function resolveStagedFilename(src: string, width: number, quality: number): Promise<string> {
   const filename = `${createHash('sha1').update(`${src}:${width}:${quality}`).digest('hex')}.webp`;
   await markReferenced(filename);
 
@@ -41,5 +40,35 @@ export async function resolveImage(src: string, width: number, quality: number):
     await stageImageWrite(filename, resized);
   }
 
+  return filename;
+}
+
+export async function resolveImage(src: string, width: number, quality: number): Promise<string> {
+  if (!isRemote(src)) return withBase(src);
+
+  const filename = await resolveStagedFilename(src, width, quality);
   return withBase(`optimized/${filename}`);
+}
+
+/**
+ * Same as resolveImage, but also returns the resized photo's real aspect
+ * ratio (read straight from the staged file's own metadata — not Astro's
+ * inferSize, which has the bug described above). Callers can use this to
+ * reserve layout space for an <img> via CSS aspect-ratio before it loads,
+ * so it doesn't collapse to 0 height while unloaded — which, for a page
+ * that's nothing but loading="lazy" photos, can starve the ones further
+ * down from ever intersecting the viewport and loading at all.
+ */
+export async function resolveImageWithAspectRatio(
+  src: string,
+  width: number,
+  quality: number
+): Promise<{ src: string; aspectRatio: number }> {
+  if (!isRemote(src)) return { src: withBase(src), aspectRatio: 1 };
+
+  const filename = await resolveStagedFilename(src, width, quality);
+  const metadata = await sharp(path.join(STAGING_DIR, filename)).metadata();
+  const aspectRatio = metadata.width && metadata.height ? metadata.width / metadata.height : 1;
+
+  return { src: withBase(`optimized/${filename}`), aspectRatio };
 }

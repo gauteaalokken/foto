@@ -2,7 +2,7 @@
 import Layout from '../layouts/Layout.astro';
 import { getEntry, getCollection } from 'astro:content';
 import { mapWithConcurrency } from '../lib/concurrency';
-import { resolveImage } from '../lib/resolveImage';
+import { resolveImage, resolveImageWithAspectRatio } from '../lib/resolveImage';
 
 const gallery = await getEntry('gallery', 'index');
 const photos = gallery?.data.photos ?? [];
@@ -12,9 +12,12 @@ const PHOTO_WIDTH = 1400;
 // Trusts the order photos are already in (run `npm run sort-feed color gallery`
 // locally to color-sort them) instead of re-analyzing every photo's color on
 // every single build, which was making builds take several minutes.
-const resolved = await mapWithConcurrency(photos, 4, async (photo) => ({
-  src: await resolveImage(photo, PHOTO_WIDTH, 82),
-}));
+//
+// Aspect ratio (not just src) so the masonry can reserve each photo's real
+// height via CSS before it loads — otherwise every unloaded loading="lazy"
+// <img> collapses to 0 height, which can starve photos further down the
+// page from ever intersecting the viewport and loading at all.
+const resolved = await mapWithConcurrency(photos, 4, (photo) => resolveImageWithAspectRatio(photo, PHOTO_WIDTH, 82));
 
 const projectEntries = await getCollection('projects');
 projectEntries.sort((a, b) => a.data.title.localeCompare(b.data.title));
@@ -48,10 +51,16 @@ const projects = await mapWithConcurrency(projectEntries, 2, async (entry) => {
   <div class="masonry">
     {resolved.map((item, index) => (
       <button type="button" class="photo-button" data-index={index} aria-label="View photo full screen">
-        <img class="photo" src={item.src} alt="" loading="lazy" />
+        <img class="photo" src={item.src} alt="" loading="lazy" style={`aspect-ratio: ${item.aspectRatio}`} />
       </button>
     ))}
   </div>
+  <div id="masonry-bottom-sentinel" aria-hidden="true"></div>
+  <noscript>
+    <style>
+      .masonry { visibility: visible; }
+    </style>
+  </noscript>
 
   <div id="lightbox" class="lightbox" hidden>
     <button type="button" id="lightbox-close" class="lightbox-close" aria-label="Close">&times;</button>
@@ -106,11 +115,75 @@ const projects = await mapWithConcurrency(projectEntries, 2, async (entry) => {
   };
 
   layoutMasonry();
+  // Before this runs, the photo buttons sit directly in .masonry (a nowrap
+  // flex row) each wanting width:100% — squished into slivers until this
+  // reorganizes them into columns. Reveal only once that's done, so nobody
+  // sees that in-between state.
+  masonry?.classList.add('is-ready');
+
+  // Round-robin columns rarely end at the same pixel height — different
+  // photo counts (when totalPhotos isn't divisible by columnCount) and
+  // varying aspect ratios both leave a ragged bottom edge. Once the user is
+  // actually near the bottom (so lazy-loaded photos above it have had a
+  // chance to load), stretch just the last photo of each shorter column
+  // down to the tallest column's edge, cropping via object-fit instead of
+  // distorting it.
+  const MAX_STRETCH_RATIO = 0.25; // don't crop more than this fraction of a photo away
+
+  const equalizeColumnBottoms = () => {
+    if (!masonry) return;
+    const columns = Array.from(masonry.querySelectorAll<HTMLDivElement>(':scope > .masonry-column'));
+    if (columns.length < 2) return;
+
+    // Undo any previous stretch before re-measuring natural heights. A
+    // previously-stretched photo might not be its column's last child
+    // anymore if the column count changed (resize), so this checks every
+    // photo, not just each column's current last one.
+    masonry.querySelectorAll<HTMLImageElement>('img[data-stretched]').forEach((img) => {
+      img.style.height = '';
+      img.style.objectFit = '';
+      delete img.dataset.stretched;
+    });
+
+    const heights = columns.map((column) => column.getBoundingClientRect().height);
+    const maxHeight = Math.max(...heights);
+
+    columns.forEach((column, i) => {
+      const deficit = maxHeight - heights[i];
+      if (deficit <= 1) return;
+
+      const img = column.lastElementChild?.querySelector<HTMLImageElement>('img');
+      if (!img) return;
+
+      const currentHeight = img.getBoundingClientRect().height;
+      if (deficit > currentHeight * MAX_STRETCH_RATIO) return;
+
+      img.style.height = `${currentHeight + deficit}px`;
+      img.style.objectFit = 'cover';
+      img.dataset.stretched = 'true';
+    });
+  };
+
+  const sentinel = document.getElementById('masonry-bottom-sentinel');
+  if (sentinel) {
+    const bottomObserver = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          setTimeout(equalizeColumnBottoms, 250);
+        }
+      },
+      { rootMargin: '400px' }
+    );
+    bottomObserver.observe(sentinel);
+  }
 
   let masonryResizeTimer: ReturnType<typeof setTimeout>;
   window.addEventListener('resize', () => {
     clearTimeout(masonryResizeTimer);
-    masonryResizeTimer = setTimeout(layoutMasonry, 150);
+    masonryResizeTimer = setTimeout(() => {
+      layoutMasonry();
+      equalizeColumnBottoms();
+    }, 150);
   });
 
   const lightbox = document.getElementById('lightbox') as HTMLDivElement;
@@ -276,6 +349,13 @@ const projects = await mapWithConcurrency(projectEntries, 2, async (entry) => {
     gap: 4px;
     max-width: 1600px;
     margin: 20px auto 0;
+    visibility: hidden;
+  }
+
+  /* JS adds this right after sorting photos into columns — see the flash
+     this avoids in the comment above the layoutMasonry() call below. */
+  .masonry.is-ready {
+    visibility: visible;
   }
 
   /* Global: these column divs are created by client-side JS, so they never
