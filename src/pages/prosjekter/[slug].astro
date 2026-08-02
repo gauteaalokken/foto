@@ -43,7 +43,7 @@ const photos = await mapWithConcurrency(pages, 4, async (page) => ({
 
     <header class="project-header">
       <h1>{title}</h1>
-      <span class="project-year">{year}</span>
+      <span class="project-year">({year})</span>
     </header>
 
     <div class="masonry" style={`--cols: ${columns}`}>
@@ -138,13 +138,14 @@ const photos = await mapWithConcurrency(pages, 4, async (page) => ({
   }
 
   .project-header h1 {
-    font-family: 'Fraunces', serif;
+    font-family: 'Space Mono', monospace;
     font-size: clamp(2rem, 5vw, 3.25rem);
-    font-weight: 400;
+    font-weight: 500;
     margin: 0;
   }
 
   .project-year {
+    font-family: 'Space Mono', monospace;
     font-size: 1rem;
     color: #888;
   }
