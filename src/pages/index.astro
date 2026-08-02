@@ -36,10 +36,13 @@ const projects = await mapWithConcurrency(projectEntries, 3, async (entry) => {
 // Recomputed on every build — the exact spots aren't meant to be stable.
 type DisplayItem = { type: 'project'; project: (typeof projects)[number] } | { type: 'empty' };
 
+// Never at position 0 — an empty tile with nothing above or beside it (e.g.
+// alone at the top of a single-column mobile layout) reads as broken rather
+// than curated, since there's no neighboring real photo for context.
 const emptyCount = Math.max(1, Math.round(projects.length / 3));
 const emptyPositions = new Set<number>();
 while (emptyPositions.size < emptyCount && projects.length > 0) {
-  emptyPositions.add(Math.floor(Math.random() * (projects.length + 1)));
+  emptyPositions.add(1 + Math.floor(Math.random() * projects.length));
 }
 
 const displayItems: DisplayItem[] = [];
@@ -95,7 +98,7 @@ if (emptyPositions.has(projects.length)) displayItems.push({ type: 'empty' });
     const positions = new Set<number>();
 
     while (positions.size < emptyCount && cards.length > 0) {
-      positions.add(Math.floor(Math.random() * (cards.length + 1)));
+      positions.add(1 + Math.floor(Math.random() * cards.length));
     }
 
     const makeEmptyCell = () => {
@@ -113,41 +116,28 @@ if (emptyPositions.has(projects.length)) displayItems.push({ type: 'empty' });
   }
 </script>
 
-<style>
+<style is:global>
   .projects-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    align-items: end;
-    gap: 40px 32px;
-    max-width: 1200px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 48px 40px;
+    /* Capped so 4 can never fit abreast even on very wide monitors — the
+       count per row falls out of how many fixed-size cards fit, not a
+       breakpoint-defined column count. */
+    max-width: 1500px;
     margin: 0 auto;
     padding: 40px 32px 80px;
-  }
-
-  @media (min-width: 480px) {
-    .projects-grid {
-      grid-template-columns: repeat(2, 1fr);
-    }
-  }
-
-  @media (min-width: 768px) {
-    .projects-grid {
-      grid-template-columns: repeat(3, 1fr);
-      gap: 48px 40px;
-    }
-  }
-
-  @media (min-width: 1024px) {
-    .projects-grid {
-      grid-template-columns: repeat(4, 1fr);
-      gap: 56px 48px;
-    }
   }
 
   .project-card {
     display: block;
     color: inherit;
     text-decoration: none;
+    /* Fixed-ish size (only shrinks on narrow viewports) instead of
+       stretching to fill whatever's left in the row — so images stay the
+       same size whether 2 or 3 end up sharing a row. */
+    width: clamp(180px, 45vw, 420px);
   }
 
   .cover-wrap {
@@ -167,6 +157,7 @@ if (emptyPositions.has(projects.length)) displayItems.push({ type: 'empty' });
   }
 
   .empty-cell {
+    width: clamp(180px, 45vw, 420px);
     aspect-ratio: 1 / 1;
   }
 
