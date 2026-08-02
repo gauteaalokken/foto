@@ -4,11 +4,6 @@ const photoListSchema = z.object({
   photos: z.array(z.string()),
 });
 
-const gallery = defineCollection({
-  type: 'data',
-  schema: photoListSchema,
-});
-
 const feed = defineCollection({
   type: 'data',
   schema: photoListSchema,
@@ -37,4 +32,4 @@ const fjellmaraton = defineCollection({
   schema: photoListSchema,
 });
 
-export const collections = { gallery, feed, prints, projects, fjellmaraton };
+export const collections = { feed, prints, projects, fjellmaraton };

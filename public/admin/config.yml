@@ -35,26 +35,6 @@ collections:
             access_key_id: a74d879decb219fc298c10edd12ecda5
             prefix: "projects/"
 
-  - name: "gallery"
-    label: "Portfolio (Homepage)"
-    files:
-      - name: "main"
-        label: "Portfolio (Homepage)"
-        file: "src/content/gallery/index.yml"
-        fields:
-          - label: "Photos"
-            name: "photos"
-            widget: "image"
-            multiple: true
-            hint: "These show on your homepage, in this order, at high quality. Keep this a small curated selection. Run 'npm run sort-feed color gallery' on your computer to automatically reorder them by color."
-            media_libraries:
-              cloudflare_r2:
-                bucket: foto-photos
-                account_id: 1904e782382751217d6103b2d39a41da
-                public_url: https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev
-                access_key_id: a74d879decb219fc298c10edd12ecda5
-                prefix: "homepage/"
-
   - name: "feed"
     label: "Feed"
     files:

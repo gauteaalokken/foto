@@ -4,8 +4,8 @@
  * result into a gallery YAML file. Only runs locally; nothing here is published.
  *
  * Usage:
- *   node scripts/sort-feed.mjs date [feed|gallery]
- *   node scripts/sort-feed.mjs color [feed|gallery]
+ *   node scripts/sort-feed.mjs date [feed]
+ *   node scripts/sort-feed.mjs color [feed]
  *
  * Requires a .env.local file (git-ignored) with:
  *   R2_SECRET_ACCESS_KEY=your-secret-access-key
@@ -41,12 +41,12 @@ if (!SECRET_ACCESS_KEY) {
 }
 
 if (!['date', 'color'].includes(mode)) {
-  console.error('Usage: node scripts/sort-feed.mjs <date|color> [feed|gallery]');
+  console.error('Usage: node scripts/sort-feed.mjs <date|color> [feed]');
   process.exit(1);
 }
 
-if (!['feed', 'gallery'].includes(target)) {
-  console.error('Second argument must be "feed" or "gallery".');
+if (target !== 'feed') {
+  console.error('Second argument must be "feed".');
   process.exit(1);
 }
 
