@@ -22,7 +22,11 @@ const projects = defineCollection({
   schema: z.object({
     title: z.string(),
     year: z.string(),
-    order: z.coerce.number().optional(),
+    // The CMS writes `order: null` (not a missing key) when the field is left
+    // blank. Without .nullable(), z.coerce.number() would coerce that null to
+    // 0 — the lowest possible value — jumping every unordered project to the
+    // very top of the sort instead of leaving it unset.
+    order: z.coerce.number().nullable().optional(),
     pages: z.array(z.string()),
   }),
 });
