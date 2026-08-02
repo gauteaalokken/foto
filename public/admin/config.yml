@@ -21,6 +21,7 @@ collections:
     fields:
       - { label: "Title", name: "title", widget: "string", hint: "e.g. My Book Title" }
       - { label: "Year", name: "year", widget: "string", hint: "e.g. 2024 — shown under the cover on the homepage" }
+      - { label: "Order", name: "order", widget: "number", required: false, hint: "Optional. Lower numbers show first on the homepage, overriding the year sort. Leave blank to just sort by year." }
       - label: "Pages"
         name: "pages"
         widget: "image"

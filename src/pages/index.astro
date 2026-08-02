@@ -8,7 +8,16 @@ const projectEntries = await getCollection('projects');
 
 const leadingYear = (year: string) => parseInt(year.match(/\d+/)?.[0] ?? '0', 10);
 
+// Projects with an explicit "order" set always come first, lowest number
+// shown first — full manual override for anyone who wants it. Everything
+// else falls back to newest-year-first, so unordered projects still make
+// sense without any manual upkeep.
 projectEntries.sort((a, b) => {
+  const orderA = a.data.order ?? Infinity;
+  const orderB = b.data.order ?? Infinity;
+
+  if (orderA !== orderB) return orderA - orderB;
+
   const byYear = leadingYear(b.data.year) - leadingYear(a.data.year);
   return byYear !== 0 ? byYear : a.data.title.localeCompare(b.data.title);
 });

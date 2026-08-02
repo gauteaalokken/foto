@@ -27,6 +27,7 @@ const projects = defineCollection({
   schema: z.object({
     title: z.string(),
     year: z.string(),
+    order: z.coerce.number().optional(),
     pages: z.array(z.string()),
   }),
 });
