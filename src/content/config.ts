@@ -27,6 +27,9 @@ const projects = defineCollection({
     // 0 — the lowest possible value — jumping every unordered project to the
     // very top of the sort instead of leaving it unset.
     order: z.coerce.number().nullable().optional(),
+    // Optional explicit homepage cover — falls back to pages[0] when unset,
+    // so an editor can pick a cover without having to reorder the pages list.
+    cover: z.string().nullable().optional(),
     pages: z.array(z.string()),
   }),
 });

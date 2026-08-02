@@ -22,11 +22,23 @@ collections:
       - { label: "Title", name: "title", widget: "string", hint: "e.g. My Book Title" }
       - { label: "Year", name: "year", widget: "string", hint: "e.g. 2024 — shown under the cover on the homepage" }
       - { label: "Order", name: "order", widget: "number", required: false, hint: "Optional. Lower numbers show first on the homepage, overriding the year sort. Leave blank to just sort by year." }
+      - label: "Cover"
+        name: "cover"
+        widget: "image"
+        required: false
+        hint: "Optional. Shown on the homepage instead of the first page below — pick any photo without having to reorder Pages."
+        media_libraries:
+          cloudflare_r2:
+            bucket: foto-photos
+            account_id: 1904e782382751217d6103b2d39a41da
+            public_url: https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev
+            access_key_id: a74d879decb219fc298c10edd12ecda5
+            prefix: "projects/"
       - label: "Pages"
         name: "pages"
         widget: "image"
         multiple: true
-        hint: "Upload each page of the book, in order, as JPGs. The first page is used as the cover thumbnail on the homepage."
+        hint: "Upload each page of the book, in order, as JPGs. The first page is used as the cover thumbnail on the homepage unless a Cover photo is set above."
         media_libraries:
           cloudflare_r2:
             bucket: foto-photos

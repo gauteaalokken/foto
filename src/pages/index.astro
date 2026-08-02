@@ -26,7 +26,8 @@ const COVER_WIDTH = 700;
 
 const projects = await mapWithConcurrency(projectEntries, 3, async (entry) => {
   const { title, year, pages } = entry.data;
-  const cover = pages[0] ? await resolveImageWithAspectRatio(pages[0], COVER_WIDTH, 80) : null;
+  const coverSrc = entry.data.cover || pages[0];
+  const cover = coverSrc ? await resolveImageWithAspectRatio(coverSrc, COVER_WIDTH, 80) : null;
 
   return { slug: entry.id, title, year, cover };
 });
