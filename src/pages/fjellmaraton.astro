@@ -2,16 +2,21 @@
 import Layout from '../layouts/Layout.astro';
 import { getEntry } from 'astro:content';
 import { mapWithConcurrency } from '../lib/concurrency';
-import { resolveImage } from '../lib/resolveImage';
+import { resolveImageWithAspectRatio, isRemote, withBase } from '../lib/resolveImage';
 
 const raceGallery = await getEntry('fjellmaraton', 'index');
 const racePhotos = raceGallery?.data.photos ?? [];
 
-const GRID_PHOTO_WIDTH = 900;
+const GRID_WIDTH = 700;
 
-const resolvedRacePhotos = await mapWithConcurrency(racePhotos, 4, async (photo) => ({
-  src: await resolveImage(photo, GRID_PHOTO_WIDTH, 78),
-}));
+// The lightbox links to the original R2 file for full quality — no extra resize needed.
+const resolvedRacePhotos = await mapWithConcurrency(racePhotos, 4, async (photo) => {
+  const resolved = isRemote(photo)
+    ? await resolveImageWithAspectRatio(photo, GRID_WIDTH, 82)
+    : { src: withBase(photo), aspectRatio: 1 };
+
+  return { src: resolved.src, ratio: resolved.aspectRatio, full: isRemote(photo) ? photo : withBase(photo) };
+});
 ---
 
 <Layout title="Flaksjøen Fjellmaraton — Gaute Aaløkken">
@@ -74,62 +79,134 @@ const resolvedRacePhotos = await mapWithConcurrency(racePhotos, 4, async (photo)
   </div>
 
   {resolvedRacePhotos.length > 0 && (
-    <div class="race-grid">
-      {resolvedRacePhotos.map((photo, i) => (
-        <button type="button" class="grid-cell" data-index={i} aria-label="Vis bilde i fullskjerm">
-          <img src={photo.src} alt="" loading="lazy" decoding="async" />
-        </button>
+    <div class="grid" id="race-grid">
+      {resolvedRacePhotos.map((photo, index) => (
+        <div class="cell" data-ratio={photo.ratio}>
+          <button type="button" class="photo-button" data-index={index} aria-label="Vis bilde i fullskjerm">
+            <img class="photo" src={photo.src} alt="" loading="lazy" decoding="async" />
+          </button>
+        </div>
       ))}
     </div>
   )}
 
-  <div id="race-lightbox" class="lightbox" hidden>
-    <button type="button" id="race-lightbox-close" class="lightbox-close" aria-label="Lukk">&times;</button>
-    <button type="button" id="race-lightbox-prev" class="lightbox-nav lightbox-prev" aria-label="Forrige bilde">&#8249;</button>
-    <img id="race-lightbox-img" class="lightbox-img" alt="" />
-    <button type="button" id="race-lightbox-next" class="lightbox-nav lightbox-next" aria-label="Neste bilde">&#8250;</button>
+  <div id="lightbox" class="lightbox" hidden>
+    <button type="button" id="lightbox-close" class="lightbox-close" aria-label="Lukk">&times;</button>
+    <button type="button" id="lightbox-prev" class="lightbox-nav lightbox-prev" aria-label="Forrige bilde">&#8249;</button>
+    <img id="lightbox-img" class="lightbox-img" alt="" />
+    <button type="button" id="lightbox-next" class="lightbox-nav lightbox-next" aria-label="Neste bilde">&#8250;</button>
   </div>
+
+  <script type="application/json" id="race-photos" set:html={JSON.stringify(resolvedRacePhotos.map((p) => p.full))} />
 </Layout>
 
 <script>
-  const cells = Array.from(document.querySelectorAll<HTMLButtonElement>('.grid-cell'));
-  const lightbox = document.getElementById('race-lightbox') as HTMLDivElement | null;
-  const lightboxImg = document.getElementById('race-lightbox-img') as HTMLImageElement | null;
+  const GAP = 10;
+
+  const grid = document.getElementById('race-grid');
+
+  // Same row-justified layout as the project pages (pack photos into rows at
+  // their real aspect ratio, capped column target) instead of CSS masonry.
+  const getColumnTarget = (containerWidth: number) => {
+    if (containerWidth >= 1024) return 4;
+    if (containerWidth >= 640) return 3;
+    return 2;
+  };
+
+  const layout = () => {
+    const cells = grid ? (Array.from(grid.children) as HTMLElement[]) : [];
+    if (!grid || cells.length === 0) return;
+
+    const containerWidth = grid.clientWidth;
+    if (containerWidth <= 0) return;
+
+    const columns = getColumnTarget(containerWidth);
+    const targetHeight = (containerWidth - GAP * (columns - 1)) / columns;
+    const maxHeight = targetHeight * 1.6;
+
+    let row: HTMLElement[] = [];
+    let rowRatioSum = 0;
+
+    const flushRow = () => {
+      if (row.length === 0) return;
+
+      const naturalHeight = (containerWidth - GAP * (row.length - 1)) / rowRatioSum;
+      const height = Math.min(naturalHeight, maxHeight);
+      const isCapped = height < naturalHeight;
+
+      let usedWidth = 0;
+
+      row.forEach((cell, i) => {
+        const ratio = parseFloat(cell.dataset.ratio || '1') || 1;
+        const isLastInRow = i === row.length - 1;
+        const width = !isCapped && isLastInRow ? containerWidth - usedWidth : Math.round(ratio * height);
+
+        cell.style.width = `${width}px`;
+        cell.style.height = `${height}px`;
+        usedWidth += width + GAP;
+      });
+
+      row = [];
+      rowRatioSum = 0;
+    };
+
+    for (const cell of cells) {
+      const ratio = parseFloat(cell.dataset.ratio || '1') || 1;
+      row.push(cell);
+      rowRatioSum += ratio;
+
+      const widthAtTarget = rowRatioSum * targetHeight + GAP * (row.length - 1);
+      if (widthAtTarget >= containerWidth || row.length >= columns) flushRow();
+    }
+
+    flushRow();
+  };
+
+  layout();
+
+  let resizeTimer: ReturnType<typeof setTimeout>;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(layout, 150);
+  });
+
+  const dataEl = document.getElementById('race-photos');
+  const fullPhotos: string[] = dataEl ? JSON.parse(dataEl.textContent || '[]') : [];
+  const buttons = Array.from(document.querySelectorAll<HTMLButtonElement>('.photo-button'));
+  const lightbox = document.getElementById('lightbox') as HTMLDivElement;
+  const lightboxImg = document.getElementById('lightbox-img') as HTMLImageElement;
   let currentIndex = -1;
 
   const show = (index: number) => {
-    if (!lightboxImg || cells.length === 0) return;
-    currentIndex = (index + cells.length) % cells.length;
-    const img = cells[currentIndex].querySelector('img');
-    if (!img) return;
-    lightboxImg.src = img.currentSrc || img.src;
+    currentIndex = (index + fullPhotos.length) % fullPhotos.length;
+    lightboxImg.src = fullPhotos[currentIndex];
   };
 
   const open = (index: number) => {
     show(index);
-    if (lightbox) lightbox.hidden = false;
+    lightbox.hidden = false;
     document.body.style.overflow = 'hidden';
   };
 
   const close = () => {
-    if (lightbox) lightbox.hidden = true;
+    lightbox.hidden = true;
     document.body.style.overflow = '';
   };
 
-  cells.forEach((cell, index) => {
-    cell.addEventListener('click', () => open(index));
+  buttons.forEach((button, index) => {
+    button.addEventListener('click', () => open(index));
   });
 
-  document.getElementById('race-lightbox-close')?.addEventListener('click', close);
-  document.getElementById('race-lightbox-prev')?.addEventListener('click', () => show(currentIndex - 1));
-  document.getElementById('race-lightbox-next')?.addEventListener('click', () => show(currentIndex + 1));
+  document.getElementById('lightbox-close')?.addEventListener('click', close);
+  document.getElementById('lightbox-prev')?.addEventListener('click', () => show(currentIndex - 1));
+  document.getElementById('lightbox-next')?.addEventListener('click', () => show(currentIndex + 1));
 
-  lightbox?.addEventListener('click', (event) => {
+  lightbox.addEventListener('click', (event) => {
     if (event.target === lightbox) close();
   });
 
   document.addEventListener('keydown', (event) => {
-    if (!lightbox || lightbox.hidden) return;
+    if (lightbox.hidden) return;
     if (event.key === 'Escape') close();
     if (event.key === 'ArrowLeft') show(currentIndex - 1);
     if (event.key === 'ArrowRight') show(currentIndex + 1);
@@ -187,44 +264,34 @@ const resolvedRacePhotos = await mapWithConcurrency(racePhotos, 4, async (photo)
     padding: 0 20px;
   }
 
-  /* A middle ground between the homepage's freeform masonry (natural aspect
-     ratio, uneven column heights) and the feed's uniform justified rows:
-     masonry columns for that same organic flow, but each cell cropped to a
-     consistent aspect ratio so the grid doesn't feel as wild as the homepage. */
-  .race-grid {
-    column-count: 2;
-    column-gap: 6px;
-    max-width: 1100px;
+  /* Same row-justified grid as the project pages. */
+  .grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    max-width: 1800px;
     margin: 0 auto 100px;
     padding: 0 20px;
   }
 
-  @media (min-width: 640px) {
-    .race-grid {
-      column-count: 3;
-    }
+  .cell {
+    width: 300px;
+    aspect-ratio: 1;
+    overflow: hidden;
+    background: #eee;
   }
 
-  @media (min-width: 1024px) {
-    .race-grid {
-      column-count: 4;
-    }
-  }
-
-  .grid-cell {
+  .photo-button {
     display: block;
     width: 100%;
-    aspect-ratio: 4 / 5;
-    margin: 0 0 6px;
+    height: 100%;
     padding: 0;
     border: none;
-    background: #eee;
+    background: none;
     cursor: zoom-in;
-    break-inside: avoid;
-    overflow: hidden;
   }
 
-  .grid-cell img {
+  .photo {
     width: 100%;
     height: 100%;
     object-fit: cover;
