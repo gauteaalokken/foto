@@ -273,9 +273,15 @@ const resolvedRacePhotos = await mapWithConcurrency(racePhotos, 4, async (photo)
 
   /* Same grid as the project pages: centered, capped max-width, even edges. */
   .grid-wrap {
-    max-width: 1800px;
+    max-width: 70%;
     margin: 0 auto 100px;
     padding: 0 20px;
+  }
+
+  @media (max-width: 900px) {
+    .grid-wrap {
+      max-width: 100%;
+    }
   }
 
   .grid {
