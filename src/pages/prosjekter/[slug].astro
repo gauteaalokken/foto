@@ -28,7 +28,11 @@ const photos = await mapWithConcurrency(pages, 4, async (page) => {
 });
 ---
 
-<Layout title={`${title} — Gaute Aaløkken`}>
+<Layout
+  title={`${title} — Gaute Aaløkken`}
+  description={`${title} (${year}) — fotoprosjekt av Gaute Aaløkken.`}
+  image={photos[0]?.full}
+>
   <div class="project-page">
     <a href={withBase('/')} class="back-link">&larr; Tilbake</a>
 

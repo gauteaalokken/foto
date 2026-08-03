@@ -29,7 +29,10 @@ const prints = await mapWithConcurrency(entries, 4, async (entry) => {
 });
 ---
 
-<Layout title="Prints — Gaute Aaløkken">
+<Layout
+  title="Prints — Gaute Aaløkken"
+  description="Fine-art prints til salgs, i A2, A3 og A4 — med eller uten ramme i eik og glass."
+>
   <div class="grid">
     {prints.map((print) => (
       <a class="print-card" href={withBase(`prints/${print.slug}`)}>

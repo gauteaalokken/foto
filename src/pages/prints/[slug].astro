@@ -33,7 +33,11 @@ const email = 'gaute.aalokken@gmail.com';
 const mailtoHref = `mailto:${email}?subject=${encodeURIComponent(`Print order: ${title}`)}`;
 ---
 
-<Layout title={`${title} print — Gaute Aaløkken`}>
+<Layout
+  title={`${title} print — Gaute Aaløkken`}
+  description={`${title} — fine-art print til salgs i A2, A3 og A4, med eller uten ramme i eik og glass.`}
+  image={isRemote(photo) ? photo : undefined}
+>
   <div class="print-page">
     <div class="image-side">
       <img class="photo" src={photoSrc} alt={title} />

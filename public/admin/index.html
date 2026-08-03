@@ -6,7 +6,9 @@
     <title>Content Manager</title>
   </head>
   <body>
-    <!-- Make sure type="module" is included -->
-    <script src="https://unpkg.com/@sveltia/cms/dist/sveltia-cms.js" type="module"></script>
+    <!-- Pinned on purpose: the unversioned URL always serves the newest
+         release, so an upstream breaking change would take the CMS down with
+         no warning and nothing in this repo to point at. Bump deliberately. -->
+    <script src="https://unpkg.com/@sveltia/cms@0.178.0/dist/sveltia-cms.js" type="module"></script>
   </body>
 </html>

@@ -30,7 +30,11 @@ const initialPhotos = optimized.slice(0, INITIAL_BATCH);
 const remainingPhotos = optimized.slice(INITIAL_BATCH);
 ---
 
-<Layout title="Feed — Gaute Aaløkken">
+<Layout
+  title="Feed — Gaute Aaløkken"
+  description="Et løpende arkiv med bilder fra tur, reise og hverdag."
+  image={optimized[0]?.full}
+>
   <div class="feed-wrap">
     <div class="grid" id="feed-grid">
       {initialPhotos.map((photo, i) => (

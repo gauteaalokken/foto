@@ -8,40 +8,59 @@
 //    - Execute as: Me
 //    - Who has access: Anyone
 // 4. Copy the deployment URL and paste it into GAS_URL in
-//    src/pages/paamelding.astro.
+//    src/pages/fjellmaraton.astro.
 // 5. Re-run "Deploy > Manage deployments" and create a new version any time
 //    you edit this script — edits don't take effect on the existing URL
 //    until redeployed.
 
 function doPost(e) {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-  const data = JSON.parse(e.postData.contents);
+  try {
+    const data = JSON.parse(e.postData.contents);
 
-  if (sheet.getLastRow() === 0) {
+    // Honeypot: the matching form field is positioned off-screen, so a real
+    // visitor never fills it and anything in it means a bot. Reply "ok" so the
+    // bot can't tell it was rejected — just don't write the row.
+    if (data.website) {
+      return jsonResponse({ status: 'ok' });
+    }
+
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+
+    if (sheet.getLastRow() === 0) {
+      sheet.appendRow([
+        'Timestamp',
+        'First Name',
+        'Last Name',
+        'Email',
+        'Phone',
+        'Runde',
+        'Overnatting',
+        'Noe mer',
+      ]);
+    }
+
     sheet.appendRow([
-      'Timestamp',
-      'First Name',
-      'Last Name',
-      'Email',
-      'Phone',
-      'Runde',
-      'Overnatting',
-      'Noe mer',
+      new Date(),
+      data.firstName || '',
+      data.lastName || '',
+      data.email || '',
+      data.phone || '',
+      data.runde || '',
+      data.overnatting || '',
+      data.message || '',
     ]);
+
+    return jsonResponse({ status: 'ok' });
+  } catch (err) {
+    // Without this the script would return an HTML error page, which the form
+    // can't parse — reporting the failure as JSON lets it tell the visitor
+    // their sign-up didn't go through instead of showing a false success.
+    return jsonResponse({ status: 'error', message: String(err) });
   }
+}
 
-  sheet.appendRow([
-    new Date(),
-    data.firstName || '',
-    data.lastName || '',
-    data.email || '',
-    data.phone || '',
-    data.runde || '',
-    data.overnatting || '',
-    data.message || '',
-  ]);
-
+function jsonResponse(payload) {
   return ContentService.createTextOutput(
-    JSON.stringify({ status: 'ok' })
+    JSON.stringify(payload)
   ).setMimeType(ContentService.MimeType.JSON);
 }

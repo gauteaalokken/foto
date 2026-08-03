@@ -19,7 +19,11 @@ const resolvedRacePhotos = await mapWithConcurrency(racePhotos, 4, async (photo)
 });
 ---
 
-<Layout title="Flaksjøen Fjellmaraton — Gaute Aaløkken">
+<Layout
+  title="Flaksjøen Fjellmaraton — Gaute Aaløkken"
+  description="Påmelding til Flaksjøen Fjellmaraton 26. Velg mellom korte runden (12k) og mellomrunden (21k), og meld deg på her."
+  image={racePhotos[0]}
+>
   <div class="form-page">
     <h1>Flaksjøen Fjellmaraton</h1>
     <h2>Påmelding 26</h2>
@@ -71,6 +75,13 @@ const resolvedRacePhotos = await mapWithConcurrency(racePhotos, 4, async (photo)
         Noe mer?
         <textarea name="message" rows="5"></textarea>
       </label>
+
+      <div class="honeypot" aria-hidden="true">
+        <label>
+          La dette feltet stå tomt
+          <input type="text" name="website" tabindex="-1" autocomplete="off" />
+        </label>
+      </div>
 
       <button type="submit">Send</button>
 
@@ -230,33 +241,51 @@ const resolvedRacePhotos = await mapWithConcurrency(racePhotos, 4, async (photo)
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    if (GAS_URL.includes('PASTE_YOUR')) {
-      status.textContent = 'Skjemaet er ikke koblet til et regneark ennå.';
-      status.className = 'error';
+    const data = Object.fromEntries(new FormData(form).entries());
+
+    // Honeypot: the field is off-screen, so a real visitor never fills it and
+    // anything in it means a bot. Show the normal success message rather than
+    // an error, so a bot can't learn what tripped the rejection.
+    if (data.website) {
+      form.reset();
+      status.textContent = 'Takk for din påmelding!';
+      status.className = 'success';
       return;
     }
 
-    const data = Object.fromEntries(new FormData(form).entries());
     const submitButton = form.querySelector('button[type="submit"]') as HTMLButtonElement;
     submitButton.disabled = true;
-    status.textContent = '';
+    // Apps Script takes a few seconds to answer, and now that we wait for the
+    // real response rather than firing and forgetting, that wait is visible —
+    // so say something instead of leaving a dead button.
+    status.textContent = 'Sender…';
     status.className = '';
 
     try {
-      // Apps Script web apps don't handle CORS preflight requests, so we send
-      // the payload as text/plain to avoid one and can't read the response body.
-      await fetch(GAS_URL, {
+      // text/plain keeps this a "simple" CORS request, so the browser skips the
+      // preflight that Apps Script can't answer — while still letting us read
+      // the response. mode: 'no-cors' would avoid the preflight too, but its
+      // opaque response resolves even on a 500, reporting success to the
+      // visitor while the sign-up was silently dropped.
+      const res = await fetch(GAS_URL, {
         method: 'POST',
-        mode: 'no-cors',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify(data),
       });
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      // A crash inside the Apps Script returns an HTML error page instead of
+      // JSON, so a parse failure here counts as a failed sign-up too.
+      const result = await res.json();
+      if (result.status !== 'ok') throw new Error(result.message || 'Ukjent feil');
 
       form.reset();
       status.textContent = 'Takk for din påmelding!';
       status.className = 'success';
     } catch (err) {
-      status.textContent = 'Noe gikk galt. Prøv igjen senere.';
+      status.textContent =
+        'Noe gikk galt — påmeldingen ble ikke registrert. Prøv igjen, eller send en e-post.';
       status.className = 'error';
     } finally {
       submitButton.disabled = false;
@@ -400,6 +429,26 @@ const resolvedRacePhotos = await mapWithConcurrency(racePhotos, 4, async (photo)
 
   .row label {
     flex: 1;
+    /* Flex items default to min-width: auto, and an <input>'s intrinsic width
+       is wider than half this form on a phone — without this the two name
+       fields refuse to shrink and push the whole page into horizontal scroll. */
+    min-width: 0;
+  }
+
+  /* Below this the two fields are too cramped side by side even once they
+     can shrink, so stack them. */
+  @media (max-width: 480px) {
+    .row {
+      flex-direction: column;
+    }
+  }
+
+  .honeypot {
+    position: absolute;
+    left: -9999px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
   }
 
   label,

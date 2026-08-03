@@ -1,0 +1,45 @@
+---
+import Layout from '../layouts/Layout.astro';
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+---
+
+<Layout title="Fant ikke siden — Gaute Aaløkken" description="Siden finnes ikke.">
+  <div class="not-found">
+    <h1>404</h1>
+    <p>Denne siden finnes ikke.</p>
+    <a href={base || '/'}>&larr; Tilbake til forsiden</a>
+  </div>
+</Layout>
+
+<style>
+  .not-found {
+    max-width: 600px;
+    margin: 120px auto;
+    padding: 0 20px;
+    text-align: center;
+  }
+
+  h1 {
+    font-family: 'Space Mono', monospace;
+    font-size: 4rem;
+    font-weight: 500;
+    margin: 0 0 1rem;
+  }
+
+  p {
+    color: #555;
+    margin: 0 0 2rem;
+  }
+
+  a {
+    color: #111;
+    text-decoration: none;
+    border-bottom: 1px solid #111;
+    padding-bottom: 2px;
+  }
+
+  a:hover {
+    opacity: 0.6;
+  }
+</style>
