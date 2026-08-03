@@ -79,14 +79,16 @@ const resolvedRacePhotos = await mapWithConcurrency(racePhotos, 4, async (photo)
   </div>
 
   {resolvedRacePhotos.length > 0 && (
-    <div class="grid" id="race-grid">
-      {resolvedRacePhotos.map((photo, index) => (
-        <div class="cell" data-ratio={photo.ratio}>
-          <button type="button" class="photo-button" data-index={index} aria-label="Vis bilde i fullskjerm">
-            <img class="photo" src={photo.src} alt="" loading="lazy" decoding="async" />
-          </button>
-        </div>
-      ))}
+    <div class="grid-wrap">
+      <div class="grid" id="race-grid">
+        {resolvedRacePhotos.map((photo, index) => (
+          <div class="cell" data-ratio={photo.ratio}>
+            <button type="button" class="photo-button" data-index={index} aria-label="Vis bilde i fullskjerm">
+              <img class="photo" src={photo.src} alt="" loading="lazy" decoding="async" />
+            </button>
+          </div>
+        ))}
+      </div>
     </div>
   )}
 
@@ -265,13 +267,16 @@ const resolvedRacePhotos = await mapWithConcurrency(racePhotos, 4, async (photo)
   }
 
   /* Same row-justified grid as the project pages. */
+  .grid-wrap {
+    max-width: 1800px;
+    margin: 0 auto 100px;
+    padding: 0 20px;
+  }
+
   .grid {
     display: flex;
     flex-wrap: wrap;
     gap: 10px;
-    max-width: 1800px;
-    margin: 0 auto 100px;
-    padding: 0 20px;
   }
 
   .cell {
