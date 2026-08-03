@@ -2,7 +2,7 @@
 import Layout from '../../layouts/Layout.astro';
 import { getCollection } from 'astro:content';
 import { mapWithConcurrency } from '../../lib/concurrency';
-import { resolveImage, isRemote, withBase } from '../../lib/resolveImage';
+import { resolveImageWithAspectRatio, isRemote, withBase } from '../../lib/resolveImage';
 
 export async function getStaticPaths() {
   const projects = await getCollection('projects');
@@ -19,10 +19,13 @@ const { title, year, pages } = entry.data;
 const GRID_WIDTH = 700;
 
 // The lightbox links to the original R2 file for full quality — no extra resize needed.
-const photos = await mapWithConcurrency(pages, 4, async (page) => ({
-  src: await resolveImage(page, GRID_WIDTH, 82),
-  full: isRemote(page) ? page : withBase(page),
-}));
+const photos = await mapWithConcurrency(pages, 4, async (page) => {
+  const resolved = isRemote(page)
+    ? await resolveImageWithAspectRatio(page, GRID_WIDTH, 82)
+    : { src: withBase(page), aspectRatio: 1 };
+
+  return { src: resolved.src, ratio: resolved.aspectRatio, full: isRemote(page) ? page : withBase(page) };
+});
 ---
 
 <Layout title={`${title} — Gaute Aaløkken`}>
@@ -36,7 +39,7 @@ const photos = await mapWithConcurrency(pages, 4, async (page) => ({
 
     <div class="grid" id="project-grid">
       {photos.map((photo, index) => (
-        <div class="cell">
+        <div class="cell" data-ratio={photo.ratio}>
           <button type="button" class="photo-button" data-index={index} aria-label="Vis bilde i fullskjerm">
             <img class="photo" src={photo.src} alt="" loading="lazy" decoding="async" />
           </button>
@@ -58,6 +61,82 @@ const photos = await mapWithConcurrency(pages, 4, async (page) => ({
 </Layout>
 
 <script>
+  const GAP = 10;
+
+  const grid = document.getElementById('project-grid');
+
+  // Row-justified layout, like the Feed page: pack photos into rows at their
+  // real aspect ratio (no cropping), stretched to fill the row's width — but
+  // with a much lower column target, meant to read as "walk through the
+  // project A to B" rather than a dense photo wall.
+  const getColumnTarget = (containerWidth: number) => {
+    if (containerWidth >= 1024) return 4;
+    if (containerWidth >= 640) return 3;
+    return 2;
+  };
+
+  const layout = () => {
+    const cells = grid ? (Array.from(grid.children) as HTMLElement[]) : [];
+    if (!grid || cells.length === 0) return;
+
+    const containerWidth = grid.clientWidth;
+    if (containerWidth <= 0) return;
+
+    const columns = getColumnTarget(containerWidth);
+    const targetHeight = (containerWidth - GAP * (columns - 1)) / columns;
+    const maxHeight = targetHeight * 1.6;
+
+    let row: HTMLElement[] = [];
+    let rowRatioSum = 0;
+
+    // A row that can't reach containerWidth without exceeding maxHeight (most
+    // often the last, incomplete row) is left at its natural, unstretched
+    // size instead of being blown up to fill the width — the parent's
+    // justify-content: center then centers that shorter row instead of it
+    // hanging ragged against the left edge.
+    const flushRow = () => {
+      if (row.length === 0) return;
+
+      const naturalHeight = (containerWidth - GAP * (row.length - 1)) / rowRatioSum;
+      const height = Math.min(naturalHeight, maxHeight);
+      const isCapped = height < naturalHeight;
+
+      let usedWidth = 0;
+
+      row.forEach((cell, i) => {
+        const ratio = parseFloat(cell.dataset.ratio || '1') || 1;
+        const isLastInRow = i === row.length - 1;
+        const width = !isCapped && isLastInRow ? containerWidth - usedWidth : Math.round(ratio * height);
+
+        cell.style.width = `${width}px`;
+        cell.style.height = `${height}px`;
+        usedWidth += width + GAP;
+      });
+
+      row = [];
+      rowRatioSum = 0;
+    };
+
+    for (const cell of cells) {
+      const ratio = parseFloat(cell.dataset.ratio || '1') || 1;
+      row.push(cell);
+      rowRatioSum += ratio;
+
+      const widthAtTarget = rowRatioSum * targetHeight + GAP * (row.length - 1);
+      if (widthAtTarget >= containerWidth || row.length >= columns) flushRow();
+    }
+
+    flushRow();
+  };
+
+  layout();
+
+  let resizeTimer: ReturnType<typeof setTimeout>;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(layout, 150);
+  });
+
   const dataEl = document.getElementById('project-photos');
   const fullPhotos: string[] = dataEl ? JSON.parse(dataEl.textContent || '[]') : [];
   const buttons = Array.from(document.querySelectorAll<HTMLButtonElement>('.photo-button'));
