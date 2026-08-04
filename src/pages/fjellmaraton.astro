@@ -182,11 +182,24 @@ const resolvedRacePhotos = await mapWithConcurrency(racePhotos, 4, async (photo)
 
   layout();
 
+  // See the note on the project pages: layout() writes explicit pixel widths
+  // onto every cell and nothing else here re-runs it, so a width change it
+  // doesn't hear about leaves the rows ragged until the next reload. The
+  // ResizeObserver is the dependable trigger, the resize listener a fallback.
+  // Only width matters — layout() changes the grid's own height, and reacting
+  // to that would loop.
+  let lastWidth = grid ? grid.clientWidth : 0;
   let resizeTimer: ReturnType<typeof setTimeout>;
-  window.addEventListener('resize', () => {
+
+  const relayout = () => {
+    if (!grid || grid.clientWidth === lastWidth) return;
+    lastWidth = grid.clientWidth;
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(layout, 150);
-  });
+  };
+
+  if (grid) new ResizeObserver(relayout).observe(grid);
+  window.addEventListener('resize', relayout);
 
   const dataEl = document.getElementById('race-photos');
   const fullPhotos: string[] = dataEl ? JSON.parse(dataEl.textContent || '[]') : [];

@@ -135,11 +135,32 @@ const photos = await mapWithConcurrency(pages, 4, async (page) => {
 
   layout();
 
+  // Two triggers on purpose. layout() writes explicit pixel widths onto every
+  // cell, so any width change it doesn't hear about leaves those cells at
+  // their old sizes and lets flex-wrap repack them into ragged, differently
+  // wide rows — and nothing else on this page ever re-runs layout(), so it
+  // stays broken until the next reload. (The feed page hides the same
+  // weakness: every lazily-loaded photo re-runs its layout, so it self-heals.)
+  //
+  // ResizeObserver is the dependable one — it reports width changes whatever
+  // the cause, including ones a window resize event can miss, such as zoom, a
+  // scrollbar appearing, or the window being resized while this tab is hidden.
+  // The resize listener stays as a cheap fallback.
+  //
+  // Only width matters: layout() changes the grid's own height, so reacting to
+  // height would loop.
+  let lastWidth = grid ? grid.clientWidth : 0;
   let resizeTimer: ReturnType<typeof setTimeout>;
-  window.addEventListener('resize', () => {
+
+  const relayout = () => {
+    if (!grid || grid.clientWidth === lastWidth) return;
+    lastWidth = grid.clientWidth;
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(layout, 150);
-  });
+  };
+
+  if (grid) new ResizeObserver(relayout).observe(grid);
+  window.addEventListener('resize', relayout);
 
   const dataEl = document.getElementById('project-photos');
   const fullPhotos: string[] = dataEl ? JSON.parse(dataEl.textContent || '[]') : [];

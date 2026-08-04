@@ -207,11 +207,26 @@ const remainingPhotos = optimized.slice(INITIAL_BATCH);
       layout();
     };
 
+    // A ResizeObserver alongside the resize listener, as on the project pages:
+    // layout() writes explicit pixel widths onto every cell, so a width change
+    // neither trigger hears about leaves the rows ragged. This page mostly got
+    // away with only the resize event because each lazily-loaded photo re-runs
+    // layout() and papers over a missed one.
+    //
+    // Only width is relevant: layout() and every appended batch change the
+    // grid's height, so reacting to height would loop.
+    let lastWidth = grid ? grid.clientWidth : 0;
     let resizeTimer;
-    window.addEventListener('resize', () => {
+
+    const relayout = () => {
+      if (!grid || grid.clientWidth === lastWidth) return;
+      lastWidth = grid.clientWidth;
       clearTimeout(resizeTimer);
       resizeTimer = setTimeout(layout, 150);
-    });
+    };
+
+    if (grid) new ResizeObserver(relayout).observe(grid);
+    window.addEventListener('resize', relayout);
 
     grid?.querySelectorAll('.cell').forEach((cell) => {
       const img = cell.querySelector('.photo');
