@@ -79,6 +79,8 @@ const photos = await mapWithConcurrency(pages, 4, async (page) => {
     return 2;
   };
 
+  const ratioOf = (cell: HTMLElement) => parseFloat(cell.dataset.ratio || '1') || 1;
+
   const layout = () => {
     const cells = grid ? (Array.from(grid.children) as HTMLElement[]) : [];
     if (!grid || cells.length === 0) return;
@@ -90,47 +92,60 @@ const photos = await mapWithConcurrency(pages, 4, async (page) => {
     const targetHeight = (containerWidth - GAP * (columns - 1)) / columns;
     const maxHeight = targetHeight * 1.6;
 
+    const rows: HTMLElement[][] = [];
     let row: HTMLElement[] = [];
     let rowRatioSum = 0;
 
-    // A row that can't reach containerWidth without exceeding maxHeight (most
-    // often the last, incomplete row) is left at its natural, unstretched
-    // size instead of being blown up to fill the width — the parent's
-    // justify-content: center then centers that shorter row instead of it
-    // hanging ragged against the left edge.
-    const flushRow = () => {
-      if (row.length === 0) return;
+    for (const cell of cells) {
+      row.push(cell);
+      rowRatioSum += ratioOf(cell);
 
-      const naturalHeight = (containerWidth - GAP * (row.length - 1)) / rowRatioSum;
-      const height = Math.min(naturalHeight, maxHeight);
-      const isCapped = height < naturalHeight;
+      const widthAtTarget = rowRatioSum * targetHeight + GAP * (row.length - 1);
+      if (widthAtTarget >= containerWidth || row.length >= columns) {
+        rows.push(row);
+        row = [];
+        rowRatioSum = 0;
+      }
+    }
+
+    if (row.length) rows.push(row);
+
+    // The height a row would need to span the full width at its photos' own
+    // aspect ratios.
+    const naturalHeight = (r: HTMLElement[]) =>
+      (containerWidth - GAP * (r.length - 1)) / r.reduce((sum, cell) => sum + ratioOf(cell), 0);
+
+    // A leftover final row of one or two photos can't span the width without
+    // growing absurdly tall, so it gets capped — stranding it at a fraction of
+    // the width with photos noticeably *larger* than the rows above. Folding it
+    // into the previous row costs that row a little height and fills the width
+    // instead. Repeat, since one fold can leave the merged row still too tall.
+    while (rows.length > 1 && naturalHeight(rows[rows.length - 1]) > maxHeight) {
+      const stranded = rows.pop() as HTMLElement[];
+      rows[rows.length - 1].push(...stranded);
+    }
+
+    for (const currentRow of rows) {
+      const natural = naturalHeight(currentRow);
+      const height = Math.min(natural, maxHeight);
+      // Only a single row of very few photos can still be capped here; the
+      // parent's justify-content: center keeps it centred rather than ragged.
+      const isCapped = height < natural;
 
       let usedWidth = 0;
 
-      row.forEach((cell, i) => {
-        const ratio = parseFloat(cell.dataset.ratio || '1') || 1;
-        const isLastInRow = i === row.length - 1;
-        const width = !isCapped && isLastInRow ? containerWidth - usedWidth : Math.round(ratio * height);
+      currentRow.forEach((cell, i) => {
+        const isLastInRow = i === currentRow.length - 1;
+        // The last cell absorbs the rounding remainder so the row lands exactly
+        // on the container's right edge.
+        const width =
+          !isCapped && isLastInRow ? containerWidth - usedWidth : Math.round(ratioOf(cell) * height);
 
         cell.style.width = `${width}px`;
         cell.style.height = `${height}px`;
         usedWidth += width + GAP;
       });
-
-      row = [];
-      rowRatioSum = 0;
-    };
-
-    for (const cell of cells) {
-      const ratio = parseFloat(cell.dataset.ratio || '1') || 1;
-      row.push(cell);
-      rowRatioSum += ratio;
-
-      const widthAtTarget = rowRatioSum * targetHeight + GAP * (row.length - 1);
-      if (widthAtTarget >= containerWidth || row.length >= columns) flushRow();
     }
-
-    flushRow();
   };
 
   layout();
