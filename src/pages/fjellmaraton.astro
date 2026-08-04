@@ -198,23 +198,38 @@ const resolvedRacePhotos = await mapWithConcurrency(racePhotos, 4, async (photo)
   layout();
 
   // See the note on the project pages: layout() writes explicit pixel widths
-  // onto every cell and nothing else here re-runs it, so a width change it
-  // doesn't hear about leaves the rows ragged until the next reload. The
-  // ResizeObserver is the dependable trigger, the resize listener a fallback.
-  // Only width matters — layout() changes the grid's own height, and reacting
-  // to that would loop.
+  // onto every cell, so it has to re-run whenever the width it measured stops
+  // being the real one — otherwise the rows stay ragged until the next reload.
+  // Width changes cover resizing; the unconditional re-runs cover a first
+  // measurement taken before stylesheets, fonts or images settled.
   let lastWidth = grid ? grid.clientWidth : 0;
-  let resizeTimer: ReturnType<typeof setTimeout>;
+  let layoutTimer: ReturnType<typeof setTimeout>;
 
-  const relayout = () => {
-    if (!grid || grid.clientWidth === lastWidth) return;
-    lastWidth = grid.clientWidth;
-    clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(layout, 150);
+  const scheduleLayout = () => {
+    clearTimeout(layoutTimer);
+    layoutTimer = setTimeout(() => {
+      if (grid) lastWidth = grid.clientWidth;
+      layout();
+    }, 120);
   };
 
-  if (grid) new ResizeObserver(relayout).observe(grid);
-  window.addEventListener('resize', relayout);
+  // Only width matters — layout() changes the grid's own height, and reacting
+  // to that would loop.
+  const relayoutIfWidthChanged = () => {
+    if (!grid || grid.clientWidth === lastWidth) return;
+    scheduleLayout();
+  };
+
+  if (grid) new ResizeObserver(relayoutIfWidthChanged).observe(grid);
+  window.addEventListener('resize', relayoutIfWidthChanged);
+
+  window.addEventListener('load', scheduleLayout);
+  document.fonts?.ready.then(scheduleLayout);
+  grid?.querySelectorAll('img').forEach((img) => {
+    if (!(img as HTMLImageElement).complete) {
+      img.addEventListener('load', scheduleLayout, { once: true });
+    }
+  });
 
   const dataEl = document.getElementById('race-photos');
   const fullPhotos: string[] = dataEl ? JSON.parse(dataEl.textContent || '[]') : [];

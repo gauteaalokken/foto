@@ -150,32 +150,51 @@ const photos = await mapWithConcurrency(pages, 4, async (page) => {
 
   layout();
 
-  // Two triggers on purpose. layout() writes explicit pixel widths onto every
-  // cell, so any width change it doesn't hear about leaves those cells at
-  // their old sizes and lets flex-wrap repack them into ragged, differently
-  // wide rows — and nothing else on this page ever re-runs layout(), so it
-  // stays broken until the next reload. (The feed page hides the same
-  // weakness: every lazily-loaded photo re-runs its layout, so it self-heals.)
+  // layout() writes explicit pixel widths onto every cell, so it has to re-run
+  // whenever the width it measured stops being the real one. Miss that and the
+  // cells keep their old sizes while flex-wrap repacks them into ragged,
+  // differently wide rows — including a first row visibly narrower than the
+  // ones below it, from a run that measured the container before it settled.
   //
-  // ResizeObserver is the dependable one — it reports width changes whatever
-  // the cause, including ones a window resize event can miss, such as zoom, a
-  // scrollbar appearing, or the window being resized while this tab is hidden.
-  // The resize listener stays as a cheap fallback.
-  //
-  // Only width matters: layout() changes the grid's own height, so reacting to
-  // height would loop.
+  // The feed page never showed any of this despite sharing the layout code,
+  // because each lazily-loaded photo re-runs its layout and quietly repairs a
+  // bad first measurement. These pages had a single trigger, so one early or
+  // missed measurement stuck until the next reload. Hence the same belt and
+  // braces here: re-run on width changes, and again at each point that can
+  // shift the container after first paint.
   let lastWidth = grid ? grid.clientWidth : 0;
-  let resizeTimer: ReturnType<typeof setTimeout>;
+  let layoutTimer: ReturnType<typeof setTimeout>;
 
-  const relayout = () => {
-    if (!grid || grid.clientWidth === lastWidth) return;
-    lastWidth = grid.clientWidth;
-    clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(layout, 150);
+  const scheduleLayout = () => {
+    clearTimeout(layoutTimer);
+    layoutTimer = setTimeout(() => {
+      if (grid) lastWidth = grid.clientWidth;
+      layout();
+    }, 120);
   };
 
-  if (grid) new ResizeObserver(relayout).observe(grid);
-  window.addEventListener('resize', relayout);
+  // ResizeObserver reports width changes whatever the cause, including ones a
+  // resize event misses (zoom, a scrollbar appearing, the window resized while
+  // this tab is hidden). Only width matters — layout() changes the grid's own
+  // height, and reacting to that would loop.
+  const relayoutIfWidthChanged = () => {
+    if (!grid || grid.clientWidth === lastWidth) return;
+    scheduleLayout();
+  };
+
+  if (grid) new ResizeObserver(relayoutIfWidthChanged).observe(grid);
+  window.addEventListener('resize', relayoutIfWidthChanged);
+
+  // Unconditional re-runs: stylesheets, fonts and late-arriving images can all
+  // settle the container's width after the first layout() call, without
+  // necessarily producing a width change this script observed in time.
+  window.addEventListener('load', scheduleLayout);
+  document.fonts?.ready.then(scheduleLayout);
+  grid?.querySelectorAll('img').forEach((img) => {
+    if (!(img as HTMLImageElement).complete) {
+      img.addEventListener('load', scheduleLayout, { once: true });
+    }
+  });
 
   const dataEl = document.getElementById('project-photos');
   const fullPhotos: string[] = dataEl ? JSON.parse(dataEl.textContent || '[]') : [];
