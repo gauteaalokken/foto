@@ -128,11 +128,19 @@ const resolvedRacePhotos = await mapWithConcurrency(racePhotos, 4, async (photo)
 
   const ratioOf = (cell: HTMLElement) => parseFloat(cell.dataset.ratio || '1') || 1;
 
+  // See the project pages: clientWidth is rounded to whole pixels and can round
+  // *up* — at a 1728px viewport the container is really 1169.59px but reports
+  // 1170 — leaving rows a fraction wider than the container and making
+  // flex-wrap push the last cell of every row onto its own line. Whether that
+  // happens comes down to which way the fraction rounds, so it shows up at some
+  // window widths and not others. Floor the true width so rows stay inside it.
+  const measureWidth = () => Math.floor(grid!.getBoundingClientRect().width);
+
   const layout = () => {
     const cells = grid ? (Array.from(grid.children) as HTMLElement[]) : [];
     if (!grid || cells.length === 0) return;
 
-    const containerWidth = grid.clientWidth;
+    const containerWidth = measureWidth();
     if (containerWidth <= 0) return;
 
     const columns = getColumnTarget(containerWidth);
@@ -202,13 +210,13 @@ const resolvedRacePhotos = await mapWithConcurrency(racePhotos, 4, async (photo)
   // being the real one — otherwise the rows stay ragged until the next reload.
   // Width changes cover resizing; the unconditional re-runs cover a first
   // measurement taken before stylesheets, fonts or images settled.
-  let lastWidth = grid ? grid.clientWidth : 0;
+  let lastWidth = grid ? measureWidth() : 0;
   let layoutTimer: ReturnType<typeof setTimeout>;
 
   const scheduleLayout = () => {
     clearTimeout(layoutTimer);
     layoutTimer = setTimeout(() => {
-      if (grid) lastWidth = grid.clientWidth;
+      if (grid) lastWidth = measureWidth();
       layout();
     }, 120);
   };
@@ -216,7 +224,7 @@ const resolvedRacePhotos = await mapWithConcurrency(racePhotos, 4, async (photo)
   // Only width matters — layout() changes the grid's own height, and reacting
   // to that would loop.
   const relayoutIfWidthChanged = () => {
-    if (!grid || grid.clientWidth === lastWidth) return;
+    if (!grid || measureWidth() === lastWidth) return;
     scheduleLayout();
   };
 
