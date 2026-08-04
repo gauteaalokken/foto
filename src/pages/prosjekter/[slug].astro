@@ -81,11 +81,24 @@ const photos = await mapWithConcurrency(pages, 4, async (page) => {
 
   const ratioOf = (cell: HTMLElement) => parseFloat(cell.dataset.ratio || '1') || 1;
 
+  // clientWidth is rounded to whole pixels, and it can round *up*: at a 1728px
+  // viewport the container is 70% wide minus padding = 1169.59px, which
+  // clientWidth reports as 1170. Rows built to fill 1170 are then a fraction
+  // wider than the container really is, so flex-wrap pushes the last cell of
+  // every row onto its own line and the whole grid goes ragged.
+  //
+  // Whether that happens depends purely on which way the fraction rounds, which
+  // is why it struck some window widths and not others — a maximised window
+  // pins the viewport to the screen's exact width, so it reproduced reliably
+  // there while an arbitrary dragged-out window usually rounded down and looked
+  // fine. Flooring the true fractional width keeps rows just inside it.
+  const measureWidth = () => Math.floor(grid!.getBoundingClientRect().width);
+
   const layout = () => {
     const cells = grid ? (Array.from(grid.children) as HTMLElement[]) : [];
     if (!grid || cells.length === 0) return;
 
-    const containerWidth = grid.clientWidth;
+    const containerWidth = measureWidth();
     if (containerWidth <= 0) return;
 
     const columns = getColumnTarget(containerWidth);
@@ -162,13 +175,13 @@ const photos = await mapWithConcurrency(pages, 4, async (page) => {
   // missed measurement stuck until the next reload. Hence the same belt and
   // braces here: re-run on width changes, and again at each point that can
   // shift the container after first paint.
-  let lastWidth = grid ? grid.clientWidth : 0;
+  let lastWidth = grid ? measureWidth() : 0;
   let layoutTimer: ReturnType<typeof setTimeout>;
 
   const scheduleLayout = () => {
     clearTimeout(layoutTimer);
     layoutTimer = setTimeout(() => {
-      if (grid) lastWidth = grid.clientWidth;
+      if (grid) lastWidth = measureWidth();
       layout();
     }, 120);
   };
@@ -178,7 +191,7 @@ const photos = await mapWithConcurrency(pages, 4, async (page) => {
   // this tab is hidden). Only width matters — layout() changes the grid's own
   // height, and reacting to that would loop.
   const relayoutIfWidthChanged = () => {
-    if (!grid || grid.clientWidth === lastWidth) return;
+    if (!grid || measureWidth() === lastWidth) return;
     scheduleLayout();
   };
 
