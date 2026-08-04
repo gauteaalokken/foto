@@ -221,16 +221,19 @@ const photos = await mapWithConcurrency(pages, 4, async (page) => {
 </script>
 
 <style>
+  /* 70% of the window, but never narrower than 680px — below roughly a
+     970px window that floor takes over, and once the window itself is
+     narrower than the floor the page simply fills it.
+
+     The floor replaces a `max-width: 100%` breakpoint at 900px, which made
+     the width jump discontinuously: at a 900px window the grid ran the full
+     width with no side margins at all, then widening to 920px shrank it to
+     601px. Expressing it as one max() keeps the width continuous, so it only
+     ever grows as the window grows. */
   .project-page {
-    max-width: 70%;
+    max-width: max(70%, 680px);
     margin: 0 auto;
     padding: 20px 20px 60px;
-  }
-
-  @media (max-width: 900px) {
-    .project-page {
-      max-width: 100%;
-    }
   }
 
   .back-link {

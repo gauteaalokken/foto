@@ -328,17 +328,14 @@ const resolvedRacePhotos = await mapWithConcurrency(racePhotos, 4, async (photo)
     padding: 0 20px;
   }
 
-  /* Same grid as the project pages: centered, capped max-width, even edges. */
+  /* Same grid as the project pages: centered, capped max-width, even edges.
+     See the note there on why the width is one max() rather than a
+     breakpoint — a hard switch to 100% made the width jump backwards as the
+     window grew, and left no side margins at all just below the breakpoint. */
   .grid-wrap {
-    max-width: 70%;
+    max-width: max(70%, 680px);
     margin: 0 auto 100px;
     padding: 0 20px;
-  }
-
-  @media (max-width: 900px) {
-    .grid-wrap {
-      max-width: 100%;
-    }
   }
 
   .grid {
