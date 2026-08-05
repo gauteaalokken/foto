@@ -56,11 +56,20 @@ const topRow = banner ? [...leftOfBanner, banner, ...rightOfBanner] : [];
     </div>
   )}
 
-  <div class="form-page">
+  <div class="intro">
     <h1>Flaksjøen Fjellmaraton</h1>
     <h2>Påmelding 26</h2>
 
-    <form id="paamelding-form">
+    <button type="button" id="open-signup" class="signup-button">Meld deg på</button>
+  </div>
+
+  <div id="signup-modal" class="modal" hidden>
+    <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="signup-heading">
+      <button type="button" id="close-signup" class="modal-close" aria-label="Lukk">&times;</button>
+
+      <h2 id="signup-heading">Påmelding 26</h2>
+
+      <form id="paamelding-form">
       <div class="field-group">
         <span class="group-label">Navn</span>
         <div class="row">
@@ -115,10 +124,11 @@ const topRow = banner ? [...leftOfBanner, banner, ...rightOfBanner] : [];
         </label>
       </div>
 
-      <button type="submit">Send</button>
+        <button type="submit">Send</button>
 
-      <p id="form-status" role="status"></p>
-    </form>
+        <p id="form-status" role="status"></p>
+      </form>
+    </div>
   </div>
 
   {resolvedRacePhotos.length > 0 && (
@@ -325,6 +335,37 @@ const topRow = banner ? [...leftOfBanner, banner, ...rightOfBanner] : [];
   const GAS_URL = 'https://script.google.com/macros/s/AKfycby-Hz4Rdv6K1AF7QXBVKmxn-AtJfBPTvCwkHFoOEX7PqfSaXOqs5m9cA7iQaklz8oMJ/exec';
 
   const form = document.getElementById('paamelding-form') as HTMLFormElement;
+
+  // The form lives in a dialog rather than on the page, opened by the button
+  // between the banner and the grid below.
+  const modal = document.getElementById('signup-modal') as HTMLDivElement;
+  const openButton = document.getElementById('open-signup') as HTMLButtonElement;
+
+  const openModal = () => {
+    modal.hidden = false;
+    document.body.style.overflow = 'hidden';
+    // Focus the first field so keyboard and screen-reader users land inside the
+    // dialog rather than back at the top of the page.
+    (form.querySelector('input, select, textarea') as HTMLElement | null)?.focus();
+  };
+
+  const closeModal = () => {
+    modal.hidden = true;
+    document.body.style.overflow = '';
+    openButton.focus();
+  };
+
+  openButton.addEventListener('click', openModal);
+  document.getElementById('close-signup')?.addEventListener('click', closeModal);
+
+  // Clicking the backdrop closes; clicking inside the panel must not.
+  modal.addEventListener('click', (event) => {
+    if (event.target === modal) closeModal();
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && !modal.hidden) closeModal();
+  });
   const status = document.getElementById('form-status') as HTMLParagraphElement;
 
   form.addEventListener('submit', async (e) => {
@@ -383,17 +424,88 @@ const topRow = banner ? [...leftOfBanner, banner, ...rightOfBanner] : [];
 </script>
 
 <style>
-  .form-page {
+  .intro {
     max-width: 600px;
     margin: 60px auto 100px;
     padding: 0 20px;
   }
 
-  /* Same width as the grid below, so both line up. */
+  .signup-button {
+    font-family: Helvetica, 'Helvetica Neue', Arial, sans-serif;
+    font-size: 1rem;
+    letter-spacing: 0.02em;
+    background: #111;
+    color: #fff;
+    border: 1.5px solid #111;
+    padding: 0.9rem 2.75rem;
+    margin-top: 1.5rem;
+    cursor: pointer;
+  }
+
+  .signup-button:hover {
+    background: #fff;
+    color: #111;
+  }
+
+  /* Dialog holding the sign-up form. */
+  .modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    overflow-y: auto;
+    padding: 5vh 20px;
+    z-index: 1100;
+  }
+
+  .modal[hidden] {
+    display: none;
+  }
+
+  .modal-panel {
+    position: relative;
+    width: 100%;
+    max-width: 560px;
+    background: #fafafa;
+    padding: 2.5rem 2rem;
+    /* Helvetica for the form itself, rather than the system stack the rest of
+       the page inherits. The inputs already use `font: inherit`, so they pick
+       this up too. */
+    font-family: Helvetica, 'Helvetica Neue', Arial, sans-serif;
+  }
+
+  .modal-panel h2 {
+    font-family: inherit;
+    font-size: 1.5rem;
+    font-weight: 500;
+    color: #111;
+    margin: 0 0 2rem;
+  }
+
+  .modal-close {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.75rem;
+    background: none;
+    border: none;
+    font-size: 2rem;
+    line-height: 1;
+    color: #111;
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+  }
+
+  .modal-close:hover {
+    opacity: 0.6;
+  }
+
+  /* Full-bleed, unlike the grid below: these run the whole width of the window
+     with no padding, so they sit flush against both edges and the header. */
   .top-wrap {
-    max-width: max(70%, 680px);
-    margin: 40px auto 0;
-    padding: 0 20px;
+    margin: 0;
+    padding: 0;
   }
 
   /* No JS here, unlike the grid below: giving each photo a flex-grow equal to
