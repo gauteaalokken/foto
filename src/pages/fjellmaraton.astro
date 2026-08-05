@@ -9,9 +9,14 @@ const racePhotos = raceGallery?.data.photos ?? [];
 const topPhotos = raceGallery?.data.topPhotos ?? [];
 
 const GRID_WIDTH = 700;
-// Wider than the grid below: there are only a handful of these and they sit at
-// the top of the page, so each one is rendered considerably larger.
-const TOP_WIDTH = 1000;
+
+// The top photos run the full width of the window, so on a wide screen each is
+// rendered several times larger than a grid thumbnail — and twice that again in
+// device pixels on a retina display. They're offered at several widths rather
+// than one so the browser can pick: a phone, which only shows the banner a few
+// hundred pixels tall, has no reason to pull down the 2400px version.
+const TOP_WIDTHS = [900, 1600, 2400];
+const TOP_QUALITY = 88;
 
 const resolvePhoto = async (photo: string, width: number) => {
   const resolved = isRemote(photo)
@@ -21,8 +26,27 @@ const resolvePhoto = async (photo: string, width: number) => {
   return { src: resolved.src, ratio: resolved.aspectRatio, full: isRemote(photo) ? photo : withBase(photo) };
 };
 
+const resolveTopPhoto = async (photo: string) => {
+  if (!isRemote(photo)) {
+    return { src: withBase(photo), srcset: '', ratio: 1, full: withBase(photo) };
+  }
+
+  const rendered = await Promise.all(
+    TOP_WIDTHS.map((width) => resolveImageWithAspectRatio(photo, width, TOP_QUALITY))
+  );
+
+  return {
+    // Largest as the plain src, so a browser without srcset support still gets
+    // a sharp image rather than the smallest one.
+    src: rendered[rendered.length - 1].src,
+    srcset: rendered.map((image, i) => `${image.src} ${TOP_WIDTHS[i]}w`).join(', '),
+    ratio: rendered[0].aspectRatio,
+    full: photo,
+  };
+};
+
 // The lightbox links to the original R2 file for full quality — no extra resize needed.
-const resolvedTopPhotos = await mapWithConcurrency(topPhotos, 4, (photo) => resolvePhoto(photo, TOP_WIDTH));
+const resolvedTopPhotos = await mapWithConcurrency(topPhotos, 2, resolveTopPhoto);
 const resolvedRacePhotos = await mapWithConcurrency(racePhotos, 4, (photo) => resolvePhoto(photo, GRID_WIDTH));
 
 // The first photo uploaded is the banner and sits in the middle, with the rest
@@ -32,6 +56,14 @@ const [banner, ...flanking] = resolvedTopPhotos;
 const leftOfBanner = flanking.slice(0, Math.floor(flanking.length / 2));
 const rightOfBanner = flanking.slice(leftOfBanner.length);
 const topRow = banner ? [...leftOfBanner, banner, ...rightOfBanner] : [];
+
+// Each photo's width is its share of the combined aspect ratios, since the row
+// is full-bleed and every photo ends up the same height. Telling the browser
+// the real figure matters both ways: guess low and it picks a blurry file,
+// guess high and it downloads a needlessly large one. It also adapts on its
+// own when the page holds one, two or three photos.
+const topRatioSum = topRow.reduce((sum, photo) => sum + photo.ratio, 0);
+const widthShare = (photo: (typeof topRow)[number]) => Math.round((photo.ratio / topRatioSum) * 100);
 ---
 
 <Layout
@@ -49,7 +81,13 @@ const topRow = banner ? [...leftOfBanner, banner, ...rightOfBanner] : [];
             style={`--ratio: ${photo.ratio}`}
             aria-label="Vis bilde i fullskjerm"
           >
-            <img src={photo.src} alt="" decoding="async" />
+            <img
+              src={photo.src}
+              srcset={photo.srcset || undefined}
+              sizes={`(max-width: 900px) 90vw, ${widthShare(photo)}vw`}
+              alt=""
+              decoding="async"
+            />
           </button>
         ))}
       </div>
