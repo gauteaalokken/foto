@@ -1,0 +1,480 @@
+# KONTEKST-FOR-KI
+
+Startpakke for KI-modeller uten tilgang til repoet. Lim inn hele fila øverst i chatten.
+Sist oppdatert: 2026-08-05. Alle verdier er lest ut av repoet, ikke gjettet.
+
+---
+
+## 1. KORTVERSJON
+
+- Fotoportefølje for Gaute Aaløkken på **https://gauteaalokken.com**.
+- **Astro 4.16.19**, helt statisk side (ingen server, ingen database, ingen API-er utenom påmeldingsskjemaet).
+- Innhold ligger som **YAML-filer i repoet** (`src/content/`), redigert via **Sveltia CMS** på `/admin`.
+- Bilder ligger i **Cloudflare R2** (offentlig bøtte), ikke i repoet. Innholdsfilene inneholder bare URL-er.
+- Publisering: push til `main` → **GitHub Actions** bygger → **GitHub Pages**. (Ikke Cloudflare Pages — Cloudflare brukes kun til bildelagring.)
+- Sider: forside (prosjekter), prosjektside per prosjekt, Prints, Feed, Flaksjøen Fjellmaraton (med påmeldingsskjema), 404, samt statiske HTML-verktøy under `/fotoverktoy/`.
+- Ingen CSS-rammeverk, ingen komponentbibliotek, ingen design tokens — all CSS er skrevet for hånd inne i hver `.astro`-fil.
+
+---
+
+## 2. TEKNISK STACK
+
+**Kjøremiljø**
+- Pakkebehandler: **npm** (`package-lock.json`, lockfileVersion 3). Ingen yarn/pnpm.
+- Node lokalt: **v24.11.1**, npm 11.6.2.
+- Node i GitHub Actions: **20** (satt i `.github/workflows/deploy.yml`).
+
+**Avhengigheter (`dependencies`)**
+| Pakke | Versjon i package.json | Faktisk installert | Hva den gjør |
+|---|---|---|---|
+| `astro` | `^4.0.0` | **4.16.19** | Selve rammeverket. Bygger statiske HTML-sider, håndterer content collections og ruting. |
+
+**Utviklingsavhengigheter (`devDependencies`)**
+| Pakke | Versjon | Faktisk | Hva den gjør |
+|---|---|---|---|
+| `@aws-sdk/client-s3` | `^3.1093.0` | 3.1093.0 | Brukes kun av `scripts/sort-feed.mjs` til å liste/laste ned bilder fra R2 (R2 snakker S3-protokoll). |
+| `undici` | `^6.28.0` | 6.28.0 | Setter global timeout på alle utgående HTTP-kall i `astro.config.mjs`, så en treg R2-forbindelse ikke henger bygget for alltid. |
+| `wrangler` | `^4.113.0` | 4.113.0 | Cloudflares CLI. Installert for manuell R2-administrasjon. Ingen `wrangler.toml` i repoet, og den kjører ikke i bygg eller deploy. |
+
+**Transitive pakker som betyr noe**
+- `sharp` **0.33.5** — kommer med Astro, brukes direkte av `src/lib/resolveImage.ts` og `scripts/sort-feed.mjs` til bildeskalering og fargeanalyse.
+- `vite` **5.4.21** — Astros byggeverktøy, brukes ikke direkte.
+
+**Integrasjoner**
+- Ingen offisielle Astro-integrasjoner (`@astrojs/*`) i det hele tatt.
+- Én egendefinert integrasjon, `flush-staged-images`, definert direkte i `astro.config.mjs`. Se punkt 8.
+- Ingen markdown-plugins — alt innhold er YAML/data, ingen `.md`-filer med innhold.
+- CMS: **Sveltia CMS 0.178.0**, lastet fra unpkg i `public/admin/index.html`. Ikke en npm-pakke.
+- Skrifttype: **Space Mono** (400 + 700) fra Google Fonts, lastet i `<head>` i `Layout.astro`.
+
+---
+
+## 3. MAPPESTRUKTUR
+
+```
+foto/
+├── .github/workflows/deploy.yml   Byggeoppskrift for GitHub Actions. Redigeres sjelden.
+├── .claude/
+│   ├── launch.json                Lokal dev-serverkonfig for Claude Code. Uviktig for siden.
+│   └── settings.local.json        Lokale verktøytillatelser. Uviktig for siden.
+├── .env.local                     GIT-IGNORERT. Inneholder R2_SECRET_ACCESS_KEY, kun til sort-feed.mjs.
+├── astro.config.mjs               Astro-konfig + egen bilde-integrasjon. Du redigerer sjelden.
+├── package.json                   Avhengigheter og npm-kommandoer.
+├── package-lock.json              Låste versjoner. GENERERT — rediger aldri for hånd.
+├── README.md                      Tom i praksis (innholder bare "# foto").
+│
+├── public/                        Kopieres rått til nettsiden, uendret.
+│   ├── CNAME                      "gauteaalokken.com" — knytter domenet til GitHub Pages. IKKE SLETT.
+│   ├── favicon.svg                Fanikon.
+│   ├── admin/
+│   │   ├── index.html             Laster Sveltia CMS. Versjonen er pinnet med vilje.
+│   │   └── config.yml             HELE CMS-oppsettet: collections, felter, R2-nøkler.
+│   └── fotoverktoy/               Frittstående HTML-verktøy, uavhengig av Astro.
+│       ├── index.html             Oversiktsside (Fotogrid / Rammer / Kalender maler).
+│       ├── grid.html              "Fotogrid Pro" (1625 linjer).
+│       ├── instagram.html         "Instagram Maler" (1016 linjer).
+│       ├── Kalender.html          "Fotogrid Kalender" (1071 linjer).
+│       └── icon.png
+│
+├── scripts/
+│   ├── sort-feed.mjs              Lokalt verktøy: sorterer R2-bilder etter dato eller farge og
+│   │                              skriver src/content/feed/index.yml på nytt. Kjøres manuelt.
+│   └── google-apps-script-paamelding.gs
+│                                  Kode som er limt inn i Google Apps Script (ikke i drift herfra).
+│                                  Tar imot påmeldinger og skriver dem til et Google Sheet.
+│
+├── src/
+│   ├── content/
+│   │   ├── config.ts              Definerer og validerer de fire collections. Kode, ikke innhold.
+│   │   ├── projects/*.yml         14 prosjekter. Én fil per prosjekt. Skrives av CMS.
+│   │   ├── prints/*.yml           17 prints. Én fil per print. Skrives av CMS.
+│   │   ├── feed/index.yml         Én fil, 936 bilde-URL-er. Skrives av CMS eller sort-feed.mjs.
+│   │   └── fjellmaraton/index.yml Én fil, 3 toppbilder + 46 galleribilder.
+│   ├── layouts/Layout.astro       Felles HTML-skall: <head>, meta/SEO, global CSS, header.
+│   ├── components/Header.astro    Toppmeny (eneste komponent i prosjektet).
+│   ├── lib/                       Hjelpekode for bildehåndtering. Rør bare hvis du vet hva du gjør.
+│   │   ├── resolveImage.ts        Skalerer et R2-bilde med sharp, returnerer lokal /optimized/-sti.
+│   │   ├── imageOutputQueue.ts    Mellomlagring av skalerte bilder på disk mellom bygg.
+│   │   ├── fetchBuffer.ts         Nedlasting med timeout og 3 forsøk.
+│   │   └── concurrency.ts         Kjører maks N nedlastinger samtidig.
+│   ├── pages/                     Én fil = én URL.
+│   │   ├── index.astro            /                    (forside, prosjektrutenett)
+│   │   ├── 404.astro              /404
+│   │   ├── fjellmaraton.astro     /fjellmaraton
+│   │   ├── feed/index.astro       /feed
+│   │   ├── prints/index.astro     /prints
+│   │   ├── prints/[slug].astro    /prints/<slug>       (én side per print-fil)
+│   │   └── prosjekter/[slug].astro /prosjekter/<slug>  (én side per prosjekt-fil)
+│   └── env.d.ts                   Typedefinisjoner. Rør ikke.
+│
+├── dist/                          GENERERT av bygget. Git-ignorert. Rør aldri.
+├── .astro/                        GENERERT cache. Git-ignorert.
+└── node_modules/                  GENERERT av npm install. Git-ignorert.
+```
+
+---
+
+## 4. INNHOLDSMODELL
+
+Fire collections, definert to steder som må stemme overens:
+`src/content/config.ts` (validering ved bygg) og `public/admin/config.yml` (redigeringsskjema i CMS).
+**Legger du til et felt ett sted må du legge det til begge stedene.**
+
+### `projects` — mappe-collection
+- Filer: `src/content/projects/<slug>.yml`, én per prosjekt. 14 stk i dag.
+- URL: `/prosjekter/<filnavn-uten-.yml>`
+
+| Felt | Type | Påkrevd | Styrer |
+|---|---|---|---|
+| `title` | tekst | Ja | Overskrift på prosjektsiden, tittel under bildet på forsiden, `<title>` og delingstekst. |
+| `year` | tekst (i fnutter) | Ja | Vises som «(2023)» på forside og prosjektside. Brukes også til sortering — første tallgruppe i strengen, høyest år først. |
+| `order` | tall | Nei (`null` når tomt) | Manuell rekkefølge på forsiden. Lavest tall først. Prosjekter med tall kommer alltid før prosjekter uten. Alle 13 filer som har feltet har i dag `order: null`. |
+| `cover` | bilde-URL | Nei (`null` når tomt) | Forsidebildet i rutenettet. Er den tom, brukes `pages[0]`. |
+| `pages` | liste med bilde-URL-er | Ja | Alle bildene i prosjektet, i rekkefølge. Vises i rutenettet på prosjektsiden. |
+
+Ekte eksempel — `src/content/projects/koster.yml` (forkortet, den har 43 sider):
+```yaml
+title: Koster
+year: '2024'
+order: null
+cover: https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/projects/GAUT4149.jpg
+pages:
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/projects/GAUT3989.jpg
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/projects/GAUT3998.jpg
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/projects/GAUT4010.jpg
+```
+Merk: fire eldre filer (`flyktningsruta`, `balkan-boys`, `5-år-med-smilebu-t-o-ur`, `julaften`) mangler `cover`-nøkkelen helt. Det er gyldig — feltet er valgfritt.
+
+### `prints` — mappe-collection
+- Filer: `src/content/prints/<slug>.yml`, 17 stk.
+- URL: `/prints/<filnavn-uten-.yml>`
+
+| Felt | Type | Påkrevd | Styrer |
+|---|---|---|---|
+| `title` | tekst | Ja | Overskrift, tittel ved hover i oversikten, `<title>`, og emnefeltet i bestillings-e-posten. |
+| `photo` | bilde-URL | Ja | Bildet både i oversikten og på printens egen side. |
+
+Ekte eksempel — hele `src/content/prints/unstad.yml`:
+```yaml
+title: Unstad
+photo: https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/prints/Prints til salg_16.jpg
+```
+Priser, størrelser og all tekst på print-sidene er **hardkodet i `src/pages/prints/[slug].astro`**, ikke i innholdsfilene. Endrer du en pris, endres den for alle prints samtidig.
+
+### `feed` — enkeltfil
+- Fil: `src/content/feed/index.yml`
+
+| Felt | Type | Påkrevd | Styrer |
+|---|---|---|---|
+| `photos` | liste med bilde-URL-er | Ja | Alle bildene på /feed, i rekkefølge. 936 stk i dag. |
+
+```yaml
+photos:
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/feed/R1-08599-031A.jpg
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/feed/R1-08599-035A.jpg
+```
+
+### `fjellmaraton` — enkeltfil
+- Fil: `src/content/fjellmaraton/index.yml`
+
+| Felt | Type | Påkrevd | Styrer |
+|---|---|---|---|
+| `topPhotos` | liste med bilde-URL-er | Nei (`null` når tom) | Bånd øverst på siden, over påmeldingsknappen, i full bredde. **Første bilde er banneret og havner i midten**, resten fordeles jevnt på hver side. Under 900 px skjermbredde vises bare banneret. 2–4 bilder passer best. |
+| `photos` | liste med bilde-URL-er | Ja | Rutenettet under påmeldingsknappen. 46 stk i dag. |
+
+```yaml
+topPhotos:
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/FFM 26.jpg
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/FFM 26 4_1.jpg
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/FFM 26 4_2.jpg
+photos:
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/DSCF0018.jpg
+```
+
+---
+
+## 5. BILDER OG MEDIA
+
+**Lagring**
+- Cloudflare R2, bøtte **`foto-photos`**, konto-ID `1904e782382751217d6103b2d39a41da`.
+- Offentlig URL-rot: `https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev`
+- Ingen bilder ligger i repoet (bortsett fra `public/favicon.svg` og `public/fotoverktoy/icon.png`).
+
+**Mapper (prefixes) i bøtta — bestemt av `public/admin/config.yml`**
+| Prefix | Brukes av |
+|---|---|
+| `projects/` | Prosjekters `cover` og `pages` |
+| `prints/` | Prints' `photo` |
+| `feed/` | Feed-siden |
+| `fjellmaraton/` | Fjellmaraton-sidens `topPhotos` og `photos` |
+
+**Slik refereres de i innhold**
+Full absolutt URL, alltid:
+`https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/<prefix>/<filnavn>.jpg`
+Koden sjekker på `^https?://` for å avgjøre om et bilde skal hentes fra R2 eller fra `public/`.
+
+**Hva som skjer med bildene under bygg — to helt ulike løp**
+1. **Egen pipeline** (forside, prosjektsider, feed, fjellmaraton) — `src/lib/resolveImage.ts`:
+   Laster ned originalen, skalerer med sharp, lagrer som **WebP** med filnavn = SHA1 av `URL:bredde:kvalitet`, i `node_modules/.image-staging/`. Etter bygget kopieres de til `dist/optimized/`. 1818 filer der i dag.
+   Mellomlageret gjenbrukes mellom bygg (og caches i GitHub Actions), så et uendret bilde skaleres aldri på nytt.
+2. **Astros egen `getImage()`** (kun de to print-sidene): legger resultatet i `dist/_astro/`. 35 filer.
+
+**Bredder og kvalitet som faktisk brukes**
+| Sted | Bredde | Kvalitet | Kilde |
+|---|---|---|---|
+| Forside, prosjektomslag | 700 px | 80 | `src/pages/index.astro` |
+| Prosjektside, rutenett | 700 px | 82 | `src/pages/prosjekter/[slug].astro` |
+| Feed, miniatyr | 500 px | 60 | `src/pages/feed/index.astro` |
+| Fjellmaraton, rutenett | 700 px | 82 | `src/pages/fjellmaraton.astro` |
+| Fjellmaraton, toppbilder | 900 / 1600 / 2400 px (srcset) | 88 | `src/pages/fjellmaraton.astro` |
+| Prints, oversikt | 900 px | 85 | `src/pages/prints/index.astro` |
+| Prints, egen side | 1000 px | 90 | `src/pages/prints/[slug].astro` |
+
+**Lightbox**: klikker man på et bilde, lastes **originalen fra R2** i full oppløsning — ikke den skalerte versjonen. Store originaler = treg lightbox.
+
+**Å passe på ved opplasting**
+- Last opp gjennom CMS-en (`/admin`), så havner filen i riktig prefix automatisk.
+- Filnavn beholdes som de er. Mellomrom fungerer (f.eks. `FFM 26 4_1.jpg`), men unngå æ/ø/å og spesialtegn i nye filnavn.
+- Bruk JPG. Skalering til WebP skjer automatisk ved bygg.
+- Originalene bør ikke være unødvendig svære — de lastes ned på nytt hver gang bildet er nytt, og de er det lightboxen serverer.
+- Sletter du et bilde fra R2 uten å fjerne URL-en fra YAML-filen, **feiler bygget**.
+
+---
+
+## 6. DESIGNSYSTEM
+
+**Viktig og litt kjedelig: det finnes ingen design tokens i dette prosjektet.**
+Det er ingen `:root`-variabler, ingen tokens-fil, ingen CSS-rammeverk. Hver farge er skrevet rett inn i `<style>`-blokken i hver enkelt `.astro`-fil. Eneste custom property i hele kodebasen er `--ratio` i `fjellmaraton.astro`, og den er en layout-utregning, ikke et token.
+
+**Farger som faktisk brukes (antall forekomster i `src/`)**
+| Verdi | Antall | Rolle | Filer |
+|---|---|---|---|
+| `#111` | 19 | Tekst, knapper, lenker, rammer | Header, Layout, 404, fjellmaraton (12×), begge print-sidene, prosjektside |
+| `#fff` | 9 | Hvit tekst/bakgrunn i knapper og lightbox | Flere |
+| `#eee` | 5 | Plassholderfarge bak bilder som ikke er lastet | index, feed, fjellmaraton (2×), prosjektside |
+| `#fafafa` | 2 | Sidebakgrunn | `Layout.astro` (body), `fjellmaraton.astro` (dialogpanel) |
+| `#fdfdfd` | 1 | Bakgrunn i toppmenyen | `Header.astro` |
+| `#f2f2f2` | 2 | Grå ramme rundt print-bilder | begge print-sidene |
+| `#888` | 2 | Årstall / dempet tekst | `index.astro`, prosjektside |
+| `#666` | 4 | «Ingen bilder ennå»-tekst | flere |
+| `#555` | 2 | Undertittel | 404, fjellmaraton |
+| `#ccc` | 2 | Skjemafelt-strek | fjellmaraton |
+| `#ddd` | 1 | Skillelinje | print-side |
+| `#767676` | 1 | Placeholder i nedtrekksliste | fjellmaraton |
+| `#1a7a1a` | 1 | Grønn suksessmelding i skjema | fjellmaraton |
+| `#b00020` | 1 | Rød feilmelding i skjema | fjellmaraton |
+| `rgba(0,0,0,0.92)` | 3 | Lightbox-bakgrunn | feed, fjellmaraton, prosjektside |
+| `rgba(0,0,0,0.55)` | 1 | Bakgrunn bak påmeldingsdialogen | fjellmaraton |
+
+**Skrifter**
+| Stack | Brukes til | Definert i |
+|---|---|---|
+| `-apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif` | Standard for hele siden | `Layout.astro` (`body`) |
+| `'Space Mono', monospace` | Prosjekttitler, årstall, 404-tallet, prosjektoverskrift | `index.astro` (2×), `prosjekter/[slug].astro` (2×), `404.astro` |
+| `Helvetica, 'Helvetica Neue', Arial, sans-serif` | Kun påmeldingsdialogen og knappen på fjellmaraton | `fjellmaraton.astro` |
+
+Space Mono lastes fra Google Fonts i `Layout.astro` med vekt 400 og 700.
+
+**Fontstørrelser som er i bruk**
+`0.8rem`, `0.85rem`, `0.9rem`, `0.95rem` (×2), `1rem` (×2), `1.1rem` (×2), `1.2rem`, `1.25rem`, `1.5rem`, `1.75rem`, `2rem`, `2.5rem` (×4), `4rem`, og `clamp(2rem, 5vw, 3.25rem)` på prosjektoverskriften.
+
+**Spacing** — ingen skala, hver verdi er valgt lokalt. Vanligste tall: `20px`, `24px`, `32px`, `40px`, `48px`, `80px`, `100px`, samt rem-verdier i skjemaet (`0.5rem`, `0.75rem`, `1rem`, `2rem`, `2.5rem`).
+
+**Mellomrom mellom bilder (gap)**: 9 px på feed, 10 px på prosjektsider og fjellmaraton, 24 px mellom prints, 32–48 px på forsiden.
+
+**Breakpoints — alle som finnes**
+| Breakpoint | Hva skjer | Fil |
+|---|---|---|
+| `min-width: 640px` | Forsiden går fra 2 til 4 kolonner | `index.astro` |
+| `min-width: 768px` | Prints går fra 1 til 2 kolonner | `prints/index.astro` |
+| `min-width: 900px` | Print-siden legger bilde og tekst side om side | `prints/[slug].astro` |
+| `max-width: 900px` | Fjellmaraton skjuler alle toppbilder unntatt banneret | `fjellmaraton.astro` |
+| `min-width: 1400px` | Prints går til 3 kolonner | `prints/index.astro` |
+| `max-width: 480px` | Fornavn/etternavn stables i skjemaet | `fjellmaraton.astro` |
+
+I tillegg finnes JS-baserte breakpoints i rutenettene (ikke CSS): feed bruker 480/768/1200/1440 px til å velge 5/7/9/14/20 kolonner; prosjektsider og fjellmaraton bruker 640/1024 px til 2/3/4 kolonner.
+
+**Radius**: brukes ett eneste sted, `border-radius: 4px` på bestillingsknappen i `prints/[slug].astro`. Alt annet har skarpe hjørner — det er med vilje.
+
+**Slik endrer du en farge riktig**
+Siden det ikke finnes tokens, er «riktig» måte å **endre alle forekomstene av verdien i alle filene som bruker den til samme formål**. Be KI-en om å liste hvilke filer den endrer. Eksempel: bytter du tekstfargen `#111`, må Header, Layout, 404, fjellmaraton, begge print-sidene og prosjektsiden endres — men `#111` brukes også som knappebakgrunn, så sjekk formål før du bytter.
+Ikke innfør en tokens-fil på egen hånd med mindre du bestemmer deg for det bevisst; det er en ny struktur, ikke en opprydding.
+
+---
+
+## 7. KOMPONENTER OG SIDER
+
+**Ruter**
+| URL | Fil | Innhold |
+|---|---|---|
+| `/` | `src/pages/index.astro` | Rutenett med prosjektomslag + tilfeldige tomme ruter |
+| `/prosjekter/<slug>` | `src/pages/prosjekter/[slug].astro` | Ett prosjekt: alle sider i rad-justert rutenett + lightbox |
+| `/prints` | `src/pages/prints/index.astro` | Alle prints i kolonnelayout |
+| `/prints/<slug>` | `src/pages/prints/[slug].astro` | Én print: bilde, priser, bestilling på e-post |
+| `/feed` | `src/pages/feed/index.astro` | 936 bilder, rad-justert, lastes i puljer ved scroll |
+| `/fjellmaraton` | `src/pages/fjellmaraton.astro` | Toppbånd, påmeldingsknapp + dialog, bilderutenett |
+| `/404` | `src/pages/404.astro` | Feilside |
+| `/admin` | `public/admin/index.html` | Sveltia CMS (ikke en Astro-side) |
+| `/fotoverktoy/*` | `public/fotoverktoy/*.html` | Frittstående HTML-verktøy, helt utenfor Astro |
+
+**Komponenter og layout** (det er bare to)
+- `src/layouts/Layout.astro` — props: `title` (str., default «Gaute Aaløkken»), `description` (str., default fotografi-teksten), `image` (str., default et R2-bilde). Gir `<head>`, all SEO/Open Graph/Twitter-meta, canonical-URL, Google Fonts, global CSS og `<Header />`. Alle sider bruker den.
+- `src/components/Header.astro` — ingen props. Navnelenke til forsiden, meny (Flaksjøen Fjellmaraton, Prints, Feed, Fotoverktøy), e-post-ikon og Instagram-ikon.
+
+**Hjelpefunksjoner**
+- `src/lib/resolveImage.ts` — `resolveImage(url, bredde, kvalitet)` → sti til skalert WebP. `resolveImageWithAspectRatio(...)` → samme + reelt sideforhold. `withBase(sti)`, `isRemote(sti)`.
+- `src/lib/imageOutputQueue.ts` — les/skriv mellomlager på disk, og manifest over hvilke bilder bygget faktisk brukte.
+- `src/lib/fetchBuffer.ts` — `fetchWithRetry(url)`, 15 s timeout, 3 forsøk.
+- `src/lib/concurrency.ts` — `mapWithConcurrency(liste, maksSamtidig, fn)`.
+
+Hvilke sider bruker hva: forside, prosjektside, feed og fjellmaraton bruker `lib/`-pipelinen; **prints-sidene bruker Astros `getImage()` i stedet** og har sine egne lokale kopier av `withBase`/`isRemote`.
+
+---
+
+## 8. BYGG OG DEPLOY
+
+**Kommandoer (`package.json`)**
+```
+npm run dev        astro dev      — lokal utviklingsserver, port 4321
+npm run build      astro build    — bygger til dist/
+npm run preview    astro preview  — viser bygget resultat lokalt
+npm run sort-feed  node scripts/sort-feed.mjs — sorterer feed-YAML. Kjøres manuelt, ikke i bygg.
+```
+
+**Output**: `dist/`. Git-ignorert. Inneholder `index.html`, `404.html`, `CNAME`, `favicon.svg`, `admin/`, `fotoverktoy/`, `feed/`, `fjellmaraton/`, `prints/`, `prosjekter/`, `_astro/` (35 filer) og `optimized/` (1818 filer).
+
+**Publisering — dette er GitHub Pages, ikke Cloudflare Pages.**
+`.github/workflows/deploy.yml`:
+1. Utløses av push til `main`, eller manuelt (`workflow_dispatch`).
+2. `actions/checkout@v4` → `actions/setup-node@v4` med Node 20 → `npm install`.
+3. `actions/cache@v4` gjenoppretter `node_modules/.astro` og `node_modules/.image-staging` (nøkkel `image-cache-<run_id>`, restore-key `image-cache-`). Dette er grunnen til at bygg nummer to går fort — allerede skalerte bilder gjenbrukes.
+4. `npm run build`.
+5. `actions/upload-pages-artifact@v3` med `dist/` → `actions/deploy-pages@v4`.
+
+Domenet `gauteaalokken.com` kommer fra `public/CNAME`, som kopieres til `dist/CNAME`.
+
+**Cloudflares rolle**: kun R2-lagring av bilder. Ingen `wrangler.toml`, ingen Cloudflare Pages-kobling, ingen Workers.
+
+**Miljøvariabler**
+- **I bygg/CI: ingen.** Workflowen setter ikke én eneste `env`.
+- **Lokalt**: `.env.local` (git-ignorert) med `R2_SECRET_ACCESS_KEY`. Leses kun av `scripts/sort-feed.mjs`. Skriptet har også valgfrie overstyringer med innebygde standardverdier: `R2_ACCOUNT_ID`, `R2_BUCKET`, `R2_ACCESS_KEY_ID`, `R2_PUBLIC_URL`.
+- Påmeldingsskjemaets endepunkt (`GAS_URL`) er **hardkodet** i `src/pages/fjellmaraton.astro`, ikke en miljøvariabel.
+
+**Preview-branches**: finnes ikke. Kun `main` bygger og publiserer. Vil du se noe før det går live, må du kjøre `npm run dev` lokalt.
+
+---
+
+## 9. KONVENSJONER
+
+- **Filnavn i `src/content/`**: små bokstaver, bindestrek mellom ord, æ/ø/å beholdes. Eksempler: `løpehelg-med-graham.yml`, `5-år-med-smilebu-t-o-ur.yml`, `sætretindane.yml`.
+- **Slug = filnavn uten `.yml`.** URL-en blir `/prosjekter/<filnavn>` eller `/prints/<filnavn>`. **Endrer du filnavnet, endres URL-en og gamle lenker dør.**
+- CMS-en lager filnavnet automatisk fra tittelen når du oppretter noe nytt.
+- **Årstall**: alltid streng i enkeltfnutter, `year: '2024'`. Uten fnutter tolkes det som tall og valideringen brekker.
+- **Bilde-URL-er**: alltid full absolutt R2-URL.
+- **Språk**: siden er norsk (`<html lang="no">`). Synlig tekst på norsk, men noen tomtilstander er fortsatt engelske («No prints listed yet.», «No photos in the feed yet.»), og skjemaets feltnavn er engelske («First Name», «Email»). Ingen flerspråklig oppsett — print-sidene har rett og slett norsk og engelsk tekst under hverandre.
+- **Commit-meldinger**: én linje, engelsk, imperativ («Add a CMS field for…»). CMS-genererte commits heter `Create Projects "x"` / `Update Projects "x"`.
+- **CSS**: skrives i `<style>` nederst i hver `.astro`-fil. `is:global` brukes bare der JS bygger elementer dynamisk (forside, feed).
+- **Kommentarer i koden er lange og forklarer hvorfor.** Behold dem — de dokumenterer feil som allerede er rettet.
+
+---
+
+## 10. IKKE RØR
+
+| Fil / innstilling | Hvorfor |
+|---|---|
+| `public/CNAME` | Slettes den, mister siden domenet `gauteaalokken.com`. |
+| `public/admin/config.yml` → `backend.repo: gauteaalokken/foto` og `branch: main` | Feil verdi = CMS-en kan ikke lagre noe som helst. |
+| R2-verdiene i `public/admin/config.yml` (bucket, account_id, public_url, access_key_id) | Endres de, mister CMS-en opplastingen og alle eksisterende bilde-URL-er slutter å stemme. |
+| `prefix:`-verdiene i `public/admin/config.yml` | Bestemmer hvilken mappe i R2 nye bilder havner i. Endres de, blir bildene spredt og gamle URL-er brytes ikke, men nye blir inkonsistente. |
+| Versjonsnummeret `@sveltia/cms@0.178.0` i `public/admin/index.html` | Pinnet med vilje. Fjernes versjonen, kan en oppdatering hos leverandøren ta ned CMS-en uten forvarsel. |
+| `src/content/config.ts` | Skjemaene her validerer alle YAML-filer. Legger du til et påkrevd felt, feiler bygget på alle eksisterende filer som mangler det. `.nullable()` er der fordi CMS-en skriver `null`, ikke tomt. |
+| `astro.config.mjs` — `image.remotePatterns` | Fjernes R2-verten, nekter Astro å behandle bildene på print-sidene. |
+| `astro.config.mjs` — `flush-staged-images`-integrasjonen | Uten den havner ingen skalerte bilder i `dist/optimized/`, og alle bilder på forside/feed/prosjekter/fjellmaraton blir døde. |
+| `astro.config.mjs` — `setGlobalDispatcher(new Agent({...}))` | Uten timeouts kan én treg R2-forbindelse henge byggejobben i det uendelige. |
+| `astro.config.mjs` — `site: 'https://gauteaalokken.com'` | Styrer canonical-URL og delingslenker. |
+| `src/lib/*.ts` | Bildepipelinen. Endres hash-formelen eller mellomlagerstien, må alle 1818 bilder lastes ned og skaleres på nytt. |
+| Filnavn i `src/content/projects/` og `src/content/prints/` | Filnavnet **er** URL-en. |
+| `GAS_URL` i `src/pages/fjellmaraton.astro` | Adressen til Google Apps Script som tar imot påmeldinger. Feil verdi = påmeldinger forsvinner uten at noen merker det. |
+| Feltet `name="website"` (honeypot) i påmeldingsskjemaet, og `.honeypot`-CSS-en | Spamfelle. Gjøres det synlig, fyller ekte folk det ut og påmeldingen deres kastes stille. |
+| `.env.local` | Inneholder R2-hemmeligheten. Er git-ignorert. Skal aldri limes inn i en chat eller committes. |
+| `package-lock.json` | Genereres av npm. Redigeres aldri manuelt. |
+| `dist/`, `.astro/`, `node_modules/` | Genereres. Endringer der overskrives ved neste bygg. |
+| `.github/workflows/deploy.yml` — cache-stegene | Uten dem tar hvert bygg mange minutter fordi alle bilder hentes og skaleres på nytt. |
+
+---
+
+## 11. VANLIGE ENDRINGER
+
+1. **Legge til et prosjekt** → gjør det i CMS-en på `/admin`, ikke i kode. Den lager `src/content/projects/<slug>.yml` med `title`, `year`, `order`, `cover`, `pages` og committer selv. Skal det gjøres i kode: kopier strukturen fra en eksisterende fil nøyaktig, inkludert fnuttene rundt årstallet.
+
+2. **Endre rekkefølgen på forsiden** → sett `order` i prosjektfilen (via CMS-feltet «Order»). Lavest tall først; alle med tall kommer foran alle uten. Ikke rør sorteringskoden i `src/pages/index.astro`.
+
+3. **Bytte omslagsbilde på et prosjekt** → sett `cover`-feltet i CMS-en. Ikke flytt om på `pages`-listen for å oppnå det.
+
+4. **Endre menyen** → `src/components/Header.astro`, listen `navLinks` (linje 5–10). Hvert element er `{ label, href }`. Legg til/fjern/endre rekkefølge der. Ikke skriv `<a>`-taggene manuelt i HTML-en under.
+
+5. **Bytte en farge** → se punkt 6. Finn verdien i den aktuelle `<style>`-blokken. Gjelder endringen hele siden (f.eks. sidebakgrunn), start i `src/layouts/Layout.astro`. Be alltid om en liste over hvilke filer som ble endret.
+
+6. **Legge til en ny side** → ny fil i `src/pages/`, f.eks. `src/pages/om.astro` → blir `/om`. Start med `import Layout from '../layouts/Layout.astro';`, pakk innholdet i `<Layout title="… — Gaute Aaløkken" description="…">`, og legg CSS-en i en `<style>`-blokk nederst i samme fil. Legg lenken inn i `navLinks` i Header hvis den skal i menyen.
+
+7. **Endre SEO-tittel eller delingstekst** → for én side: `title`- og `description`-propene der `<Layout ...>` brukes i den sidens fil. For hele siden / forsiden: `DEFAULT_DESCRIPTION` og `DEFAULT_OG_IMAGE` øverst i `src/layouts/Layout.astro` (linje 10–17), samt default-verdien `'Gaute Aaløkken'` for `title`.
+
+8. **Endre priser eller teksten på print-sidene** → `src/pages/prints/[slug].astro`, linje ~49–95. Teksten er hardkodet og felles for alle prints — det finnes ingen prisfelt i innholdsmodellen. Både den norske og den engelske blokken må oppdateres.
+
+9. **Endre teksten på fjellmaraton-siden** → overskriftene «Flaksjøen Fjellmaraton» / «Påmelding 26» og knappen «Meld deg på» ligger i `.intro`-blokken i `src/pages/fjellmaraton.astro`. Skjemafeltene ligger i `#signup-modal` lenger nede. **Legger du til et nytt felt i skjemaet, må kolonnen også legges til i `scripts/google-apps-script-paamelding.gs`, og skriptet må redeployes i Google Apps Script** — ellers havner svaret ingen steder.
+
+10. **Legge til / bytte bilder på fjellmaraton-banneret** → CMS-feltet «Bilder over skjemaet». Husk at **første bilde blir banneret i midten**, og at det er det eneste som vises på mobil.
+
+11. **Legge til et nytt felt i en collection** → må gjøres to steder samtidig: skjema i `public/admin/config.yml` og validering i `src/content/config.ts`. Gjør nye felter valgfrie med `.nullable().optional()` — CMS-en skriver `null` og ikke tomt når feltet står tomt.
+
+12. **Sortere feed-en på nytt** → `npm run sort-feed` er ikke rett kommando alene; kjør `node scripts/sort-feed.mjs date feed` eller `node scripts/sort-feed.mjs color feed` lokalt. Krever `.env.local`. Den **overskriver hele** `src/content/feed/index.yml` med alt som ligger i R2-bøtta.
+
+---
+
+## 12. KJENTE FALLGRUVER
+
+- **Et bilde som er slettet i R2, men står igjen i en YAML-fil, får bygget til å feile.** Fjern URL-en fra innholdet først, deretter filen i R2.
+- **`sort-feed.mjs` lister hele bøtta**, ikke bare `feed/`-mappa. Kjører du den, kan prosjekt- og print-bilder havne i feed-lista. Se gjennom endringen før du committer.
+- **CMS-en skriver `null`, ikke tomme nøkler.** Derfor er `order` og `cover` `.nullable()` i schemaet. Fjerner du `.nullable()`, brekker 13 eksisterende prosjektfiler. `order: null` ble tidligere tolket som 0 og kastet alle prosjekter uten rekkefølge helt øverst — det er fikset, ikke gjeninnfør det.
+- **`year` uten fnutter** tolkes som tall og feiler valideringen.
+- **Bytter du filnavn i `content/`, bytter du URL.** Ingen redirects finnes.
+- **Bildehøyde settes bevisst ikke** i `resolveImage.ts` og på print-sidene. Astros `inferSize` + `width` rapporterer feil høyde, og bildene ble klemt sammen. Ikke legg til `height`.
+- **Rutenettene måles med `getBoundingClientRect()` og `Math.floor()`, ikke `clientWidth`.** `clientWidth` runder opp (1169,59 px rapporteres som 1170), og da dyttet flex-wrap siste bilde i hver rad ned på egen linje. Dette rammet bare enkelte vindusbredder, så det så tilfeldig ut. Ikke bytt tilbake.
+- **Layout-koden må kjøre på nytt ved bredde­endring, etter `load`, etter at fonter er klare, og etter at hvert bilde er lastet.** Fjernes én av disse, blir radene ujevne til neste reload.
+- **Feed-en har både IntersectionObserver og en `setInterval`-poll** for etterlasting. Pollingen ser overflødig ut, men den er der fordi feeden i praksis satte seg fast uten at årsaken lot seg reprodusere. Ikke fjern den.
+- **Skjemaet sender med `Content-Type: text/plain`** med vilje, for å unngå en CORS-preflight som Apps Script ikke kan svare på. `mode: 'no-cors'` ville skjult feil og meldt suksess selv når påmeldingen forsvant.
+- **Endrer du Apps Script-koden, må du lage en ny deployment**; eksisterende URL peker på den gamle versjonen til du redeployer.
+- **Sidene bruker to ulike bildepipelines.** Prints bruker Astros `getImage()`, resten bruker `lib/resolveImage.ts`. Det er ikke en feil, men forklarer hvorfor prints-bilder havner i `dist/_astro/` og resten i `dist/optimized/`.
+- **Første bygg etter at cachen er borte tar lang tid** (over tusen bilder skal hentes og skaleres). Det er normalt.
+- **Tomme ruter på forsiden trekkes tilfeldig på nytt ved hver sidevisning.** De er ikke et innholdsfelt, og de skal ikke være stabile.
+- **Lightboxen laster originalbildet fra R2.** Er originalen 15 MB, tar den 15 MB å åpne.
+
+---
+
+## 13. SLIK BRUKES DENNE FILEN
+
+Til KI-modellen som leser dette:
+
+1. **Gi alltid tilbake hele den ferdige fila.** Ikke diff, ikke «erstatt linje 42», ikke utdrag med `...`. Brukeren limer inn hele filen i en teksteditor og lagrer over.
+2. **Si tydelig hvilken filsti** den ferdige fila skal lagres til, øverst i svaret.
+3. **Ikke foreslå nye avhengigheter, nye verktøy eller versjonsoppgraderinger.** Alt skal løses med det som allerede finnes i punkt 2.
+4. **Hold deg til eksisterende mønstre.** CSS i `<style>` i samme fil, farger som literaler slik resten av kodebasen gjør det, ingen ny mappestruktur, ingen omskriving til rammeverk eller komponentbibliotek.
+5. **Ikke rør noe i punkt 10** uten at brukeren eksplisitt ber om det og du har forklart konsekvensen.
+6. **Spør heller enn å gjette.** Mangler du en filsti, et feltnavn eller innholdet i en fil — be om å få den limt inn. Ikke finn på filnavn, versjoner eller CSS-klasser.
+7. **Behold kommentarene i koden.** De forklarer feil som allerede er rettet, og fjerner du dem kommer feilene tilbake.
+8. Brukeren har ikke kodebakgrunn. Forklar hva en endring gjør og hvor den lagres, uten sjargong.
+
+---
+
+## 14. ÅPNE PUNKTER — fylles inn manuelt
+
+Følgende lot seg ikke lese ut av repoet og er ikke dokumentert her:
+
+- **GitHub Pages-innstillinger** (kilde satt til «GitHub Actions», custom domain, «Enforce HTTPS») — ligger i GitHub-grensesnittet, ikke i repoet.
+- **DNS-oppsettet for `gauteaalokken.com`** — hvilken registrar, og hvilke A-/CNAME-poster som peker på GitHub Pages.
+- **Cloudflare R2-detaljer**: om bøtta har en custom domain i tillegg til `r2.dev`-URL-en, hvilke tillatelser API-nøkkelen har, og om det er satt opp levetidsregler.
+- **Google Apps Script**: hvilket Google Sheet påmeldingene skrives til, hvem som eier det, og når det sist ble redeployet.
+- **Om `wrangler` faktisk brukes til noe**, eller bare ble installert underveis. Ingen `wrangler.toml` finnes, og den kjøres ikke fra noe skript.
+- **Fotoverktøy-sidene** (`public/fotoverktoy/*.html`, ca. 3900 linjer HTML/JS til sammen) er ikke gjennomgått her. De er frittstående og påvirker ikke resten av siden.
+- **Hvorfor fire prosjekter mangler `cover`-nøkkelen helt** — sannsynligvis bare at de ble opprettet før feltet ble lagt til 2026-08-02.
+- **Om det finnes analytics, søkeordsverktøy eller andre eksterne tjenester** koblet til siden.
