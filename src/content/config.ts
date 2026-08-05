@@ -36,7 +36,12 @@ const projects = defineCollection({
 
 const fjellmaraton = defineCollection({
   type: 'data',
-  schema: photoListSchema,
+  schema: z.object({
+    // Shown above the sign-up form. Optional and nullable because the CMS
+    // writes an explicit null rather than omitting the key when left empty.
+    topPhotos: z.array(z.string()).nullable().optional(),
+    photos: z.array(z.string()),
+  }),
 });
 
 export const collections = { feed, prints, projects, fjellmaraton };
