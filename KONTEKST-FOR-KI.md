@@ -3,6 +3,9 @@
 Startpakke for KI-modeller uten tilgang til repoet. Lim inn hele fila øverst i chatten.
 Sist oppdatert: 2026-08-05. Alle verdier er lest ut av repoet, ikke gjettet.
 
+Søsterfila [VEDLIKEHOLD.md](VEDLIKEHOLD.md) er den praktiske steg-for-steg-guiden for mennesket
+som drifter siden. Denne fila er den tekniske referansen for KI-en som hjelper til.
+
 ---
 
 ## 1. KORTVERSJON
@@ -42,7 +45,7 @@ Sist oppdatert: 2026-08-05. Alle verdier er lest ut av repoet, ikke gjettet.
 
 **Integrasjoner**
 - Ingen offisielle Astro-integrasjoner (`@astrojs/*`) i det hele tatt.
-- Én egendefinert integrasjon, `flush-staged-images`, definert direkte i `astro.config.mjs`. Se punkt 8.
+- Én egendefinert integrasjon, `flush-staged-images`, definert direkte i `astro.config.mjs`. Se punkt 9.
 - Ingen markdown-plugins — alt innhold er YAML/data, ingen `.md`-filer med innhold.
 - CMS: **Sveltia CMS 0.178.0**, lastet fra unpkg i `public/admin/index.html`. Ikke en npm-pakke.
 - Skrifttype: **Space Mono** (400 + 700) fra Google Fonts, lastet i `<head>` i `Layout.astro`.
@@ -119,6 +122,8 @@ foto/
 Fire collections, definert to steder som må stemme overens:
 `src/content/config.ts` (validering ved bygg) og `public/admin/config.yml` (redigeringsskjema i CMS).
 **Legger du til et felt ett sted må du legge det til begge stedene.**
+
+CMS-en committer **rett til `main`** — det er ikke satt opp noen kladde- eller godkjenningsflyt (`publish_mode` er ikke i bruk). Trykker redaktøren Publish, er endringen live så snart bygget er ferdig. Commit-meldingene fra CMS-en heter `Create Projects "x"` / `Update Projects "x"`.
 
 ### `projects` — mappe-collection
 - Filer: `src/content/projects/<slug>.yml`, én per prosjekt. 14 stk i dag.
@@ -218,6 +223,7 @@ Koden sjekker på `^https?://` for å avgjøre om et bilde skal hentes fra R2 el
    Laster ned originalen, skalerer med sharp, lagrer som **WebP** med filnavn = SHA1 av `URL:bredde:kvalitet`, i `node_modules/.image-staging/`. Etter bygget kopieres de til `dist/optimized/`. 1818 filer der i dag.
    Mellomlageret gjenbrukes mellom bygg (og caches i GitHub Actions), så et uendret bilde skaleres aldri på nytt.
 2. **Astros egen `getImage()`** (kun de to print-sidene): legger resultatet i `dist/_astro/`. 35 filer.
+   Denne har **ingen mellomlagring mellom bygg** — print-originalene (6–23 MB per fil) lastes ned og skaleres på nytt ved hvert eneste bygg. Målt 2026-08-05: 18,5 av 27 sekunder av byggetiden gikk med til nettopp dette. Det er kjent, ikke en feil, og prisen for at print-sidene bruker Astros egen pipeline.
 
 **Bredder og kvalitet som faktisk brukes**
 | Sted | Bredde | Kvalitet | Kilde |
@@ -302,7 +308,64 @@ Ikke innfør en tokens-fil på egen hånd med mindre du bestemmer deg for det be
 
 ---
 
-## 7. KOMPONENTER OG SIDER
+## 7. SLIK ER EN .ASTRO-FIL BYGD OPP
+
+Les dette før du endrer en `.astro`-fil. Astro ligner på React/Next på overflaten, men er det ikke.
+
+**Tre deler i hver fil, i denne rekkefølgen:**
+
+1. **Frontmatter** — alt mellom de to `---`-linjene øverst. Vanlig JavaScript/TypeScript som kjører **én gang under bygget**, på byggemaskinen. Her hentes innhold og skaleres bilder. Denne koden finnes ikke i nettleseren.
+2. **Malen** — HTML rett under frontmatteren. `{uttrykk}` setter inn en verdi, `{liste.map((x) => (<div>…</div>))}` gjentar noe per element, `{betingelse && (<div>…</div>)}` viser noe bare noen ganger.
+3. **`<style>` og `<script>`** nederst.
+
+**Regler som er lette å bomme på:**
+
+- **`<style>` er scoped til sin egen fil.** En klasse du skriver i `index.astro` treffer ikke elementer i en annen fil. Derfor står `is:global` på stilene i `index.astro` og `feed/index.astro` — der lager JavaScript elementer etter at siden er lastet, og scoped CSS ville ikke truffet dem. **Fjern aldri `is:global` fra de to filene.**
+- **`<script>` kjører i nettleseren**, ikke under bygget. Den ser ikke variabler fra frontmatteren. To måter å sende data inn på, begge i bruk her:
+  - `define:vars={{ gap: GAP }}` — sender enkle verdier inn (brukes i `feed/index.astro`).
+  - `<script type="application/json" id="…" set:html={JSON.stringify(data)} />` og så `JSON.parse` i nettleseren (brukes i feed, fjellmaraton og prosjektsider til lightbox-listene).
+- **`class:list={['a', betingelse && 'b']}`** er Astros måte å sette klasser betinget (brukes i `fjellmaraton.astro`).
+- **Props** deklareres med `interface Props` og hentes med `Astro.props`. Kun `Layout.astro` tar props i dette prosjektet.
+- **`[slug].astro`-filer må ha `getStaticPaths()`** som returnerer én oppføring per side. Uten den bygges ingen sider.
+- **Innhold hentes med `getCollection('projects')` eller `getEntry('feed', 'index')`.** `entry.id` er filnavnet uten `.yml` og brukes som URL-slug. `entry.data` er feltene fra YAML-fila.
+- **`import.meta.env.BASE_URL` er `/`** i dette prosjektet, siden `base` ikke er satt i `astro.config.mjs`. `withBase()` gjør derfor ingenting i praksis akkurat nå — men behold den, den er der for at ting skal virke hvis siden en dag flyttes til en undermappe.
+- **Alt bygges én gang og serveres som ferdige HTML-filer.** Det finnes ingen server å kjøre kode på: ingen API-ruter, ingen `Astro.request`, ingen server-side rendering, ingen database. Foreslå aldri å hente innhold fra CMS-en i nettleseren — innholdet *er* filene i repoet.
+
+**Minimalt komplett sideskjelett** (kopier dette når du lager en ny side):
+
+```astro
+---
+import Layout from '../layouts/Layout.astro';
+
+const overskrift = 'Om';
+---
+
+<Layout title="Om — Gaute Aaløkken" description="Kort om fotografen.">
+  <div class="om">
+    <h1>{overskrift}</h1>
+    <p>Tekst her.</p>
+  </div>
+</Layout>
+
+<style>
+  .om {
+    max-width: 600px;
+    margin: 60px auto;
+    padding: 0 20px;
+  }
+
+  h1 {
+    font-family: 'Space Mono', monospace;
+    font-weight: 500;
+  }
+</style>
+```
+
+Lagret som `src/pages/om.astro` blir dette `/om`. Importstien til `Layout` har ett `../` per mappenivå ned fra `src/pages/` — filer rett i `pages/` bruker `../layouts/`, filer i `pages/prints/` bruker `../../layouts/`.
+
+---
+
+## 8. KOMPONENTER OG SIDER
 
 **Ruter**
 | URL | Fil | Innhold |
@@ -331,7 +394,7 @@ Hvilke sider bruker hva: forside, prosjektside, feed og fjellmaraton bruker `lib
 
 ---
 
-## 8. BYGG OG DEPLOY
+## 9. BYGG OG DEPLOY
 
 **Kommandoer (`package.json`)**
 ```
@@ -340,6 +403,10 @@ npm run build      astro build    — bygger til dist/
 npm run preview    astro preview  — viser bygget resultat lokalt
 npm run sort-feed  node scripts/sort-feed.mjs — sorterer feed-YAML. Kjøres manuelt, ikke i bygg.
 ```
+
+**Målt bygg 2026-08-05 (lokalt, varm cache):** 36 sider på 27 sekunder. De 36 er 14 prosjektsider + 17 print-sider + forside, /prints, /feed, /fjellmaraton og /404.
+
+**Det finnes ingen tester, ingen linting og ingen typesjekk** — verken lokalt eller i CI. `npm run build` er den eneste kontrollen som finnes: går den gjennom, er endringen syntaktisk og innholdsmessig gyldig. Foreslå aldri at brukeren «kjører testene».
 
 **Output**: `dist/`. Git-ignorert. Inneholder `index.html`, `404.html`, `CNAME`, `favicon.svg`, `admin/`, `fotoverktoy/`, `feed/`, `fjellmaraton/`, `prints/`, `prosjekter/`, `_astro/` (35 filer) og `optimized/` (1818 filer).
 
@@ -364,7 +431,7 @@ Domenet `gauteaalokken.com` kommer fra `public/CNAME`, som kopieres til `dist/CN
 
 ---
 
-## 9. KONVENSJONER
+## 10. KONVENSJONER
 
 - **Filnavn i `src/content/`**: små bokstaver, bindestrek mellom ord, æ/ø/å beholdes. Eksempler: `løpehelg-med-graham.yml`, `5-år-med-smilebu-t-o-ur.yml`, `sætretindane.yml`.
 - **Slug = filnavn uten `.yml`.** URL-en blir `/prosjekter/<filnavn>` eller `/prints/<filnavn>`. **Endrer du filnavnet, endres URL-en og gamle lenker dør.**
@@ -378,7 +445,7 @@ Domenet `gauteaalokken.com` kommer fra `public/CNAME`, som kopieres til `dist/CN
 
 ---
 
-## 10. IKKE RØR
+## 11. IKKE RØR
 
 | Fil / innstilling | Hvorfor |
 |---|---|
@@ -403,7 +470,7 @@ Domenet `gauteaalokken.com` kommer fra `public/CNAME`, som kopieres til `dist/CN
 
 ---
 
-## 11. VANLIGE ENDRINGER
+## 12. VANLIGE ENDRINGER
 
 1. **Legge til et prosjekt** → gjør det i CMS-en på `/admin`, ikke i kode. Den lager `src/content/projects/<slug>.yml` med `title`, `year`, `order`, `cover`, `pages` og committer selv. Skal det gjøres i kode: kopier strukturen fra en eksisterende fil nøyaktig, inkludert fnuttene rundt årstallet.
 
@@ -431,7 +498,7 @@ Domenet `gauteaalokken.com` kommer fra `public/CNAME`, som kopieres til `dist/CN
 
 ---
 
-## 12. KJENTE FALLGRUVER
+## 13. KJENTE FALLGRUVER
 
 - **Et bilde som er slettet i R2, men står igjen i en YAML-fil, får bygget til å feile.** Fjern URL-en fra innholdet først, deretter filen i R2.
 - **`sort-feed.mjs` lister hele bøtta**, ikke bare `feed/`-mappa. Kjører du den, kan prosjekt- og print-bilder havne i feed-lista. Se gjennom endringen før du committer.
@@ -451,7 +518,7 @@ Domenet `gauteaalokken.com` kommer fra `public/CNAME`, som kopieres til `dist/CN
 
 ---
 
-## 13. SLIK BRUKES DENNE FILEN
+## 14. SLIK BRUKES DENNE FILEN
 
 Til KI-modellen som leser dette:
 
@@ -459,14 +526,17 @@ Til KI-modellen som leser dette:
 2. **Si tydelig hvilken filsti** den ferdige fila skal lagres til, øverst i svaret.
 3. **Ikke foreslå nye avhengigheter, nye verktøy eller versjonsoppgraderinger.** Alt skal løses med det som allerede finnes i punkt 2.
 4. **Hold deg til eksisterende mønstre.** CSS i `<style>` i samme fil, farger som literaler slik resten av kodebasen gjør det, ingen ny mappestruktur, ingen omskriving til rammeverk eller komponentbibliotek.
-5. **Ikke rør noe i punkt 10** uten at brukeren eksplisitt ber om det og du har forklart konsekvensen.
+5. **Ikke rør noe i punkt 11** uten at brukeren eksplisitt ber om det og du har forklart konsekvensen.
 6. **Spør heller enn å gjette.** Mangler du en filsti, et feltnavn eller innholdet i en fil — be om å få den limt inn. Ikke finn på filnavn, versjoner eller CSS-klasser.
 7. **Behold kommentarene i koden.** De forklarer feil som allerede er rettet, og fjerner du dem kommer feilene tilbake.
 8. Brukeren har ikke kodebakgrunn. Forklar hva en endring gjør og hvor den lagres, uten sjargong.
+9. **Les punkt 7 før du skriver `.astro`-kode.** Astro ligner på React, men er det ikke, og de vanligste feilene kommer av å behandle det som React.
+10. **Foreslå aldri å kjøre tester** — det finnes ingen. `npm run build` er eneste kontroll.
+11. Skal brukeren gjøre noe praktisk (laste opp bilder, angre en endring, sjekke om bygget gikk bra), står oppskriften i `VEDLIKEHOLD.md` i samme repo. Henvis dit heller enn å finne på egne steg.
 
 ---
 
-## 14. ÅPNE PUNKTER — fylles inn manuelt
+## 15. ÅPNE PUNKTER — fylles inn manuelt
 
 Følgende lot seg ikke lese ut av repoet og er ikke dokumentert her:
 
