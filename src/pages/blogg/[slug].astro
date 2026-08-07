@@ -19,10 +19,15 @@ const { title, date, blocks, openInLightbox } = entry.data;
 
 const TEXT_WIDTH = 1400;
 const PAIR_WIDTH = 900;
-const GRID_WIDTH = 700;
-const MASONRY_WIDTH = 700;
-const FEED_WIDTH = 500;
 const CAROUSEL_WIDTH = 1200;
+
+type GalleryLayout = 'grid' | 'masonry' | 'feed' | 'carousel';
+
+// Per-layout resize target — feed packs many small photos so it can afford a
+// smaller/lower-quality source; carousel shows one large photo at a time.
+const GALLERY_WIDTH: Record<GalleryLayout, number> = { grid: 700, masonry: 700, feed: 500, carousel: CAROUSEL_WIDTH };
+const GALLERY_QUALITY: Record<GalleryLayout, number> = { grid: 82, masonry: 82, feed: 70, carousel: 85 };
+const GALLERY_CONCURRENCY: Record<GalleryLayout, number> = { grid: 4, masonry: 4, feed: 6, carousel: 3 };
 
 type ResolvedImage = { src: string; full: string; ratio?: number };
 
@@ -31,11 +36,12 @@ const resolveItem = async (src: string, width: number, quality: number): Promise
   full: isRemote(src) ? src : withBase(src),
 });
 
-// Feed-style blocks need each photo's real aspect ratio (not just a resized
-// src) so the client-side layout can pack them into justified rows like the
-// actual /feed page — variable-width photos, not uniform square crops.
-const resolveFeedItem = async (src: string): Promise<ResolvedImage> => {
-  const resolved = await resolveImageWithAspectRatio(src, FEED_WIDTH, 70);
+// Always resolves the real aspect ratio, not just a resized src — the "feed"
+// layout needs it to pack photos into justified rows like the actual /feed
+// page (variable-width photos, not uniform square crops); the other layouts
+// simply don't use the ratio value.
+const resolveGalleryItem = async (src: string, layout: GalleryLayout): Promise<ResolvedImage> => {
+  const resolved = await resolveImageWithAspectRatio(src, GALLERY_WIDTH[layout], GALLERY_QUALITY[layout]);
   return { src: resolved.src, full: isRemote(src) ? src : withBase(src), ratio: resolved.aspectRatio };
 };
 
@@ -43,10 +49,7 @@ type PreparedBlock =
   | { type: 'text'; html: string }
   | { type: 'image'; item: ResolvedImage; caption: string | null }
   | { type: 'image_pair'; items: ResolvedImage[] }
-  | { type: 'image_grid'; items: ResolvedImage[] }
-  | { type: 'image_masonry'; items: ResolvedImage[] }
-  | { type: 'image_feed'; items: ResolvedImage[] }
-  | { type: 'image_carousel'; items: ResolvedImage[] };
+  | { type: 'image_gallery'; layout: GalleryLayout; items: ResolvedImage[] };
 
 const preparedBlocks: PreparedBlock[] = await mapWithConcurrency(blocks, 2, async (block) => {
   if (block.type === 'text') {
@@ -61,19 +64,12 @@ const preparedBlocks: PreparedBlock[] = await mapWithConcurrency(blocks, 2, asyn
     return { type: 'image_pair', items: await mapWithConcurrency(block.images, 2, (img) => resolveItem(img, PAIR_WIDTH, 85)) };
   }
 
-  if (block.type === 'image_grid') {
-    return { type: 'image_grid', items: await mapWithConcurrency(block.images, 4, (img) => resolveItem(img, GRID_WIDTH, 82)) };
-  }
-
-  if (block.type === 'image_masonry') {
-    return { type: 'image_masonry', items: await mapWithConcurrency(block.images, 4, (img) => resolveItem(img, MASONRY_WIDTH, 82)) };
-  }
-
-  if (block.type === 'image_feed') {
-    return { type: 'image_feed', items: await mapWithConcurrency(block.images, 6, resolveFeedItem) };
-  }
-
-  return { type: 'image_carousel', items: await mapWithConcurrency(block.images, 3, (img) => resolveItem(img, CAROUSEL_WIDTH, 85)) };
+  const { layout } = block;
+  return {
+    type: 'image_gallery',
+    layout,
+    items: await mapWithConcurrency(block.images, GALLERY_CONCURRENCY[layout], (img) => resolveGalleryItem(img, layout)),
+  };
 });
 
 // A single lightbox spans the whole post — every image block feeds into one
@@ -82,7 +78,8 @@ const preparedBlocks: PreparedBlock[] = await mapWithConcurrency(blocks, 2, asyn
 type IndexedBlock =
   | { type: 'text'; html: string }
   | { type: 'image'; item: ResolvedImage; caption: string | null; index: number }
-  | { type: 'image_pair' | 'image_grid' | 'image_masonry' | 'image_feed' | 'image_carousel'; items: ResolvedImage[]; startIndex: number };
+  | { type: 'image_pair'; items: ResolvedImage[]; startIndex: number }
+  | { type: 'image_gallery'; layout: GalleryLayout; items: ResolvedImage[]; startIndex: number };
 
 const allPhotos: string[] = [];
 const indexedBlocks: IndexedBlock[] = preparedBlocks.map((block) => {
@@ -140,51 +137,30 @@ const indexedBlocks: IndexedBlock[] = preparedBlocks.map((block) => {
           );
         }
 
-        if (block.type === 'image_grid') {
-          return (
-            <div class="block-grid">
-              {block.items.map((item, i) => (
-                <button type="button" class="photo-button" data-index={block.startIndex + i} aria-label="Vis bilde i fullskjerm">
-                  <img src={item.src} alt="" loading="lazy" />
-                </button>
-              ))}
-            </div>
-          );
-        }
-
-        if (block.type === 'image_masonry') {
-          return (
-            <div class="block-masonry">
-              {block.items.map((item, i) => (
-                <button type="button" class="photo-button masonry-button" data-index={block.startIndex + i} aria-label="Vis bilde i fullskjerm">
-                  <img src={item.src} alt="" loading="lazy" />
-                </button>
-              ))}
-            </div>
-          );
-        }
-
-        if (block.type === 'image_feed') {
-          return (
-            <div class="block-feed">
-              {block.items.map((item, i) => (
+        // image_gallery covers all four layouts — grid/masonry/carousel just
+        // pick the outer class the existing CSS already styles by name; feed
+        // additionally needs the .cell[data-ratio] wrapper the justified-row
+        // script reads.
+        return (
+          <div class={`block-${block.layout}`}>
+            {block.items.map((item, i) =>
+              block.layout === 'feed' ? (
                 <div class="cell" data-ratio={item.ratio ?? 1}>
                   <button type="button" class="photo-button" data-index={block.startIndex + i} aria-label="Vis bilde i fullskjerm">
                     <img src={item.src} alt="" loading="lazy" />
                   </button>
                 </div>
-              ))}
-            </div>
-          );
-        }
-
-        return (
-          <div class="block-carousel">
-            {block.items.map((item, i) => (
-              <button type="button" class="photo-button carousel-button" data-index={block.startIndex + i} aria-label="Vis bilde i fullskjerm">
-                <img src={item.src} alt="" loading="lazy" />
-              </button>
-            ))}
+              ) : (
+                <button
+                  type="button"
+                  class={`photo-button ${block.layout === 'masonry' ? 'masonry-button' : block.layout === 'carousel' ? 'carousel-button' : ''}`}
+                  data-index={block.startIndex + i}
+                  aria-label="Vis bilde i fullskjerm"
+                >
+                  <img src={item.src} alt="" loading="lazy" />
+                </button>
+              )
+            )}
           </div>
         );
       })}

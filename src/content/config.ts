@@ -60,14 +60,17 @@ const portfolio = defineCollection({
 // of a single flat body. `type` is the discriminator the CMS's variable-type
 // list widget writes by default (its `typeKey`, unset here since 'type' is
 // already the default).
+// Grid/masonry/feed/carousel used to be four separate block types, which
+// meant switching styles required deleting the block and re-adding every
+// photo. They're now one "image_gallery" type with a `layout` selector, so
+// changing the layout is just changing a dropdown.
+const galleryLayoutSchema = z.enum(['grid', 'masonry', 'feed', 'carousel']);
+
 const blogBlockSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('text'), text: z.string() }),
   z.object({ type: z.literal('image'), image: z.string(), caption: z.string().nullable().optional() }),
   z.object({ type: z.literal('image_pair'), images: z.array(z.string()) }),
-  z.object({ type: z.literal('image_grid'), images: z.array(z.string()) }),
-  z.object({ type: z.literal('image_masonry'), images: z.array(z.string()) }),
-  z.object({ type: z.literal('image_feed'), images: z.array(z.string()) }),
-  z.object({ type: z.literal('image_carousel'), images: z.array(z.string()) }),
+  z.object({ type: z.literal('image_gallery'), layout: galleryLayoutSchema, images: z.array(z.string()) }),
 ]);
 
 const blog = defineCollection({

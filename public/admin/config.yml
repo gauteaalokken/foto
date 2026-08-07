@@ -197,63 +197,25 @@ collections:
                     public_url: https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev
                     access_key_id: a74d879decb219fc298c10edd12ecda5
                     prefix: "blog/"
-          - label: "Image grid"
-            name: "image_grid"
+          - label: "Image gallery"
+            name: "image_gallery"
             widget: "object"
             fields:
+              - label: "Layout"
+                name: "layout"
+                widget: "select"
+                default: "grid"
+                hint: "Change this any time without having to re-add the photos below."
+                options:
+                  - { label: "Grid (uniform squares)", value: "grid" }
+                  - { label: "Masonry (natural proportions, multi-column)", value: "masonry" }
+                  - { label: "Dense (like Feed)", value: "feed" }
+                  - { label: "Sideways scrolling carousel", value: "carousel" }
               - label: "Images"
                 name: "images"
                 widget: "image"
                 multiple: true
-                hint: "3 or more images, shown in a grid."
-                media_libraries:
-                  cloudflare_r2:
-                    bucket: foto-photos
-                    account_id: 1904e782382751217d6103b2d39a41da
-                    public_url: https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev
-                    access_key_id: a74d879decb219fc298c10edd12ecda5
-                    prefix: "blog/"
-          - label: "Masonry"
-            name: "image_masonry"
-            widget: "object"
-            fields:
-              - label: "Images"
-                name: "images"
-                widget: "image"
-                multiple: true
-                hint: "Multi-column masonry — photos keep their own proportions instead of being cropped square."
-                media_libraries:
-                  cloudflare_r2:
-                    bucket: foto-photos
-                    account_id: 1904e782382751217d6103b2d39a41da
-                    public_url: https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev
-                    access_key_id: a74d879decb219fc298c10edd12ecda5
-                    prefix: "blog/"
-          - label: "Dense grid (like Feed)"
-            name: "image_feed"
-            widget: "object"
-            fields:
-              - label: "Images"
-                name: "images"
-                widget: "image"
-                multiple: true
-                hint: "Small square-cropped photos packed tightly, same look as the Feed page."
-                media_libraries:
-                  cloudflare_r2:
-                    bucket: foto-photos
-                    account_id: 1904e782382751217d6103b2d39a41da
-                    public_url: https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev
-                    access_key_id: a74d879decb219fc298c10edd12ecda5
-                    prefix: "blog/"
-          - label: "Sideways scrolling carousel"
-            name: "image_carousel"
-            widget: "object"
-            fields:
-              - label: "Images"
-                name: "images"
-                widget: "image"
-                multiple: true
-                hint: "Scroll sideways through these photos, one at a time."
+                hint: "3 or more images work best."
                 media_libraries:
                   cloudflare_r2:
                     bucket: foto-photos
