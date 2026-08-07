@@ -17,6 +17,13 @@ const portfolioEntry = await getEntry('portfolio', 'index');
 if (portfolioEntry?.data.showInNav) {
   navLinks.splice(1, 0, { label: "Portefølje", href: "/portefolje" });
 }
+
+// Same pattern for the blog — it always exists at /blogg, this just controls
+// whether it's linked from the nav.
+const blogSettingsEntry = await getEntry('blogSettings', 'index');
+if (blogSettingsEntry?.data.showInNav) {
+  navLinks.splice(1, 0, { label: "Blogg", href: "/blogg" });
+}
 ---
 
 <header class="site-header">

@@ -1,0 +1,206 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { getCollection } from 'astro:content';
+import { mapWithConcurrency } from '../../lib/concurrency';
+import { resolveImage, withBase } from '../../lib/resolveImage';
+import { markdownToHtml } from '../../lib/markdown';
+
+export async function getStaticPaths() {
+  const entries = await getCollection('blog');
+
+  return entries.map((entry) => ({
+    params: { slug: entry.id },
+    props: { entry },
+  }));
+}
+
+const { entry } = Astro.props;
+const { title, date, blocks } = entry.data;
+
+const TEXT_WIDTH = 1400;
+const PAIR_WIDTH = 900;
+const GRID_WIDTH = 700;
+
+type RenderedBlock =
+  | { type: 'text'; html: string }
+  | { type: 'image'; src: string; caption: string | null }
+  | { type: 'image_pair'; images: string[] }
+  | { type: 'image_grid'; images: string[] };
+
+const renderedBlocks: RenderedBlock[] = await mapWithConcurrency(blocks, 2, async (block) => {
+  if (block.type === 'text') {
+    return { type: 'text', html: await markdownToHtml(block.text) };
+  }
+
+  if (block.type === 'image') {
+    return {
+      type: 'image',
+      src: await resolveImage(block.image, TEXT_WIDTH, 85),
+      caption: block.caption ?? null,
+    };
+  }
+
+  if (block.type === 'image_pair') {
+    const images = await mapWithConcurrency(block.images, 2, (img) => resolveImage(img, PAIR_WIDTH, 85));
+    return { type: 'image_pair', images };
+  }
+
+  const images = await mapWithConcurrency(block.images, 4, (img) => resolveImage(img, GRID_WIDTH, 82));
+  return { type: 'image_grid', images };
+});
+---
+
+<Layout title={`${title} — Gaute Aaløkken`}>
+  <div class="post-page">
+    <a href={withBase('/blogg')} class="back-link">&larr; Tilbake</a>
+
+    <header class="post-header">
+      <h1>{title}</h1>
+      <span class="post-date">
+        {new Date(date).toLocaleDateString('no-NO', { year: 'numeric', month: 'long', day: 'numeric' })}
+      </span>
+    </header>
+
+    <div class="blocks">
+      {renderedBlocks.map((block) => {
+        if (block.type === 'text') {
+          return <div class="prose" set:html={block.html} />;
+        }
+
+        if (block.type === 'image') {
+          return (
+            <figure class="block-image">
+              <img src={block.src} alt="" loading="lazy" />
+              {block.caption && <figcaption>{block.caption}</figcaption>}
+            </figure>
+          );
+        }
+
+        if (block.type === 'image_pair') {
+          return (
+            <div class="block-pair">
+              {block.images.map((src) => (
+                <img src={src} alt="" loading="lazy" />
+              ))}
+            </div>
+          );
+        }
+
+        return (
+          <div class="block-grid">
+            {block.images.map((src) => (
+              <img src={src} alt="" loading="lazy" />
+            ))}
+          </div>
+        );
+      })}
+    </div>
+  </div>
+</Layout>
+
+<style>
+  .post-page {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px 20px 80px;
+  }
+
+  .back-link {
+    display: inline-block;
+    margin-bottom: 2.5rem;
+    color: #111;
+    text-decoration: none;
+    font-size: 0.9rem;
+  }
+
+  .back-link:hover {
+    opacity: 0.6;
+  }
+
+  .post-header {
+    margin-bottom: 2.5rem;
+  }
+
+  .post-header h1 {
+    font-family: 'Space Mono', monospace;
+    font-size: clamp(2rem, 5vw, 3rem);
+    font-weight: 500;
+    margin: 0 0 0.5rem;
+  }
+
+  .post-date {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.9rem;
+    color: #888;
+  }
+
+  .blocks {
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+  }
+
+  .prose {
+    font-size: 1.05rem;
+    line-height: 1.7;
+  }
+
+  .prose :global(p) {
+    margin: 0 0 1em;
+  }
+
+  .prose :global(p:last-child) {
+    margin-bottom: 0;
+  }
+
+  .prose :global(img) {
+    max-width: 100%;
+  }
+
+  .block-image {
+    margin: 0;
+  }
+
+  .block-image img {
+    width: 100%;
+    display: block;
+  }
+
+  .block-image figcaption {
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+    color: #888;
+  }
+
+  .block-pair {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .block-pair img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .block-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 10px;
+  }
+
+  .block-grid img {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    display: block;
+  }
+
+  @media (max-width: 500px) {
+    .block-pair {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

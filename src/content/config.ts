@@ -55,4 +55,37 @@ const portfolio = defineCollection({
   }),
 });
 
-export const collections = { feed, prints, projects, fjellmaraton, portfolio };
+// Each blog post is a list of content blocks so an editor can freely mix
+// text with different image layouts — including image-only posts — instead
+// of a single flat body. `type` is the discriminator the CMS's variable-type
+// list widget writes by default (its `typeKey`, unset here since 'type' is
+// already the default).
+const blogBlockSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('text'), text: z.string() }),
+  z.object({ type: z.literal('image'), image: z.string(), caption: z.string().nullable().optional() }),
+  z.object({ type: z.literal('image_pair'), images: z.array(z.string()) }),
+  z.object({ type: z.literal('image_grid'), images: z.array(z.string()) }),
+]);
+
+const blog = defineCollection({
+  type: 'data',
+  schema: z.object({
+    title: z.string(),
+    date: z.string(),
+    blocks: z.array(blogBlockSchema),
+  }),
+});
+
+// Settings for the /blogg listing page itself (title/intro shown at the top,
+// and whether it's linked from the nav) — separate from individual posts, so
+// an editor can customize the front page without touching post content.
+const blogSettings = defineCollection({
+  type: 'data',
+  schema: z.object({
+    showInNav: z.boolean().nullable().optional(),
+    title: z.string().nullable().optional(),
+    intro: z.string().nullable().optional(),
+  }),
+});
+
+export const collections = { feed, prints, projects, fjellmaraton, portfolio, blog, blogSettings };

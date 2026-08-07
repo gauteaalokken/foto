@@ -125,6 +125,89 @@ collections:
                 access_key_id: a74d879decb219fc298c10edd12ecda5
                 prefix: "fjellmaraton/"
 
+  - name: "blogSettings"
+    label: "Blog settings"
+    files:
+      - name: "main"
+        label: "Blog settings"
+        file: "src/content/blogSettings/index.yml"
+        fields:
+          - label: "Show in navigation bar"
+            name: "showInNav"
+            widget: "boolean"
+            default: false
+            hint: "The blog always exists at /blogg regardless of this — turning this on just adds a 'Blogg' link to the site navigation."
+          - { label: "Page title", name: "title", widget: "string", required: false, hint: "Optional. Defaults to 'Blogg' if left blank." }
+          - { label: "Intro text", name: "intro", widget: "text", required: false, hint: "Optional short text shown at the top of the blog listing page." }
+
+  - name: "blog"
+    label: "Blog"
+    folder: "src/content/blog"
+    create: true
+    extension: "yml"
+    format: "yml"
+    slug: "{{year}}-{{month}}-{{day}}-{{slug}}"
+    fields:
+      - { label: "Title", name: "title", widget: "string" }
+      - { label: "Date", name: "date", widget: "datetime", format: "YYYY-MM-DD", time_format: false }
+      - label: "Content blocks"
+        name: "blocks"
+        widget: "list"
+        hint: "Mix text and images freely, in any order — including image-only posts with no text blocks at all."
+        types:
+          - label: "Text"
+            name: "text"
+            widget: "object"
+            fields:
+              - { label: "Text", name: "text", widget: "markdown" }
+          - label: "Single image"
+            name: "image"
+            widget: "object"
+            fields:
+              - label: "Image"
+                name: "image"
+                widget: "image"
+                media_libraries:
+                  cloudflare_r2:
+                    bucket: foto-photos
+                    account_id: 1904e782382751217d6103b2d39a41da
+                    public_url: https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev
+                    access_key_id: a74d879decb219fc298c10edd12ecda5
+                    prefix: "blog/"
+              - { label: "Caption", name: "caption", widget: "string", required: false }
+          - label: "Two images side by side"
+            name: "image_pair"
+            widget: "object"
+            fields:
+              - label: "Images"
+                name: "images"
+                widget: "image"
+                multiple: true
+                hint: "Exactly 2 images."
+                media_libraries:
+                  cloudflare_r2:
+                    bucket: foto-photos
+                    account_id: 1904e782382751217d6103b2d39a41da
+                    public_url: https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev
+                    access_key_id: a74d879decb219fc298c10edd12ecda5
+                    prefix: "blog/"
+          - label: "Image grid"
+            name: "image_grid"
+            widget: "object"
+            fields:
+              - label: "Images"
+                name: "images"
+                widget: "image"
+                multiple: true
+                hint: "3 or more images, shown in a grid."
+                media_libraries:
+                  cloudflare_r2:
+                    bucket: foto-photos
+                    account_id: 1904e782382751217d6103b2d39a41da
+                    public_url: https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev
+                    access_key_id: a74d879decb219fc298c10edd12ecda5
+                    prefix: "blog/"
+
   - name: "prints"
     label: "Prints"
     folder: "src/content/prints"
