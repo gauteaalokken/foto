@@ -2,7 +2,7 @@
 import Layout from '../../layouts/Layout.astro';
 import { getCollection } from 'astro:content';
 import { mapWithConcurrency } from '../../lib/concurrency';
-import { resolveImage, withBase } from '../../lib/resolveImage';
+import { isRemote, resolveImage, withBase } from '../../lib/resolveImage';
 import { markdownToHtml } from '../../lib/markdown';
 
 export async function getStaticPaths() {
@@ -15,38 +15,80 @@ export async function getStaticPaths() {
 }
 
 const { entry } = Astro.props;
-const { title, date, blocks } = entry.data;
+const { title, date, blocks, openInLightbox } = entry.data;
 
 const TEXT_WIDTH = 1400;
 const PAIR_WIDTH = 900;
 const GRID_WIDTH = 700;
+const MASONRY_WIDTH = 700;
+const FEED_WIDTH = 500;
+const CAROUSEL_WIDTH = 1200;
 
-type RenderedBlock =
+type ResolvedImage = { src: string; full: string };
+
+const resolveItem = async (src: string, width: number, quality: number): Promise<ResolvedImage> => ({
+  src: await resolveImage(src, width, quality),
+  full: isRemote(src) ? src : withBase(src),
+});
+
+type PreparedBlock =
   | { type: 'text'; html: string }
-  | { type: 'image'; src: string; caption: string | null }
-  | { type: 'image_pair'; images: string[] }
-  | { type: 'image_grid'; images: string[] };
+  | { type: 'image'; item: ResolvedImage; caption: string | null }
+  | { type: 'image_pair'; items: ResolvedImage[] }
+  | { type: 'image_grid'; items: ResolvedImage[] }
+  | { type: 'image_masonry'; items: ResolvedImage[] }
+  | { type: 'image_feed'; items: ResolvedImage[] }
+  | { type: 'image_carousel'; items: ResolvedImage[] };
 
-const renderedBlocks: RenderedBlock[] = await mapWithConcurrency(blocks, 2, async (block) => {
+const preparedBlocks: PreparedBlock[] = await mapWithConcurrency(blocks, 2, async (block) => {
   if (block.type === 'text') {
     return { type: 'text', html: await markdownToHtml(block.text) };
   }
 
   if (block.type === 'image') {
-    return {
-      type: 'image',
-      src: await resolveImage(block.image, TEXT_WIDTH, 85),
-      caption: block.caption ?? null,
-    };
+    return { type: 'image', item: await resolveItem(block.image, TEXT_WIDTH, 85), caption: block.caption ?? null };
   }
 
   if (block.type === 'image_pair') {
-    const images = await mapWithConcurrency(block.images, 2, (img) => resolveImage(img, PAIR_WIDTH, 85));
-    return { type: 'image_pair', images };
+    return { type: 'image_pair', items: await mapWithConcurrency(block.images, 2, (img) => resolveItem(img, PAIR_WIDTH, 85)) };
   }
 
-  const images = await mapWithConcurrency(block.images, 4, (img) => resolveImage(img, GRID_WIDTH, 82));
-  return { type: 'image_grid', images };
+  if (block.type === 'image_grid') {
+    return { type: 'image_grid', items: await mapWithConcurrency(block.images, 4, (img) => resolveItem(img, GRID_WIDTH, 82)) };
+  }
+
+  if (block.type === 'image_masonry') {
+    return { type: 'image_masonry', items: await mapWithConcurrency(block.images, 4, (img) => resolveItem(img, MASONRY_WIDTH, 82)) };
+  }
+
+  if (block.type === 'image_feed') {
+    return { type: 'image_feed', items: await mapWithConcurrency(block.images, 6, (img) => resolveItem(img, FEED_WIDTH, 70)) };
+  }
+
+  return { type: 'image_carousel', items: await mapWithConcurrency(block.images, 3, (img) => resolveItem(img, CAROUSEL_WIDTH, 85)) };
+});
+
+// A single lightbox spans the whole post — every image block feeds into one
+// shared, ordered list of full-quality photos, so prev/next keeps working
+// across block boundaries instead of being scoped to just one block.
+type IndexedBlock =
+  | { type: 'text'; html: string }
+  | { type: 'image'; item: ResolvedImage; caption: string | null; index: number }
+  | { type: 'image_pair' | 'image_grid' | 'image_masonry' | 'image_feed' | 'image_carousel'; items: ResolvedImage[]; startIndex: number };
+
+const allPhotos: string[] = [];
+const indexedBlocks: IndexedBlock[] = preparedBlocks.map((block) => {
+  if (block.type === 'text') return block;
+
+  if (block.type === 'image') {
+    const index = allPhotos.length;
+    allPhotos.push(block.item.full);
+    return { ...block, index };
+  }
+
+  const startIndex = allPhotos.length;
+  block.items.forEach((item) => allPhotos.push(item.full));
+  return { ...block, startIndex };
 });
 ---
 
@@ -62,7 +104,7 @@ const renderedBlocks: RenderedBlock[] = await mapWithConcurrency(blocks, 2, asyn
     </header>
 
     <div class="blocks">
-      {renderedBlocks.map((block) => {
+      {indexedBlocks.map((block) => {
         if (block.type === 'text') {
           return <div class="prose" set:html={block.html} />;
         }
@@ -70,7 +112,9 @@ const renderedBlocks: RenderedBlock[] = await mapWithConcurrency(blocks, 2, asyn
         if (block.type === 'image') {
           return (
             <figure class="block-image">
-              <img src={block.src} alt="" loading="lazy" />
+              <button type="button" class="photo-button" data-index={block.index} aria-label="Vis bilde i fullskjerm">
+                <img src={block.item.src} alt="" loading="lazy" />
+              </button>
               {block.caption && <figcaption>{block.caption}</figcaption>}
             </figure>
           );
@@ -79,24 +123,124 @@ const renderedBlocks: RenderedBlock[] = await mapWithConcurrency(blocks, 2, asyn
         if (block.type === 'image_pair') {
           return (
             <div class="block-pair">
-              {block.images.map((src) => (
-                <img src={src} alt="" loading="lazy" />
+              {block.items.map((item, i) => (
+                <button type="button" class="photo-button" data-index={block.startIndex + i} aria-label="Vis bilde i fullskjerm">
+                  <img src={item.src} alt="" loading="lazy" />
+                </button>
+              ))}
+            </div>
+          );
+        }
+
+        if (block.type === 'image_grid') {
+          return (
+            <div class="block-grid">
+              {block.items.map((item, i) => (
+                <button type="button" class="photo-button" data-index={block.startIndex + i} aria-label="Vis bilde i fullskjerm">
+                  <img src={item.src} alt="" loading="lazy" />
+                </button>
+              ))}
+            </div>
+          );
+        }
+
+        if (block.type === 'image_masonry') {
+          return (
+            <div class="block-masonry">
+              {block.items.map((item, i) => (
+                <button type="button" class="photo-button masonry-button" data-index={block.startIndex + i} aria-label="Vis bilde i fullskjerm">
+                  <img src={item.src} alt="" loading="lazy" />
+                </button>
+              ))}
+            </div>
+          );
+        }
+
+        if (block.type === 'image_feed') {
+          return (
+            <div class="block-feed">
+              {block.items.map((item, i) => (
+                <button type="button" class="photo-button" data-index={block.startIndex + i} aria-label="Vis bilde i fullskjerm">
+                  <img src={item.src} alt="" loading="lazy" />
+                </button>
               ))}
             </div>
           );
         }
 
         return (
-          <div class="block-grid">
-            {block.images.map((src) => (
-              <img src={src} alt="" loading="lazy" />
+          <div class="block-carousel">
+            {block.items.map((item, i) => (
+              <button type="button" class="photo-button carousel-button" data-index={block.startIndex + i} aria-label="Vis bilde i fullskjerm">
+                <img src={item.src} alt="" loading="lazy" />
+              </button>
             ))}
           </div>
         );
       })}
     </div>
   </div>
+
+  <div id="lightbox" class="lightbox" hidden>
+    <button type="button" id="lightbox-close" class="lightbox-close" aria-label="Lukk">&times;</button>
+    <button type="button" id="lightbox-prev" class="lightbox-nav lightbox-prev" aria-label="Forrige bilde">&#8249;</button>
+    <img id="lightbox-img" class="lightbox-img" alt="" />
+    <button type="button" id="lightbox-next" class="lightbox-nav lightbox-next" aria-label="Neste bilde">&#8250;</button>
+  </div>
+
+  <script type="application/json" id="post-photos" set:html={JSON.stringify(allPhotos)} />
+  <script type="application/json" id="post-open-lightbox" set:html={JSON.stringify(!!openInLightbox)} />
 </Layout>
+
+<script>
+  const photosEl = document.getElementById('post-photos');
+  const fullPhotos: string[] = photosEl ? JSON.parse(photosEl.textContent || '[]') : [];
+  const openFlagEl = document.getElementById('post-open-lightbox');
+  const openOnLoad: boolean = openFlagEl ? JSON.parse(openFlagEl.textContent || 'false') : false;
+
+  const buttons = Array.from(document.querySelectorAll<HTMLButtonElement>('.photo-button'));
+  const lightbox = document.getElementById('lightbox') as HTMLDivElement;
+  const lightboxImg = document.getElementById('lightbox-img') as HTMLImageElement;
+  let currentIndex = -1;
+
+  const show = (index: number) => {
+    if (fullPhotos.length === 0) return;
+    currentIndex = (index + fullPhotos.length) % fullPhotos.length;
+    lightboxImg.src = fullPhotos[currentIndex];
+  };
+
+  const open = (index: number) => {
+    show(index);
+    lightbox.hidden = false;
+    document.body.style.overflow = 'hidden';
+  };
+
+  const close = () => {
+    lightbox.hidden = true;
+    document.body.style.overflow = '';
+  };
+
+  buttons.forEach((button) => {
+    button.addEventListener('click', () => open(Number(button.dataset.index)));
+  });
+
+  document.getElementById('lightbox-close')?.addEventListener('click', close);
+  document.getElementById('lightbox-prev')?.addEventListener('click', () => show(currentIndex - 1));
+  document.getElementById('lightbox-next')?.addEventListener('click', () => show(currentIndex + 1));
+
+  lightbox.addEventListener('click', (event) => {
+    if (event.target === lightbox) close();
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (lightbox.hidden) return;
+    if (event.key === 'Escape') close();
+    if (event.key === 'ArrowLeft') show(currentIndex - 1);
+    if (event.key === 'ArrowRight') show(currentIndex + 1);
+  });
+
+  if (openOnLoad) open(0);
+</script>
 
 <style>
   .post-page {
@@ -157,13 +301,25 @@ const renderedBlocks: RenderedBlock[] = await mapWithConcurrency(blocks, 2, asyn
     max-width: 100%;
   }
 
-  .block-image {
+  .photo-button {
+    display: block;
+    width: 100%;
+    height: 100%;
     margin: 0;
+    padding: 0;
+    border: none;
+    background: none;
+    cursor: zoom-in;
   }
 
-  .block-image img {
+  .photo-button img {
     width: 100%;
+    height: 100%;
     display: block;
+  }
+
+  .block-image {
+    margin: 0;
   }
 
   .block-image figcaption {
@@ -179,10 +335,7 @@ const renderedBlocks: RenderedBlock[] = await mapWithConcurrency(blocks, 2, asyn
   }
 
   .block-pair img {
-    width: 100%;
-    height: 100%;
     object-fit: cover;
-    display: block;
   }
 
   .block-grid {
@@ -192,15 +345,133 @@ const renderedBlocks: RenderedBlock[] = await mapWithConcurrency(blocks, 2, asyn
   }
 
   .block-grid img {
-    width: 100%;
     aspect-ratio: 1;
     object-fit: cover;
-    display: block;
+  }
+
+  /* Masonry: natural aspect ratio, packed into columns like /portefolje. */
+  .block-masonry {
+    column-count: 2;
+    column-gap: 10px;
+  }
+
+  @media (min-width: 500px) {
+    .block-masonry {
+      column-count: 3;
+    }
+  }
+
+  .masonry-button {
+    margin: 0 0 10px;
+    break-inside: avoid;
+  }
+
+  .masonry-button img {
+    height: auto;
+  }
+
+  /* Dense grid: same tight square-crop look as the Feed page. */
+  .block-feed {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .block-feed .photo-button {
+    width: 90px;
+  }
+
+  .block-feed img {
+    aspect-ratio: 1;
+    object-fit: cover;
+  }
+
+  @media (min-width: 640px) {
+    .block-feed .photo-button {
+      width: 110px;
+    }
+  }
+
+  /* Sideways-scrolling carousel: snap one photo at a time, natural ratio. */
+  .block-carousel {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    margin: 0 -20px;
+    padding: 0 20px;
+  }
+
+  .carousel-button {
+    flex: 0 0 auto;
+    width: auto;
+    height: 70vh;
+    max-height: 600px;
+    scroll-snap-align: center;
+  }
+
+  .carousel-button img {
+    width: auto;
+    height: 100%;
+    object-fit: contain;
   }
 
   @media (max-width: 500px) {
     .block-pair {
       grid-template-columns: 1fr;
     }
+
+    .carousel-button {
+      height: 50vh;
+    }
+  }
+
+  .lightbox {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.92);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+
+  .lightbox[hidden] {
+    display: none;
+  }
+
+  .lightbox-img {
+    max-width: 90vw;
+    max-height: 90vh;
+    object-fit: contain;
+  }
+
+  .lightbox-close,
+  .lightbox-nav {
+    position: absolute;
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 2.5rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0.5rem 1rem;
+  }
+
+  .lightbox-close {
+    top: 1rem;
+    right: 1.5rem;
+  }
+
+  .lightbox-prev {
+    left: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+
+  .lightbox-next {
+    right: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
   }
 </style>

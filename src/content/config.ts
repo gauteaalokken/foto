@@ -65,13 +65,22 @@ const blogBlockSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('image'), image: z.string(), caption: z.string().nullable().optional() }),
   z.object({ type: z.literal('image_pair'), images: z.array(z.string()) }),
   z.object({ type: z.literal('image_grid'), images: z.array(z.string()) }),
+  z.object({ type: z.literal('image_masonry'), images: z.array(z.string()) }),
+  z.object({ type: z.literal('image_feed'), images: z.array(z.string()) }),
+  z.object({ type: z.literal('image_carousel'), images: z.array(z.string()) }),
 ]);
 
 const blog = defineCollection({
   type: 'data',
   schema: z.object({
     title: z.string(),
-    date: z.string(),
+    // The CMS's datetime widget writes an unquoted date (e.g. `2026-08-07`),
+    // which YAML parses as a native Date, not a string — z.coerce.date()
+    // accepts either that or a plain string.
+    date: z.coerce.date(),
+    // When set, the post opens straight into the fullscreen lightbox
+    // (starting at the first photo) instead of the normal block layout.
+    openInLightbox: z.boolean().nullable().optional(),
     blocks: z.array(blogBlockSchema),
   }),
 });

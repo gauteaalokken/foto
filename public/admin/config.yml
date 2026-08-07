@@ -150,6 +150,12 @@ collections:
     fields:
       - { label: "Title", name: "title", widget: "string" }
       - { label: "Date", name: "date", widget: "datetime", format: "YYYY-MM-DD", time_format: false }
+      - label: "Open directly in lightbox view"
+        name: "openInLightbox"
+        widget: "boolean"
+        default: false
+        required: false
+        hint: "When on, the post opens straight into the fullscreen photo viewer (starting at the first image) instead of the normal page layout."
       - label: "Content blocks"
         name: "blocks"
         widget: "list"
@@ -200,6 +206,54 @@ collections:
                 widget: "image"
                 multiple: true
                 hint: "3 or more images, shown in a grid."
+                media_libraries:
+                  cloudflare_r2:
+                    bucket: foto-photos
+                    account_id: 1904e782382751217d6103b2d39a41da
+                    public_url: https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev
+                    access_key_id: a74d879decb219fc298c10edd12ecda5
+                    prefix: "blog/"
+          - label: "Masonry"
+            name: "image_masonry"
+            widget: "object"
+            fields:
+              - label: "Images"
+                name: "images"
+                widget: "image"
+                multiple: true
+                hint: "Multi-column masonry — photos keep their own proportions instead of being cropped square."
+                media_libraries:
+                  cloudflare_r2:
+                    bucket: foto-photos
+                    account_id: 1904e782382751217d6103b2d39a41da
+                    public_url: https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev
+                    access_key_id: a74d879decb219fc298c10edd12ecda5
+                    prefix: "blog/"
+          - label: "Dense grid (like Feed)"
+            name: "image_feed"
+            widget: "object"
+            fields:
+              - label: "Images"
+                name: "images"
+                widget: "image"
+                multiple: true
+                hint: "Small square-cropped photos packed tightly, same look as the Feed page."
+                media_libraries:
+                  cloudflare_r2:
+                    bucket: foto-photos
+                    account_id: 1904e782382751217d6103b2d39a41da
+                    public_url: https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev
+                    access_key_id: a74d879decb219fc298c10edd12ecda5
+                    prefix: "blog/"
+          - label: "Sideways scrolling carousel"
+            name: "image_carousel"
+            widget: "object"
+            fields:
+              - label: "Images"
+                name: "images"
+                widget: "image"
+                multiple: true
+                hint: "Scroll sideways through these photos, one at a time."
                 media_libraries:
                   cloudflare_r2:
                     bucket: foto-photos
