@@ -1,4 +1,6 @@
 ---
+import { getEntry } from 'astro:content';
+
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 const withBase = (path: string) => `${base}/${path.replace(/^\//, '')}`;
 
@@ -8,6 +10,13 @@ const navLinks = [
   { label: "Feed", href: "/feed" },
   { label: "Fotoverktøy", href: "/fotoverktoy/index.html" },
 ];
+
+// The portfolio page always exists at /portefolje — this only controls
+// whether it's linked from the nav, e.g. when showing it to a client.
+const portfolioEntry = await getEntry('portfolio', 'index');
+if (portfolioEntry?.data.showInNav) {
+  navLinks.splice(1, 0, { label: "Portefølje", href: "/portefolje" });
+}
 ---
 
 <header class="site-header">

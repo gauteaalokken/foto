@@ -67,6 +67,31 @@ collections:
                 access_key_id: a74d879decb219fc298c10edd12ecda5
                 prefix: "feed/"
 
+  - name: "portfolio"
+    label: "Portfolio (for clients)"
+    files:
+      - name: "main"
+        label: "Portfolio (for clients)"
+        file: "src/content/portfolio/index.yml"
+        fields:
+          - label: "Show in navigation bar"
+            name: "showInNav"
+            widget: "boolean"
+            default: false
+            hint: "The page always exists at /portefolje regardless of this — turning this on just adds a 'Portefølje' link to the site navigation, e.g. when you want to send it to a potential client."
+          - label: "Photos"
+            name: "photos"
+            widget: "image"
+            multiple: true
+            hint: "A curated set of photos for a classic full-portfolio page — separate from the project pages."
+            media_libraries:
+              cloudflare_r2:
+                bucket: foto-photos
+                account_id: 1904e782382751217d6103b2d39a41da
+                public_url: https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev
+                access_key_id: a74d879decb219fc298c10edd12ecda5
+                prefix: "portfolio/"
+
   - name: "fjellmaraton"
     label: "Flaksjøen Fjellmaraton"
     files:

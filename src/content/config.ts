@@ -44,4 +44,15 @@ const fjellmaraton = defineCollection({
   }),
 });
 
-export const collections = { feed, prints, projects, fjellmaraton };
+// A classic full-portfolio page (like the old homepage), kept for showing to
+// a potential client. Always exists at /portefolje; showInNav just controls
+// whether it's linked from the site navigation — see Header.astro.
+const portfolio = defineCollection({
+  type: 'data',
+  schema: z.object({
+    showInNav: z.boolean().nullable().optional(),
+    photos: z.array(z.string()),
+  }),
+});
+
+export const collections = { feed, prints, projects, fjellmaraton, portfolio };
