@@ -2,7 +2,7 @@
 import Layout from '../../layouts/Layout.astro';
 import { getCollection } from 'astro:content';
 import { mapWithConcurrency } from '../../lib/concurrency';
-import { isRemote, resolveImage, withBase } from '../../lib/resolveImage';
+import { isRemote, resolveImage, resolveImageWithAspectRatio, withBase } from '../../lib/resolveImage';
 import { markdownToHtml } from '../../lib/markdown';
 
 export async function getStaticPaths() {
@@ -24,12 +24,20 @@ const MASONRY_WIDTH = 700;
 const FEED_WIDTH = 500;
 const CAROUSEL_WIDTH = 1200;
 
-type ResolvedImage = { src: string; full: string };
+type ResolvedImage = { src: string; full: string; ratio?: number };
 
 const resolveItem = async (src: string, width: number, quality: number): Promise<ResolvedImage> => ({
   src: await resolveImage(src, width, quality),
   full: isRemote(src) ? src : withBase(src),
 });
+
+// Feed-style blocks need each photo's real aspect ratio (not just a resized
+// src) so the client-side layout can pack them into justified rows like the
+// actual /feed page — variable-width photos, not uniform square crops.
+const resolveFeedItem = async (src: string): Promise<ResolvedImage> => {
+  const resolved = await resolveImageWithAspectRatio(src, FEED_WIDTH, 70);
+  return { src: resolved.src, full: isRemote(src) ? src : withBase(src), ratio: resolved.aspectRatio };
+};
 
 type PreparedBlock =
   | { type: 'text'; html: string }
@@ -62,7 +70,7 @@ const preparedBlocks: PreparedBlock[] = await mapWithConcurrency(blocks, 2, asyn
   }
 
   if (block.type === 'image_feed') {
-    return { type: 'image_feed', items: await mapWithConcurrency(block.images, 6, (img) => resolveItem(img, FEED_WIDTH, 70)) };
+    return { type: 'image_feed', items: await mapWithConcurrency(block.images, 6, resolveFeedItem) };
   }
 
   return { type: 'image_carousel', items: await mapWithConcurrency(block.images, 3, (img) => resolveItem(img, CAROUSEL_WIDTH, 85)) };
@@ -160,9 +168,11 @@ const indexedBlocks: IndexedBlock[] = preparedBlocks.map((block) => {
           return (
             <div class="block-feed">
               {block.items.map((item, i) => (
-                <button type="button" class="photo-button" data-index={block.startIndex + i} aria-label="Vis bilde i fullskjerm">
-                  <img src={item.src} alt="" loading="lazy" />
-                </button>
+                <div class="cell" data-ratio={item.ratio ?? 1}>
+                  <button type="button" class="photo-button" data-index={block.startIndex + i} aria-label="Vis bilde i fullskjerm">
+                    <img src={item.src} alt="" loading="lazy" />
+                  </button>
+                </div>
               ))}
             </div>
           );
@@ -193,6 +203,83 @@ const indexedBlocks: IndexedBlock[] = preparedBlocks.map((block) => {
 </Layout>
 
 <script>
+  // Justified-row layout for .block-feed blocks — same approach as the Feed
+  // page: pack photos at their real aspect ratio into rows targeting a
+  // column count by breakpoint, instead of cropping everything to squares.
+  // A post can have more than one image_feed block, so this runs on all of
+  // them independently.
+  const FEED_GAP = 4;
+
+  const getFeedTargetRowHeight = (containerWidth: number) => {
+    let columns: number;
+    if (containerWidth >= 1440) columns = 20;
+    else if (containerWidth >= 1200) columns = 14;
+    else if (containerWidth >= 768) columns = 9;
+    else if (containerWidth >= 480) columns = 7;
+    else columns = 5;
+
+    const cellWidth = (containerWidth - FEED_GAP * (columns - 1)) / columns;
+    return cellWidth * (4 / 3);
+  };
+
+  const layoutFeedGrid = (grid: HTMLElement) => {
+    const cells = Array.from(grid.children) as HTMLElement[];
+    if (cells.length === 0) return;
+
+    const containerWidth = grid.clientWidth;
+    if (containerWidth <= 0) return;
+
+    const targetHeight = getFeedTargetRowHeight(containerWidth);
+    const maxHeight = targetHeight * 1.8;
+
+    let row: HTMLElement[] = [];
+    let rowRatioSum = 0;
+
+    const flushRow = () => {
+      if (row.length === 0) return;
+
+      const naturalHeight = (containerWidth - FEED_GAP * (row.length - 1)) / rowRatioSum;
+      const height = Math.min(naturalHeight, maxHeight);
+      const isCapped = height < naturalHeight;
+
+      let usedWidth = 0;
+
+      row.forEach((cell, i) => {
+        const ratio = parseFloat(cell.dataset.ratio || '1') || 1;
+        const isLastInRow = i === row.length - 1;
+        const width = !isCapped && isLastInRow ? containerWidth - usedWidth : Math.round(ratio * height);
+
+        cell.style.width = `${width}px`;
+        cell.style.height = `${height}px`;
+        usedWidth += width + FEED_GAP;
+      });
+
+      row = [];
+      rowRatioSum = 0;
+    };
+
+    for (const cell of cells) {
+      const ratio = parseFloat(cell.dataset.ratio || '1') || 1;
+      row.push(cell);
+      rowRatioSum += ratio;
+
+      const widthAtTarget = rowRatioSum * targetHeight + FEED_GAP * (row.length - 1);
+      if (widthAtTarget >= containerWidth) flushRow();
+    }
+
+    flushRow();
+  };
+
+  const feedGrids = Array.from(document.querySelectorAll<HTMLElement>('.block-feed'));
+  const layoutAllFeedGrids = () => feedGrids.forEach(layoutFeedGrid);
+  layoutAllFeedGrids();
+
+  let feedResizeTimer: ReturnType<typeof setTimeout>;
+  window.addEventListener('resize', () => {
+    clearTimeout(feedResizeTimer);
+    feedResizeTimer = setTimeout(layoutAllFeedGrids, 150);
+  });
+
   const photosEl = document.getElementById('post-photos');
   const fullPhotos: string[] = photosEl ? JSON.parse(photosEl.textContent || '[]') : [];
   const openFlagEl = document.getElementById('post-open-lightbox');
@@ -370,26 +457,22 @@ const indexedBlocks: IndexedBlock[] = preparedBlocks.map((block) => {
     height: auto;
   }
 
-  /* Dense grid: same tight square-crop look as the Feed page. */
+  /* Dense grid: justified rows at each photo's real aspect ratio, packed
+     tightly — same look as the Feed page. Cell width/height are set by the
+     layout script above, not CSS. */
   .block-feed {
     display: flex;
     flex-wrap: wrap;
     gap: 4px;
   }
 
-  .block-feed .photo-button {
-    width: 90px;
+  .block-feed .cell {
+    overflow: hidden;
+    background: #eee;
   }
 
   .block-feed img {
-    aspect-ratio: 1;
     object-fit: cover;
-  }
-
-  @media (min-width: 640px) {
-    .block-feed .photo-button {
-      width: 110px;
-    }
   }
 
   /* Sideways-scrolling carousel: snap one photo at a time, natural ratio. */
