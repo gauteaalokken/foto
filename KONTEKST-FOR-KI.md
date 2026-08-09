@@ -1,7 +1,7 @@
 # KONTEKST-FOR-KI
 
 Startpakke for KI-modeller uten tilgang til repoet. Lim inn hele fila øverst i chatten.
-Sist oppdatert: 2026-08-05. Alle verdier er lest ut av repoet, ikke gjettet.
+Sist oppdatert: 2026-08-09. Alle verdier er lest ut av repoet, ikke gjettet.
 
 Søsterfila [VEDLIKEHOLD.md](VEDLIKEHOLD.md) er den praktiske steg-for-steg-guiden for mennesket
 som drifter siden. Denne fila er den tekniske referansen for KI-en som hjelper til.
@@ -15,7 +15,8 @@ som drifter siden. Denne fila er den tekniske referansen for KI-en som hjelper t
 - Innhold ligger som **YAML-filer i repoet** (`src/content/`), redigert via **Sveltia CMS** på `/admin`.
 - Bilder ligger i **Cloudflare R2** (offentlig bøtte), ikke i repoet. Innholdsfilene inneholder bare URL-er.
 - Publisering: push til `main` → **GitHub Actions** bygger → **GitHub Pages**. (Ikke Cloudflare Pages — Cloudflare brukes kun til bildelagring.)
-- Sider: forside (prosjekter), prosjektside per prosjekt, Prints, Feed, Flaksjøen Fjellmaraton (med påmeldingsskjema), 404, samt statiske HTML-verktøy under `/fotoverktoy/`.
+- Sider: forside (prosjekter), prosjektside per prosjekt, Prints, Feed, Flaksjøen Fjellmaraton (med påmeldingsskjema), Blogg, Portefølje, 404, samt statiske HTML-verktøy under `/fotoverktoy/`.
+- **Blogg og Portefølje finnes alltid** på `/blogg` og `/portefolje`, men er som standard ikke lenket fra menyen — det styres av `showInNav` i CMS-en.
 - Ingen CSS-rammeverk, ingen komponentbibliotek, ingen design tokens — all CSS er skrevet for hånd inne i hver `.astro`-fil.
 
 ---
@@ -43,6 +44,19 @@ som drifter siden. Denne fila er den tekniske referansen for KI-en som hjelper t
 - `sharp` **0.33.5** — kommer med Astro, brukes direkte av `src/lib/resolveImage.ts` og `scripts/sort-feed.mjs` til bildeskalering og fargeanalyse.
 - `vite` **5.4.21** — Astros byggeverktøy, brukes ikke direkte.
 
+**⚠️ Udeklarerte avhengigheter — viktig å vite om**
+`src/lib/markdown.ts` importerer fem pakker som **ikke står i `package.json`**:
+
+| Pakke | Installert | Brukes til |
+|---|---|---|
+| `unified` | 11.0.5 | Motoren som kjører markdown-konverteringen |
+| `remark-parse` | 11.0.0 | Leser markdown |
+| `remark-gfm` | 4.0.1 | GitHub-dialekt (tabeller, gjennomstreking) |
+| `remark-rehype` | 11.1.2 | Markdown → HTML-struktur |
+| `rehype-stringify` | 10.0.1 | HTML-struktur → HTML-tekst |
+
+De virker i dag fordi de følger med Astro og ligger låst i `package-lock.json`. Det er **ikke** en feil som må fikses nå, men det betyr at bloggens tekstblokker kan slutte å bygge hvis Astro en dag endrer sitt eget avhengighetstre. Skjer det, er løsningen å legge de fem inn i `dependencies` i `package.json` — ikke å skrive om `markdown.ts`.
+
 **Integrasjoner**
 - Ingen offisielle Astro-integrasjoner (`@astrojs/*`) i det hele tatt.
 - Én egendefinert integrasjon, `flush-staged-images`, definert direkte i `astro.config.mjs`. Se punkt 9.
@@ -64,7 +78,9 @@ foto/
 ├── astro.config.mjs               Astro-konfig + egen bilde-integrasjon. Du redigerer sjelden.
 ├── package.json                   Avhengigheter og npm-kommandoer.
 ├── package-lock.json              Låste versjoner. GENERERT — rediger aldri for hånd.
-├── README.md                      Tom i praksis (innholder bare "# foto").
+├── README.md                      Kort oversikt + pekere til de to dokumentasjonsfilene.
+├── KONTEKST-FOR-KI.md             Denne fila. Teknisk referanse for KI-modeller.
+├── VEDLIKEHOLD.md                 Praktisk steg-for-steg-guide for mennesket som drifter siden.
 │
 ├── public/                        Kopieres rått til nettsiden, uendret.
 │   ├── CNAME                      "gauteaalokken.com" — knytter domenet til GitHub Pages. IKKE SLETT.
@@ -88,17 +104,21 @@ foto/
 │
 ├── src/
 │   ├── content/
-│   │   ├── config.ts              Definerer og validerer de fire collections. Kode, ikke innhold.
+│   │   ├── config.ts              Definerer og validerer de sju collections. Kode, ikke innhold.
 │   │   ├── projects/*.yml         14 prosjekter. Én fil per prosjekt. Skrives av CMS.
 │   │   ├── prints/*.yml           17 prints. Én fil per print. Skrives av CMS.
+│   │   ├── blog/*.yml             1 blogginnlegg. Én fil per innlegg. Skrives av CMS.
 │   │   ├── feed/index.yml         Én fil, 936 bilde-URL-er. Skrives av CMS eller sort-feed.mjs.
-│   │   └── fjellmaraton/index.yml Én fil, 3 toppbilder + 46 galleribilder.
+│   │   ├── fjellmaraton/index.yml Én fil, 3 toppbilder + 46 galleribilder.
+│   │   ├── blogSettings/index.yml Én fil. Tittel, intro, layout og nav-synlighet for /blogg.
+│   │   └── portfolio/index.yml    Én fil. Bildeliste + nav-synlighet for /portefolje. Tom i dag.
 │   ├── layouts/Layout.astro       Felles HTML-skall: <head>, meta/SEO, global CSS, header.
 │   ├── components/Header.astro    Toppmeny (eneste komponent i prosjektet).
 │   ├── lib/                       Hjelpekode for bildehåndtering. Rør bare hvis du vet hva du gjør.
 │   │   ├── resolveImage.ts        Skalerer et R2-bilde med sharp, returnerer lokal /optimized/-sti.
 │   │   ├── imageOutputQueue.ts    Mellomlagring av skalerte bilder på disk mellom bygg.
-│   │   ├── fetchBuffer.ts         Nedlasting med timeout og 3 forsøk.
+│   │   ├── fetchBuffer.ts         Nedlasting med timeout, 3 forsøk og URL-koding.
+│   │   ├── markdown.ts            Markdown → HTML. Brukes kun av bloggens tekstblokker.
 │   │   └── concurrency.ts         Kjører maks N nedlastinger samtidig.
 │   ├── pages/                     Én fil = én URL.
 │   │   ├── index.astro            /                    (forside, prosjektrutenett)
@@ -107,7 +127,10 @@ foto/
 │   │   ├── feed/index.astro       /feed
 │   │   ├── prints/index.astro     /prints
 │   │   ├── prints/[slug].astro    /prints/<slug>       (én side per print-fil)
-│   │   └── prosjekter/[slug].astro /prosjekter/<slug>  (én side per prosjekt-fil)
+│   │   ├── prosjekter/[slug].astro /prosjekter/<slug>  (én side per prosjekt-fil)
+│   │   ├── portefolje.astro       /portefolje          (skjult med mindre showInNav er på)
+│   │   ├── blogg/index.astro      /blogg               (skjult med mindre showInNav er på)
+│   │   └── blogg/[slug].astro     /blogg/<slug>        (én side per blogginnlegg)
 │   └── env.d.ts                   Typedefinisjoner. Rør ikke.
 │
 ├── dist/                          GENERERT av bygget. Git-ignorert. Rør aldri.
@@ -119,7 +142,7 @@ foto/
 
 ## 4. INNHOLDSMODELL
 
-Fire collections, definert to steder som må stemme overens:
+Sju collections, definert to steder som må stemme overens:
 `src/content/config.ts` (validering ved bygg) og `public/admin/config.yml` (redigeringsskjema i CMS).
 **Legger du til et felt ett sted må du legge det til begge stedene.**
 
@@ -149,6 +172,79 @@ pages:
   - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/projects/GAUT4010.jpg
 ```
 Merk: fire eldre filer (`flyktningsruta`, `balkan-boys`, `5-år-med-smilebu-t-o-ur`, `julaften`) mangler `cover`-nøkkelen helt. Det er gyldig — feltet er valgfritt.
+
+### `blog` — mappe-collection
+- Filer: `src/content/blog/<slug>.yml`, 1 stk i dag (`2026-08-07-test.yml`).
+- URL: `/blogg/<filnavn-uten-.yml>`
+- CMS-en lager filnavnet som `{{year}}-{{month}}-{{day}}-{{slug}}`, altså `2026-08-07-test`.
+
+| Felt | Type | Påkrevd | Styrer |
+|---|---|---|---|
+| `title` | tekst | Ja | Overskrift på innlegget og tittel i listen på /blogg. |
+| `date` | dato (uten fnutter) | Ja | Vises som «7. august 2026» og sorterer listen, nyeste først. CMS-en skriver den uten fnutter, så YAML tolker den som en ekte dato — derfor `z.coerce.date()` i schemaet. |
+| `cover` | bilde-URL | Nei (`null` når tomt) | Bildet i listen på /blogg. Er den tom, brukes det første bildet som finnes i blokkene under. |
+| `openInLightbox` | ja/nei | Nei | Når på, åpner innlegget rett i fullskjermsvisning fra første bilde, i stedet for vanlig sidevisning. |
+| `blocks` | liste med blokker | Ja | Selve innholdet. Fritt miks av tekst og bilder, i valgfri rekkefølge. |
+
+**Fire blokktyper**, skilt med feltet `type`:
+
+| `type` | Felter | Gir |
+|---|---|---|
+| `text` | `text` (markdown) | Vanlig tekst. Markdown støttes: `##` overskrift, `**fet**`, lister, lenker, tabeller. |
+| `image` | `image`, `caption` (valgfri) | Ett bilde i full bredde, med valgfri bildetekst. |
+| `image_pair` | `images` (nøyaktig 2) | To bilder side om side. |
+| `image_gallery` | `layout`, `images` | Bildegalleri. `layout` er én av `grid` (like firkanter), `masonry` (naturlige proporsjoner i kolonner), `feed` (tett, som /feed) eller `carousel` (sideveis rulling). |
+
+**`image_gallery` var tidligere fire separate blokktyper.** De ble slått sammen nettopp fordi det å bytte stil da krevde å slette blokken og legge inn alle bildene på nytt. Nå er det bare en nedtrekksliste. Ikke del dem opp igjen.
+
+Ekte eksempel — `src/content/blog/2026-08-07-test.yml` (forkortet):
+```yaml
+title: Test
+date: 2026-08-07
+blocks:
+  - type: text
+    text: |-
+      ## What is Lorem Ipsum?
+
+      **Lorem Ipsum** is simply dummy text of the printing and typesetting industry.
+  - type: image_gallery
+    layout: feed
+    images:
+      - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/blog/006804320025_25.jpg
+      - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/blog/DSCF0125.jpg
+```
+
+### `blogSettings` — enkeltfil
+- Fil: `src/content/blogSettings/index.yml`
+
+| Felt | Type | Påkrevd | Styrer |
+|---|---|---|---|
+| `showInNav` | ja/nei | Nei | Om «Blogg» vises i menyen. Siden finnes på `/blogg` uansett. |
+| `title` | tekst | Nei | Overskrift øverst på /blogg. Standard «Blogg» hvis tom. |
+| `intro` | tekst | Nei | Kort tekst under overskriften. |
+| `listingLayout` | `grid` / `stacked` / `featured` | Nei | Hvordan innleggene listes: kort i kolonner, én per rad, eller ett stort om gangen med bla-knapper. Standard `grid`. |
+
+Hele fila i dag:
+```yaml
+showInNav: false
+title: Blog
+intro: Test
+```
+
+### `portfolio` — enkeltfil
+- Fil: `src/content/portfolio/index.yml`
+
+| Felt | Type | Påkrevd | Styrer |
+|---|---|---|---|
+| `showInNav` | ja/nei | Nei | Om «Portefølje» vises i menyen. Siden finnes på `/portefolje` uansett. |
+| `photos` | liste med bilde-URL-er | Ja | Bildene på siden, i masonry-oppsett med lightbox. Tom i dag. |
+
+Hele fila i dag:
+```yaml
+showInNav: false
+photos: []
+```
+Er lista tom, viser siden en vennlig tomtilstand i stedet for å feile.
 
 ### `prints` — mappe-collection
 - Filer: `src/content/prints/<slug>.yml`, 17 stk.
@@ -212,6 +308,8 @@ photos:
 | `prints/` | Prints' `photo` |
 | `feed/` | Feed-siden |
 | `fjellmaraton/` | Fjellmaraton-sidens `topPhotos` og `photos` |
+| `blog/` | Blogginnleggenes `cover` og alle bilder i blokkene |
+| `portfolio/` | Portefølje-sidens `photos` |
 
 **Slik refereres de i innhold**
 Full absolutt URL, alltid:
@@ -235,6 +333,13 @@ Koden sjekker på `^https?://` for å avgjøre om et bilde skal hentes fra R2 el
 | Fjellmaraton, toppbilder | 900 / 1600 / 2400 px (srcset) | 88 | `src/pages/fjellmaraton.astro` |
 | Prints, oversikt | 900 px | 85 | `src/pages/prints/index.astro` |
 | Prints, egen side | 1000 px | 90 | `src/pages/prints/[slug].astro` |
+| Blogg, listebilde | 700 px (1600 ved `featured`) | 80 | `src/pages/blogg/index.astro` |
+| Blogg, enkeltbilde | 1400 px | 85 | `src/pages/blogg/[slug].astro` |
+| Blogg, bildepar | 900 px | 85 | `src/pages/blogg/[slug].astro` |
+| Blogg, galleri `grid`/`masonry` | 700 px | 82 | `src/pages/blogg/[slug].astro` |
+| Blogg, galleri `feed` | 500 px | 70 | `src/pages/blogg/[slug].astro` |
+| Blogg, galleri `carousel` | 1200 px | 85 | `src/pages/blogg/[slug].astro` |
+| Portefølje | 1400 px | 82 | `src/pages/portefolje.astro` |
 
 **Lightbox**: klikker man på et bilde, lastes **originalen fra R2** i full oppløsning — ikke den skalerte versjonen. Store originaler = treg lightbox.
 
@@ -255,13 +360,13 @@ Det er ingen `:root`-variabler, ingen tokens-fil, ingen CSS-rammeverk. Hver farg
 **Farger som faktisk brukes (antall forekomster i `src/`)**
 | Verdi | Antall | Rolle | Filer |
 |---|---|---|---|
-| `#111` | 19 | Tekst, knapper, lenker, rammer | Header, Layout, 404, fjellmaraton (12×), begge print-sidene, prosjektside |
+| `#111` | 21 | Tekst, knapper, lenker, rammer | Header, Layout, 404, fjellmaraton (12×), begge print-sidene, prosjektside, blogg |
 | `#fff` | 9 | Hvit tekst/bakgrunn i knapper og lightbox | Flere |
-| `#eee` | 5 | Plassholderfarge bak bilder som ikke er lastet | index, feed, fjellmaraton (2×), prosjektside |
+| `#eee` | 8 | Plassholderfarge bak bilder som ikke er lastet | index, feed, fjellmaraton (2×), prosjektside, blogg, portefølje |
 | `#fafafa` | 2 | Sidebakgrunn | `Layout.astro` (body), `fjellmaraton.astro` (dialogpanel) |
 | `#fdfdfd` | 1 | Bakgrunn i toppmenyen | `Header.astro` |
 | `#f2f2f2` | 2 | Grå ramme rundt print-bilder | begge print-sidene |
-| `#888` | 2 | Årstall / dempet tekst | `index.astro`, prosjektside |
+| `#888` | 6 | Årstall / dempet tekst / datoer | `index.astro`, prosjektside, blogg-sidene, portefølje |
 | `#666` | 4 | «Ingen bilder ennå»-tekst | flere |
 | `#555` | 2 | Undertittel | 404, fjellmaraton |
 | `#ccc` | 2 | Skjemafelt-strek | fjellmaraton |
@@ -271,6 +376,8 @@ Det er ingen `:root`-variabler, ingen tokens-fil, ingen CSS-rammeverk. Hver farg
 | `#b00020` | 1 | Rød feilmelding i skjema | fjellmaraton |
 | `rgba(0,0,0,0.92)` | 3 | Lightbox-bakgrunn | feed, fjellmaraton, prosjektside |
 | `rgba(0,0,0,0.55)` | 1 | Bakgrunn bak påmeldingsdialogen | fjellmaraton |
+| `#444` | 1 | Dempet tekst i bloggen | `blogg/[slug].astro` |
+| `#f0f0f0` | 1 | Plassholder i bloggens karusell | `blogg/[slug].astro` |
 
 **Skrifter**
 | Stack | Brukes til | Definert i |
@@ -297,6 +404,10 @@ Space Mono lastes fra Google Fonts i `Layout.astro` med vekt 400 og 700.
 | `max-width: 900px` | Fjellmaraton skjuler alle toppbilder unntatt banneret | `fjellmaraton.astro` |
 | `min-width: 1400px` | Prints går til 3 kolonner | `prints/index.astro` |
 | `max-width: 480px` | Fornavn/etternavn stables i skjemaet | `fjellmaraton.astro` |
+| `min-width: 500px` / `max-width: 500px` | Bloggens bildepar side om side vs. stablet | `blogg/[slug].astro` |
+| `min-width: 640px` (2×) | Blogglisten og portefølje går til flere kolonner | `blogg/index.astro`, `portefolje.astro` |
+| `min-width: 1024px` (2×) | Enda flere kolonner i blogg og portefølje | `blogg/index.astro`, `portefolje.astro` |
+| `min-width: 1440px` | Portefølje til maks kolonneantall | `portefolje.astro` |
 
 I tillegg finnes JS-baserte breakpoints i rutenettene (ikke CSS): feed bruker 480/768/1200/1440 px til å velge 5/7/9/14/20 kolonner; prosjektsider og fjellmaraton bruker 640/1024 px til 2/3/4 kolonner.
 
@@ -376,19 +487,23 @@ Lagret som `src/pages/om.astro` blir dette `/om`. Importstien til `Layout` har e
 | `/prints/<slug>` | `src/pages/prints/[slug].astro` | Én print: bilde, priser, bestilling på e-post |
 | `/feed` | `src/pages/feed/index.astro` | 936 bilder, rad-justert, lastes i puljer ved scroll |
 | `/fjellmaraton` | `src/pages/fjellmaraton.astro` | Toppbånd, påmeldingsknapp + dialog, bilderutenett |
+| `/blogg` | `src/pages/blogg/index.astro` | Liste over blogginnlegg. Tre layouter styrt fra CMS. Skjult fra menyen med mindre `showInNav` er på. |
+| `/blogg/<slug>` | `src/pages/blogg/[slug].astro` | Ett blogginnlegg, satt sammen av blokker + lightbox |
+| `/portefolje` | `src/pages/portefolje.astro` | Kuratert bildeside i masonry + lightbox. Skjult fra menyen med mindre `showInNav` er på. |
 | `/404` | `src/pages/404.astro` | Feilside |
 | `/admin` | `public/admin/index.html` | Sveltia CMS (ikke en Astro-side) |
 | `/fotoverktoy/*` | `public/fotoverktoy/*.html` | Frittstående HTML-verktøy, helt utenfor Astro |
 
 **Komponenter og layout** (det er bare to)
 - `src/layouts/Layout.astro` — props: `title` (str., default «Gaute Aaløkken»), `description` (str., default fotografi-teksten), `image` (str., default et R2-bilde). Gir `<head>`, all SEO/Open Graph/Twitter-meta, canonical-URL, Google Fonts, global CSS og `<Header />`. Alle sider bruker den.
-- `src/components/Header.astro` — ingen props. Navnelenke til forsiden, meny (Flaksjøen Fjellmaraton, Prints, Feed, Fotoverktøy), e-post-ikon og Instagram-ikon.
+- `src/components/Header.astro` — ingen props. Navnelenke til forsiden, meny (Flaksjøen Fjellmaraton, Prints, Feed, Fotoverktøy), e-post-ikon og Instagram-ikon. Leser i tillegg `portfolio` og `blogSettings` fra innholdet, og skyter inn «Portefølje» og «Blogg» på plass 1 i menyen når `showInNav` er satt.
 
 **Hjelpefunksjoner**
 - `src/lib/resolveImage.ts` — `resolveImage(url, bredde, kvalitet)` → sti til skalert WebP. `resolveImageWithAspectRatio(...)` → samme + reelt sideforhold. `withBase(sti)`, `isRemote(sti)`.
 - `src/lib/imageOutputQueue.ts` — les/skriv mellomlager på disk, og manifest over hvilke bilder bygget faktisk brukte.
 - `src/lib/fetchBuffer.ts` — `fetchWithRetry(url)`, 15 s timeout, 3 forsøk.
 - `src/lib/concurrency.ts` — `mapWithConcurrency(liste, maksSamtidig, fn)`.
+- `src/lib/markdown.ts` — `markdownToHtml(markdown)`. Brukes kun av bloggens `text`-blokker. Se advarselen om udeklarerte avhengigheter i punkt 2.
 
 Hvilke sider bruker hva: forside, prosjektside, feed og fjellmaraton bruker `lib/`-pipelinen; **prints-sidene bruker Astros `getImage()` i stedet** og har sine egne lokale kopier av `withBase`/`isRemote`.
 
@@ -404,7 +519,7 @@ npm run preview    astro preview  — viser bygget resultat lokalt
 npm run sort-feed  node scripts/sort-feed.mjs — sorterer feed-YAML. Kjøres manuelt, ikke i bygg.
 ```
 
-**Målt bygg 2026-08-05 (lokalt, varm cache):** 36 sider på 27 sekunder. De 36 er 14 prosjektsider + 17 print-sider + forside, /prints, /feed, /fjellmaraton og /404.
+**Målt bygg 2026-08-09 (lokalt, varm cache):** 44 HTML-sider. De 44 er 14 prosjektsider + 17 print-sider + 1 blogginnlegg + forside, /prints, /feed, /fjellmaraton, /blogg, /portefolje og /404, pluss /admin og de fire fotoverktøy-sidene som kopieres rått fra `public/`.
 
 **Det finnes ingen tester, ingen linting og ingen typesjekk** — verken lokalt eller i CI. `npm run build` er den eneste kontrollen som finnes: går den gjennom, er endringen syntaktisk og innholdsmessig gyldig. Foreslå aldri at brukeren «kjører testene».
 
@@ -459,10 +574,13 @@ Domenet `gauteaalokken.com` kommer fra `public/CNAME`, som kopieres til `dist/CN
 | `astro.config.mjs` — `flush-staged-images`-integrasjonen | Uten den havner ingen skalerte bilder i `dist/optimized/`, og alle bilder på forside/feed/prosjekter/fjellmaraton blir døde. |
 | `astro.config.mjs` — `setGlobalDispatcher(new Agent({...}))` | Uten timeouts kan én treg R2-forbindelse henge byggejobben i det uendelige. |
 | `astro.config.mjs` — `site: 'https://gauteaalokken.com'` | Styrer canonical-URL og delingslenker. |
-| `src/lib/*.ts` | Bildepipelinen. Endres hash-formelen eller mellomlagerstien, må alle 1818 bilder lastes ned og skaleres på nytt. |
+| `src/lib/resolveImage.ts`, `imageOutputQueue.ts`, `fetchBuffer.ts`, `concurrency.ts` | Bildepipelinen. Endres hash-formelen eller mellomlagerstien, må alle 1831 bilder lastes ned og skaleres på nytt. |
+| URL-kodingen i `src/lib/fetchBuffer.ts` (`normalizeUrl`) | Filnavn med mellomrom (f.eks. «FFM 26 4_1.jpg») får en ukodet space i URL-en fra CMS-en. Uten denne funksjonen henger `fetch()` til timeouten slår inn — på hvert forsøk — i stedet for å feile raskt. |
+| `showInNav`-logikken i `src/components/Header.astro` | Styrer om Blogg og Portefølje er lenket fra menyen. Sidene finnes uansett — fjernes logikken, blir de enten alltid synlige eller umulige å nå fra menyen. |
 | Filnavn i `src/content/projects/` og `src/content/prints/` | Filnavnet **er** URL-en. |
 | `GAS_URL` i `src/pages/fjellmaraton.astro` | Adressen til Google Apps Script som tar imot påmeldinger. Feil verdi = påmeldinger forsvinner uten at noen merker det. |
 | Feltet `name="website"` (honeypot) i påmeldingsskjemaet, og `.honeypot`-CSS-en | Spamfelle. Gjøres det synlig, fyller ekte folk det ut og påmeldingen deres kastes stille. |
+| Sammenslåingen av `image_gallery` i bloggen | Grid/masonry/feed/carousel var fire separate blokktyper. De ble slått sammen til én med en `layout`-velger nettopp fordi det å bytte stil ellers krevde å slette blokken og legge inn alle bildene på nytt. Ikke del dem opp igjen. |
 | `.env.local` | Inneholder R2-hemmeligheten. Er git-ignorert. Skal aldri limes inn i en chat eller committes. |
 | `package-lock.json` | Genereres av npm. Redigeres aldri manuelt. |
 | `dist/`, `.astro/`, `node_modules/` | Genereres. Endringer der overskrives ved neste bygg. |
@@ -494,7 +612,13 @@ Domenet `gauteaalokken.com` kommer fra `public/CNAME`, som kopieres til `dist/CN
 
 11. **Legge til et nytt felt i en collection** → må gjøres to steder samtidig: skjema i `public/admin/config.yml` og validering i `src/content/config.ts`. Gjør nye felter valgfrie med `.nullable().optional()` — CMS-en skriver `null` og ikke tomt når feltet står tomt.
 
-12. **Sortere feed-en på nytt** → `npm run sort-feed` er ikke rett kommando alene; kjør `node scripts/sort-feed.mjs date feed` eller `node scripts/sort-feed.mjs color feed` lokalt. Krever `.env.local`. Den **overskriver hele** `src/content/feed/index.yml` med alt som ligger i R2-bøtta.
+12. **Skrive et blogginnlegg** → CMS → **Blog** → **New Blog**. Fyll ut Title og Date, og bygg innlegget av blokker under «Content blocks». Rekkefølgen på blokkene er rekkefølgen på siden. Skal stilen på et bildegalleri endres senere, bytt **Layout**-nedtrekkslisten i blokken — ikke slett og legg inn bildene på nytt.
+
+13. **Vise eller skjule Blogg / Portefølje i menyen** → CMS → **Blog settings** eller **Portfolio (for clients)** → slå «Show in navigation bar» av eller på. Sidene finnes på `/blogg` og `/portefolje` uansett, så du kan sende lenken til noen uten å legge den i menyen.
+
+14. **Endre hvordan blogglisten ser ut** → CMS → **Blog settings** → **Listing layout**: `grid` (kort i kolonner), `stacked` (én per rad) eller `featured` (ett stort innlegg om gangen, med bla-knapper).
+
+15. **Sortere feed-en på nytt** → `npm run sort-feed` er ikke rett kommando alene; kjør `node scripts/sort-feed.mjs date feed` eller `node scripts/sort-feed.mjs color feed` lokalt. Krever `.env.local`. Den **overskriver hele** `src/content/feed/index.yml` med alt som ligger i R2-bøtta.
 
 ---
 
@@ -515,6 +639,10 @@ Domenet `gauteaalokken.com` kommer fra `public/CNAME`, som kopieres til `dist/CN
 - **Første bygg etter at cachen er borte tar lang tid** (over tusen bilder skal hentes og skaleres). Det er normalt.
 - **Tomme ruter på forsiden trekkes tilfeldig på nytt ved hver sidevisning.** De er ikke et innholdsfelt, og de skal ikke være stabile.
 - **Lightboxen laster originalbildet fra R2.** Er originalen 15 MB, tar den 15 MB å åpne.
+- **Filnavn med mellomrom var en reell feilkilde.** CMS-en lagrer dem med en ukodet space i URL-en, og `fetch()` hang da til timeouten slo inn på hvert av tre forsøk i stedet for å feile raskt. Løst i `fetchBuffer.ts` med `encodeURI(decodeURI(...))`. Unngå likevel mellomrom i nye filnavn.
+- **Bloggens `date` skrives uten fnutter** av CMS-ens datovelger, så YAML tolker den som en ekte dato og ikke en tekst. Derfor `z.coerce.date()` i schemaet. Dette er motsatt av `year` på prosjekter, som skal ha fnutter — ikke gjør dem like.
+- **Blogg og Portefølje er bygget og publisert selv når `showInNav` er av.** De er skjult fra menyen, ikke fra internett. Ikke legg noe der som ikke tåler å bli funnet.
+- **`src/lib/markdown.ts` bygger på pakker som ikke står i `package.json`.** Se punkt 2. Fungerer i dag, men er verdt å kjenne til hvis bloggen plutselig slutter å bygge.
 
 ---
 
@@ -548,3 +676,5 @@ Følgende lot seg ikke lese ut av repoet og er ikke dokumentert her:
 - **Fotoverktøy-sidene** (`public/fotoverktoy/*.html`, ca. 3900 linjer HTML/JS til sammen) er ikke gjennomgått her. De er frittstående og påvirker ikke resten av siden.
 - **Hvorfor fire prosjekter mangler `cover`-nøkkelen helt** — sannsynligvis bare at de ble opprettet før feltet ble lagt til 2026-08-02.
 - **Om det finnes analytics, søkeordsverktøy eller andre eksterne tjenester** koblet til siden.
+- **Hva `/portefolje` skal inneholde** — sida finnes og virker, men bildelista er tom.
+- **Om blogginnlegget `2026-08-07-test` skal bli stående** eller er en test som skal slettes. Det inneholder Lorem Ipsum-tekst og ligger publisert på `/blogg/2026-08-07-test`.

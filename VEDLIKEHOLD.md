@@ -3,7 +3,7 @@
 Praktisk steg-for-steg for å drifte gauteaalokken.com uten kodebakgrunn.
 Teknisk referanse ligger i [KONTEKST-FOR-KI.md](KONTEKST-FOR-KI.md) — den er til KI-modeller, denne er til deg.
 
-Sist oppdatert: 2026-08-05.
+Sist oppdatert: 2026-08-09.
 
 **Faste adresser**
 | Hva | Hvor |
@@ -13,7 +13,7 @@ Sist oppdatert: 2026-08-05.
 | Koden | https://github.com/gauteaalokken/foto |
 | Byggestatus | https://github.com/gauteaalokken/foto/actions |
 | Bildelagring | Cloudflare-dashboard → R2 → bøtta `foto-photos` |
-| Påmeldinger | Google Sheet koblet til Apps Script (se punkt 9) |
+| Påmeldinger | Google Sheet koblet til Apps Script (se punkt 10) |
 
 ---
 
@@ -78,7 +78,7 @@ De tomme rutene i rutenettet på forsiden er tilfeldige og trekkes på nytt hver
 
 Feeden har 936 bilder i dag. Lista i CMS-en er lang — nye bilder legges nederst med mindre du flytter dem.
 
-**Vil du sortere hele feeden på nytt** (etter dato eller farge) må det gjøres fra en maskin med koden lastet ned — se punkt 10. Det er den eneste oppgaven som ikke kan gjøres i nettleseren.
+**Vil du sortere hele feeden på nytt** (etter dato eller farge) må det gjøres fra en maskin med koden lastet ned — se punkt 11. Det er den eneste oppgaven som ikke kan gjøres i nettleseren.
 
 ---
 
@@ -89,7 +89,7 @@ Feeden har 936 bilder i dag. Lista i CMS-en er lang — nye bilder legges neders
 3. **Photo** — bildet av den innrammede printen.
 4. Publish.
 
-**Priser og all tekst på print-sidene ligger i koden, ikke i CMS-en**, og er felles for alle prints. Skal en pris endres, se punkt 8 — det er en kodeendring, og den slår ut på alle prints samtidig.
+**Priser og all tekst på print-sidene ligger i koden, ikke i CMS-en**, og er felles for alle prints. Skal en pris endres, se punkt 9 — det er en kodeendring, og den slår ut på alle prints samtidig.
 
 ---
 
@@ -104,15 +104,46 @@ Feeden har 936 bilder i dag. Lista i CMS-en er lang — nye bilder legges neders
 
 **Se påmeldingene**: de skrives til et Google Sheet, ikke til nettsiden. CMS-en viser dem ikke.
 
-**Endre teksten eller feltene i påmeldingsskjemaet**: kodeendring, se punkt 8. Legger du til et nytt felt i skjemaet, må Google Apps Script også oppdateres og redeployes — ellers forsvinner svarene i det nye feltet uten feilmelding. Se punkt 9.
+**Endre teksten eller feltene i påmeldingsskjemaet**: kodeendring, se punkt 9. Legger du til et nytt felt i skjemaet, må Google Apps Script også oppdateres og redeployes — ellers forsvinner svarene i det nye feltet uten feilmelding. Se punkt 10.
 
 ---
 
-## 8. Endre kode med en KI-modell i nettleseren
+## 8. Blogg og Portefølje
+
+Begge sidene **finnes alltid** på `/blogg` og `/portefolje`. Bryteren i CMS-en styrer bare om de er lenket fra menyen — den skjuler dem ikke fra internett. Ikke legg noe der som ikke tåler å bli funnet.
+
+**Skrive et blogginnlegg**
+1. CMS → **Blog** → **New Blog**.
+2. **Title** og **Date** — datoen sorterer listen, nyeste først.
+3. **Cover** — valgfritt. Bildet som vises i listen. Står den tom, brukes det første bildet i innlegget.
+4. **Content blocks** — bygg innlegget av blokker, i den rekkefølgen de skal stå:
+   - **Text** — vanlig tekst. Du kan bruke `##` for mellomtitler og `**stjerner**` for fet skrift.
+   - **Single image** — ett bilde i full bredde, med valgfri bildetekst.
+   - **Two images side by side** — legg inn nøyaktig 2.
+   - **Image gallery** — flere bilder, med en **Layout**-velger: Grid, Masonry, Dense eller Carousel.
+5. **Publish**.
+
+**Bytte stil på et galleri**: åpne blokken og endre **Layout**-nedtrekkslisten. **Ikke slett blokken og legg inn bildene på nytt** — hele poenget med at det er én blokktype er at du slipper det.
+
+**«Open directly in lightbox view»**: når den er på, åpner innlegget rett i fullskjermsvisning fra første bilde i stedet for vanlig sidevisning. Nyttig for rene bildeinnlegg.
+
+**Endre hvordan blogg-forsiden ser ut**
+CMS → **Blog settings**:
+- **Show in navigation bar** — legger «Blogg» i menyen.
+- **Page title** og **Intro text** — overskrift og kort tekst øverst.
+- **Listing layout** — `Grid` (kort i kolonner), `Stacked` (én per rad) eller `Featured` (ett stort innlegg om gangen, med bla-knapper).
+
+**Portefølje-siden**
+CMS → **Portfolio (for clients)** → legg bilder i **Photos**. Slå på **Show in navigation bar** når du vil ha den i menyen, f.eks. mens du viser den til en kunde, og av igjen etterpå.
+Er lista tom, viser siden en vennlig beskjed i stedet for å feile — det er sånn den står i dag.
+
+---
+
+## 9. Endre kode med en KI-modell i nettleseren
 
 Dette er arbeidsflyten for alt som ikke er innhold: farger, tekster, ny side, ny meny­lenke, priser.
 
-1. **Finn fila på GitHub.** Bruk tabellen i punkt 12, eller søk i repoet.
+1. **Finn fila på GitHub.** Bruk tabellen i punkt 14, eller søk i repoet.
 2. **Åpne fila og trykk på «Copy raw file»-knappen** (ikonet øverst til høyre i filvisningen). Nå ligger hele fila på utklippstavla.
 3. **Start en chat med KI-modellen.** Lim inn i denne rekkefølgen:
    - hele **KONTEKST-FOR-KI.md**
@@ -124,11 +155,11 @@ Dette er arbeidsflyten for alt som ikke er innhold: farger, tekster, ny side, ny
 
 **Én fil om gangen.** Skal to filer endres, ta én runde per fil.
 
-**Går det galt:** se punkt 11. Ingenting du gjør her kan ødelegge noe permanent.
+**Går det galt:** se punkt 12. Ingenting du gjør her kan ødelegge noe permanent.
 
 ---
 
-## 9. Oppgaver som ikke gjøres i CMS eller GitHub
+## 10. Oppgaver som ikke gjøres i CMS eller GitHub
 
 **Slette et bilde fra R2 (Cloudflare)**
 Rekkefølgen er viktig: **fjern først bildet fra CMS-en**, publish, vent til bygget er grønt — **deretter** slett fila i R2. Gjør du det motsatt, feiler neste bygg fordi koden leter etter et bilde som ikke finnes lenger.
@@ -144,7 +175,7 @@ Versjonen er låst med vilje i `public/admin/index.html`. Gjør bare noe med den
 
 ---
 
-## 10. Kjøre ting lokalt (bare hvis du må)
+## 11. Kjøre ting lokalt (bare hvis du må)
 
 Trengs kun til å sortere feeden på nytt, eller til å se en endring før den går live.
 
@@ -179,10 +210,10 @@ Tar ca. 30 sekunder når bildene allerede er mellomlagret. Går den gjennom uten
 
 ---
 
-## 11. Når noe går galt
+## 12. Når noe går galt
 
 **Bygget feilet (rødt kryss i Actions)**
-Siden står trygt på forrige versjon. Klikk deg inn på det røde bygget → klikk på steget som feilet → les de siste linjene. De vanligste årsakene står i punkt 12.
+Siden står trygt på forrige versjon. Klikk deg inn på det røde bygget → klikk på steget som feilet → les de siste linjene. De vanligste årsakene står i punkt 13.
 
 **Angre den siste endringen**
 1. Gå til https://github.com/gauteaalokken/foto/commits/main
@@ -198,7 +229,7 @@ Prøv hard refresh (Cmd+Shift+R) og en annen nettleser først. Er den fortsatt r
 
 ---
 
-## 12. Feilsøking
+## 13. Feilsøking
 
 | Symptom | Sannsynlig årsak | Løsning |
 |---|---|---|
@@ -208,14 +239,14 @@ Prøv hard refresh (Cmd+Shift+R) og en annen nettleser først. Er den fortsatt r
 | CMS-en kan ikke lagre | GitHub-innlogging utløpt, eller feil `repo`/`branch` i `public/admin/config.yml` | Logg inn på nytt. Endre aldri repo/branch |
 | Opplastede bilder havner ikke i riktig mappe i R2 | `prefix:` i `public/admin/config.yml` er endret | Sett den tilbake |
 | Et bilde vises ikke på siden, men finnes i R2 | Skrivefeil i URL-en, eller feil bokstav (æ/ø/å, mellomrom) i filnavnet | Velg bildet på nytt via CMS-en i stedet for å skrive URL-en |
-| Påmeldingsskjemaet sier «Noe gikk galt» | Apps Script er endret uten å bli redeployet, eller URL-en er feil | Redeploy scriptet, se punkt 9 |
+| Påmeldingsskjemaet sier «Noe gikk galt» | Apps Script er endret uten å bli redeployet, eller URL-en er feil | Redeploy scriptet, se punkt 10 |
 | Påmeldinger kommer ikke i arket, men skjemaet sier takk | Nytt felt lagt til i skjemaet uten at Apps Script har kolonnen | Oppdater og redeploy scriptet |
 | Lightboxen er treg | Den henter originalbildet fra R2 i full oppløsning | Last opp mindre originaler neste gang |
 | Bildene i et rutenett står ujevnt | Layoutkode som ikke har målt bredden på nytt | Last siden på nytt. Skjer det hver gang, er det en ekte feil — revert |
 
 ---
 
-## 13. Hvilken fil endrer hva
+## 14. Hvilken fil endrer hva
 
 | Du vil endre | Fil på GitHub |
 |---|---|
@@ -230,12 +261,15 @@ Prøv hard refresh (Cmd+Shift+R) og en annen nettleser først. Er den fortsatt r
 | Fjellmaraton: tekst, skjema, knapp, banner-layout | `src/pages/fjellmaraton.astro` |
 | 404-siden | `src/pages/404.astro` |
 | Hvilke felter CMS-en viser | `public/admin/config.yml` **og** `src/content/config.ts` (begge!) |
+| Blogglisten (layout, kort) | `src/pages/blogg/index.astro` |
+| Blogginnlegg (blokker, galleri, lightbox) | `src/pages/blogg/[slug].astro` |
+| Portefølje-siden | `src/pages/portefolje.astro` |
 | Fotoverktøyene | `public/fotoverktoy/*.html` |
 | Alt innhold og alle bilder | CMS-en på /admin — ikke i kode |
 
 ---
 
-## 14. Ting du aldri skal endre
+## 15. Ting du aldri skal endre
 
 Full liste med begrunnelse står i KONTEKST-FOR-KI.md punkt 11. Det viktigste:
 
@@ -250,7 +284,7 @@ Full liste med begrunnelse står i KONTEKST-FOR-KI.md punkt 11. Det viktigste:
 
 ---
 
-## 15. Sjekkliste før du publiserer noe
+## 16. Sjekkliste før du publiserer noe
 
 - [ ] Endret jeg innhold? → gjør det i CMS-en, ikke i koden.
 - [ ] Endret jeg kode? → fikk jeg **hele** fila tilbake fra KI-en, ikke et utdrag?
