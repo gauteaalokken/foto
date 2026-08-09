@@ -81,6 +81,10 @@ const blog = defineCollection({
     // which YAML parses as a native Date, not a string — z.coerce.date()
     // accepts either that or a plain string.
     date: z.coerce.date(),
+    // Optional explicit listing-page cover — falls back to the first photo
+    // found in the post's blocks when unset, so an editor can pick a cover
+    // without having to reorder blocks.
+    cover: z.string().nullable().optional(),
     // When set, the post opens straight into the fullscreen lightbox
     // (starting at the first photo) instead of the normal block layout.
     openInLightbox: z.boolean().nullable().optional(),
@@ -89,14 +93,18 @@ const blog = defineCollection({
 });
 
 // Settings for the /blogg listing page itself (title/intro shown at the top,
-// and whether it's linked from the nav) — separate from individual posts, so
-// an editor can customize the front page without touching post content.
+// layout style, and whether it's linked from the nav) — separate from
+// individual posts, so an editor can customize the front page without
+// touching post content.
 const blogSettings = defineCollection({
   type: 'data',
   schema: z.object({
     showInNav: z.boolean().nullable().optional(),
     title: z.string().nullable().optional(),
     intro: z.string().nullable().optional(),
+    // grid: the current card grid. stacked: single column, full-width posts.
+    // featured: one big post at a time (newest first), paged with prev/next.
+    listingLayout: z.enum(['grid', 'stacked', 'featured']).nullable().optional(),
   }),
 });
 

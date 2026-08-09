@@ -139,6 +139,16 @@ collections:
             hint: "The blog always exists at /blogg regardless of this — turning this on just adds a 'Blogg' link to the site navigation."
           - { label: "Page title", name: "title", widget: "string", required: false, hint: "Optional. Defaults to 'Blogg' if left blank." }
           - { label: "Intro text", name: "intro", widget: "text", required: false, hint: "Optional short text shown at the top of the blog listing page." }
+          - label: "Listing layout"
+            name: "listingLayout"
+            widget: "select"
+            default: "grid"
+            required: false
+            hint: "How the blog front page shows your posts."
+            options:
+              - { label: "Grid (cards in columns)", value: "grid" }
+              - { label: "Stacked (one post per row)", value: "stacked" }
+              - { label: "Featured (newest post large, page through the rest)", value: "featured" }
 
   - name: "blog"
     label: "Blog"
@@ -150,6 +160,18 @@ collections:
     fields:
       - { label: "Title", name: "title", widget: "string" }
       - { label: "Date", name: "date", widget: "datetime", format: "YYYY-MM-DD", time_format: false }
+      - label: "Cover"
+        name: "cover"
+        widget: "image"
+        required: false
+        hint: "Optional. Shown on the blog listing page — falls back to the first photo in the post below when unset."
+        media_libraries:
+          cloudflare_r2:
+            bucket: foto-photos
+            account_id: 1904e782382751217d6103b2d39a41da
+            public_url: https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev
+            access_key_id: a74d879decb219fc298c10edd12ecda5
+            prefix: "blog/"
       - label: "Open directly in lightbox view"
         name: "openInLightbox"
         widget: "boolean"

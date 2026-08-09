@@ -7,26 +7,30 @@ import { resolveImage, withBase } from '../../lib/resolveImage';
 const settings = await getEntry('blogSettings', 'index');
 const pageTitle = settings?.data.title || 'Blogg';
 const pageIntro = settings?.data.intro || null;
+const listingLayout = settings?.data.listingLayout || 'grid';
 
 const entries = await getCollection('blog');
 entries.sort((a, b) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime());
 
 const COVER_WIDTH = 700;
+const FEATURED_COVER_WIDTH = 1600;
 
 const firstImageOf = (blocks: (typeof entries)[number]['data']['blocks']) => {
   for (const block of blocks) {
     if (block.type === 'image') return block.image;
-    if (block.type === 'image_pair' || block.type === 'image_grid') return block.images[0];
+    if (block.type === 'image_pair' || block.type === 'image_gallery') return block.images[0];
   }
   return null;
 };
 
-const posts = await mapWithConcurrency(entries, 3, async (entry) => {
-  const { title, date, blocks } = entry.data;
-  const coverSrc = firstImageOf(blocks);
-  const cover = coverSrc ? await resolveImage(coverSrc, COVER_WIDTH, 80) : null;
+const coverWidth = listingLayout === 'featured' ? FEATURED_COVER_WIDTH : COVER_WIDTH;
 
-  return { slug: entry.id, title, date, cover };
+const posts = await mapWithConcurrency(entries, 3, async (entry) => {
+  const { title, date, blocks, cover: explicitCover } = entry.data;
+  const coverSrc = explicitCover || firstImageOf(blocks);
+  const cover = coverSrc ? await resolveImage(coverSrc, coverWidth, 80) : null;
+
+  return { slug: entry.id, href: withBase(`/blogg/${entry.id}`), title, date: date.toISOString(), cover };
 });
 ---
 
@@ -36,24 +40,101 @@ const posts = await mapWithConcurrency(entries, 3, async (entry) => {
     {pageIntro && <p class="intro">{pageIntro}</p>}
   </header>
 
-  <div class="posts-grid">
-    {posts.map((post) => (
-      <a class="post-card" href={withBase(`/blogg/${post.slug}`)}>
-        <div class="cover-wrap">
-          {post.cover && <img class="cover" src={post.cover} alt={post.title} loading="lazy" />}
-        </div>
-        <div class="caption">
-          <span class="date">
-            {new Date(post.date).toLocaleDateString('no-NO', { year: 'numeric', month: 'long', day: 'numeric' })}
-          </span>
-          <span class="title">{post.title}</span>
-        </div>
-      </a>
-    ))}
-  </div>
+  {listingLayout === 'featured' ? (
+    <div class="featured" id="featured">
+      {posts.length > 0 && (
+        <>
+          <a class="featured-link" href={posts[0].href} id="featured-link">
+            <div class="featured-cover-wrap">
+              {posts[0].cover && <img class="featured-cover" id="featured-cover" src={posts[0].cover} alt={posts[0].title} />}
+            </div>
+            <div class="caption">
+              <span class="date" id="featured-date">
+                {new Date(posts[0].date).toLocaleDateString('no-NO', { year: 'numeric', month: 'long', day: 'numeric' })}
+              </span>
+              <span class="title" id="featured-title">{posts[0].title}</span>
+            </div>
+          </a>
+
+          {posts.length > 1 && (
+            <div class="featured-nav">
+              <button type="button" id="featured-prev" aria-label="Nyere innlegg">&#8249;</button>
+              <span id="featured-counter">1 / {posts.length}</span>
+              <button type="button" id="featured-next" aria-label="Eldre innlegg">&#8250;</button>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  ) : (
+    <div class={`posts-grid ${listingLayout === 'stacked' ? 'stacked' : ''}`}>
+      {posts.map((post) => (
+        <a class="post-card" href={post.href}>
+          <div class="cover-wrap">
+            {post.cover && <img class="cover" src={post.cover} alt={post.title} loading="lazy" />}
+          </div>
+          <div class="caption">
+            <span class="date">
+              {new Date(post.date).toLocaleDateString('no-NO', { year: 'numeric', month: 'long', day: 'numeric' })}
+            </span>
+            <span class="title">{post.title}</span>
+          </div>
+        </a>
+      ))}
+    </div>
+  )}
 
   {posts.length === 0 && <p class="empty-state">Ingen blogginnlegg ennå.</p>}
+
+  {listingLayout === 'featured' && (
+    <script type="application/json" id="featured-posts-data" set:html={JSON.stringify(posts)} />
+  )}
 </Layout>
+
+<script>
+  const dataEl = document.getElementById('featured-posts-data');
+  if (dataEl) {
+    const posts: { href: string; title: string; date: string; cover: string | null }[] = JSON.parse(
+      dataEl.textContent || '[]'
+    );
+    let index = 0;
+
+    const linkEl = document.getElementById('featured-link') as HTMLAnchorElement | null;
+    const coverEl = document.getElementById('featured-cover') as HTMLImageElement | null;
+    const titleEl = document.getElementById('featured-title');
+    const dateEl = document.getElementById('featured-date');
+    const counterEl = document.getElementById('featured-counter');
+
+    const render = () => {
+      const post = posts[index];
+      if (!post || !linkEl) return;
+
+      linkEl.href = post.href;
+      if (coverEl && post.cover) coverEl.src = post.cover;
+      if (titleEl) titleEl.textContent = post.title;
+      if (dateEl) {
+        dateEl.textContent = new Date(post.date).toLocaleDateString('no-NO', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        });
+      }
+      if (counterEl) counterEl.textContent = `${index + 1} / ${posts.length}`;
+    };
+
+    document.getElementById('featured-prev')?.addEventListener('click', (event) => {
+      event.preventDefault();
+      index = (index - 1 + posts.length) % posts.length;
+      render();
+    });
+
+    document.getElementById('featured-next')?.addEventListener('click', (event) => {
+      event.preventDefault();
+      index = (index + 1) % posts.length;
+      render();
+    });
+  }
+</script>
 
 <style>
   .page-header {
@@ -95,6 +176,16 @@ const posts = await mapWithConcurrency(entries, 3, async (entry) => {
     .posts-grid {
       grid-template-columns: repeat(3, 1fr);
     }
+  }
+
+  .posts-grid.stacked {
+    grid-template-columns: 1fr;
+    max-width: 700px;
+    gap: 56px;
+  }
+
+  .posts-grid.stacked .cover-wrap {
+    aspect-ratio: 16 / 9;
   }
 
   .post-card {
@@ -140,6 +231,72 @@ const posts = await mapWithConcurrency(entries, 3, async (entry) => {
     font-size: 1.2rem;
     font-weight: 500;
     line-height: 1.3;
+  }
+
+  /* Featured: one big post at a time, paged with prev/next. */
+  .featured {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 40px 32px 80px;
+  }
+
+  .featured-link {
+    display: block;
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .featured-cover-wrap {
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    background: #eee;
+  }
+
+  .featured-cover {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .featured .caption {
+    margin-top: 20px;
+  }
+
+  .featured .title {
+    font-size: 1.6rem;
+  }
+
+  .featured-nav {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1.5rem;
+    margin-top: 28px;
+    font-family: 'Space Mono', monospace;
+  }
+
+  .featured-nav button {
+    background: none;
+    border: 1px solid #ccc;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    font-size: 1.25rem;
+    line-height: 1;
+    cursor: pointer;
+    color: #111;
+  }
+
+  .featured-nav button:hover {
+    background: #f0f0f0;
+  }
+
+  #featured-counter {
+    font-size: 0.85rem;
+    color: #888;
+    min-width: 4ch;
+    text-align: center;
   }
 
   .empty-state {
