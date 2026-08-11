@@ -85,26 +85,26 @@
     
     /* Depot (Bottom Bar) */
     .depot-area {
-      height: 150px; background: white; border-top: 2px solid #e5e7eb; 
+      height: 150px; background: white; border-top: 2px solid #e5e7eb;
       display: flex; flex-direction: column; z-index: 50; flex-shrink: 0;
       box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.05);
     }
-    .depot-header { 
-      padding: 8px 20px; font-size: 12px; font-weight: bold; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; 
+    .depot-header {
+      padding: 8px 20px; font-size: 12px; font-weight: bold; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;
       display: flex; justify-content: space-between; align-items: center; background: #f9fafb; border-bottom: 1px solid #f3f4f6;
     }
     .depot-actions { display: flex; gap: 10px; align-items: center; }
     .btn-xs { padding: 4px 8px; font-size: 11px; background: #2563eb; color: white; border-radius: 4px; border: none; cursor: pointer; text-transform: none; font-weight: 600; }
     .btn-xs:hover { background: #1d4ed8; }
 
-    .depot-content { 
-      flex: 1; overflow-x: auto; padding: 10px 20px; display: flex; gap: 10px; align-items: center; 
+    .depot-content {
+      flex: 1; overflow-x: auto; padding: 10px 20px; display: flex; gap: 10px; align-items: center;
     }
     .depot-content.drag-over { background-color: #dbeafe; border: 2px dashed #2563eb; }
-    
-    .depot-item { 
-      width: 90px; height: 90px; flex-shrink: 0; position: relative; 
-      border-radius: 6px; overflow: hidden; border: 1px solid #d1d5db; cursor: grab; 
+
+    .depot-item {
+      width: 90px; height: 90px; flex-shrink: 0; position: relative;
+      border-radius: 6px; overflow: hidden; border: 1px solid #d1d5db; cursor: grab;
       background: #f3f4f6; box-shadow: 0 1px 2px rgba(0,0,0,0.1); transition: transform 0.1s;
     }
     .depot-item:hover { transform: scale(1.05); }
@@ -205,6 +205,7 @@
         <div class="control-group">
             <label>Bilder pr side: <input type="number" id="photosPerPageInput" value="10" style="width:50px; display:inline;" onchange="handleInputChange('photosPerPage', this.value)"></label>
             <input type="range" id="photosPerPage" min="1" max="60" value="10" oninput="handleSliderChange('photosPerPage', this.value)">
+            <span id="photosPerPageNote" style="display:none; font-size:11px; color:#2563eb; margin-top:4px;"></span>
         </div>
 
         <div class="control-group">
@@ -627,10 +628,23 @@
     function getEffectivePhotosPerPage(totalCount) {
         const manual = parseInt(document.getElementById('photosPerPage').value) || 10;
         const maxPages = parseInt(document.getElementById('maxPages').value) || 0;
+        const note = document.getElementById('photosPerPageNote');
+
         if (maxPages > 0 && totalCount > 0) {
             const requiredForCap = Math.ceil(totalCount / maxPages);
-            return Math.max(manual, requiredForCap);
+            const effective = Math.max(manual, requiredForCap);
+            if (note) {
+                if (effective !== manual) {
+                    note.textContent = `Styrt til ${effective} av "Maks sider" (${maxPages})`;
+                    note.style.display = 'block';
+                } else {
+                    note.style.display = 'none';
+                }
+            }
+            return effective;
         }
+
+        if (note) note.style.display = 'none';
         return manual;
     }
 
@@ -1184,10 +1198,17 @@
       const paper = getPaperDimensions();
       const aspectRatio = paper.width / paper.height;
       const isMobile = window.innerWidth <= 900;
-      const padding = 80; 
+      const padding = 80;
       const sidebarWidth = isMobile ? 0 : 340;
       const maxWidth = window.innerWidth - sidebarWidth - (padding * 2);
-      const maxHeight = window.innerHeight - 200; 
+      // Measured, not a hardcoded window.innerHeight offset: that guess predates
+      // the site header added above the tool, so it no longer matched the real
+      // available space and let the page preview render taller than the visible
+      // area — .canvas-scroller's overflow-y:hidden then clipped the bottom of
+      // it right where the depot bar sits, looking like the depot was covering
+      // the grid. clientHeight already reflects the real space after the header
+      // and depot bar take theirs, so this stays correct if either ever changes.
+      const maxHeight = document.getElementById('canvasWrapper').clientHeight - 80;
 
       let displayWidth = maxWidth;
       let displayHeight = displayWidth / aspectRatio;
