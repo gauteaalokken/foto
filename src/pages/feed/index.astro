@@ -10,7 +10,7 @@ const photos = feed?.data.photos ?? [];
 const THUMB_WIDTH = 500;
 const INITIAL_BATCH = 60;
 const BATCH_SIZE = 40;
-const GAP = 9;
+const GAP = 4;
 
 // Each photo's true aspect ratio is measured in the browser once its thumbnail
 // loads (see bindImage in the script below), not here at build time. Fetching
@@ -68,17 +68,13 @@ const remainingPhotos = optimized.slice(INITIAL_BATCH);
     const remaining = dataEl ? JSON.parse(dataEl.textContent || '[]') : [];
     let cursor = 0;
 
-    const getTargetRowHeight = (containerWidth) => {
-      // 20 is the max column count — the grid is capped at ~1760px wide (see
-      // .feed-wrap), so going any denser than this made cells on a big screen
-      // smaller than they were in a narrower window.
-      let columns;
-      if (containerWidth >= 1440) columns = 20;
-      else if (containerWidth >= 1200) columns = 14;
-      else if (containerWidth >= 768) columns = 9;
-      else if (containerWidth >= 480) columns = 7;
-      else columns = 5;
+    // Photo size stays roughly constant (targeting this width); the column
+    // count is just whatever fits at that size, so photos get fewer per row
+    // as the window narrows instead of shrinking to keep the same count.
+    const TARGET_CELL_WIDTH = 160;
 
+    const getTargetRowHeight = (containerWidth) => {
+      const columns = Math.max(1, Math.round((containerWidth + gap) / (TARGET_CELL_WIDTH + gap)));
       const cellWidth = (containerWidth - gap * (columns - 1)) / columns;
       return cellWidth * (4 / 3);
     };
@@ -327,7 +323,6 @@ const remainingPhotos = optimized.slice(INITIAL_BATCH);
 
 <style is:global>
   .feed-wrap {
-    max-width: 1800px;
     margin: 0 auto;
     padding: 20px;
   }
@@ -335,7 +330,7 @@ const remainingPhotos = optimized.slice(INITIAL_BATCH);
   .grid {
     display: flex;
     flex-wrap: wrap;
-    gap: 9px;
+    gap: 4px;
   }
 
   .cell {
