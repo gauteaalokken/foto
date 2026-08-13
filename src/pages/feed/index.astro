@@ -114,15 +114,34 @@ const remainingPhotos = optimized.slice(INITIAL_BATCH);
       const naturalHeight = (r) =>
         (containerWidth - gap * (r.length - 1)) / r.reduce((sum, cell) => sum + ratioOf(cell), 0);
 
-      // A leftover final row of one or two photos can't span the width without
-      // growing absurdly tall, so it gets capped — stranding it at a fraction of
-      // the width with photos noticeably larger than the rows above. Folding it
-      // into the previous row costs that row a little height and fills the width
-      // instead. While batches are still streaming in the next one simply
-      // re-splits it, since layout() rebuilds the rows from scratch each time.
-      while (rows.length > 1 && naturalHeight(rows[rows.length - 1]) > maxHeight) {
-        const stranded = rows.pop();
-        rows[rows.length - 1].push(...stranded);
+      // Any row with too few (or too narrow/portrait) photos to span the full
+      // width without growing absurdly tall gets capped — stranding it at a
+      // fraction of the width with photos noticeably larger than the rows
+      // around it. Not just the trailing row: on narrow (mobile-width)
+      // screens a single portrait photo alone often can't reach the edge at a
+      // reasonable height, so this can happen throughout the whole list, not
+      // only at the end. Folding a capped row into a neighbor costs that row
+      // a little height and fills the width instead. While batches are still
+      // streaming in, layout() rebuilds every row from scratch each time, so
+      // this re-runs and re-splits as more photos arrive.
+      let merged = true;
+      while (merged && rows.length > 1) {
+        merged = false;
+
+        for (let i = 0; i < rows.length; i += 1) {
+          if (naturalHeight(rows[i]) <= maxHeight) continue;
+
+          if (i < rows.length - 1) {
+            rows[i].push(...rows[i + 1]);
+            rows.splice(i + 1, 1);
+          } else {
+            rows[i - 1].push(...rows[i]);
+            rows.pop();
+          }
+
+          merged = true;
+          break;
+        }
       }
 
       for (const currentRow of rows) {

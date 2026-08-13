@@ -1,0 +1,105 @@
+# robots.txt for gauteaalokken.com
+#
+# Formål: reservere bildene mot bruk til trening av KI-modeller, uten å
+# skade synligheten i vanlige søkemotorer.
+#
+# Denne fila dekker nettsiden og de nedskalerte bildene under /optimized/.
+# Originalbildene ligger på et annet domene (R2) og trenger sin egen
+# robots.txt i bøtta — se VEDLIKEHOLD.md punkt 10.
+#
+# Merk: dette er et forbehold, ikke en sperre. Crawlere som velger å
+# ignorere robots.txt kommer gjennom uansett. I EØS er et maskinlesbart
+# forbehold likevel selve mekanismen for å reservere seg mot tekst- og
+# datautvinning, så fila har verdi utover det tekniske.
+#
+# Listen må vedlikeholdes — nye crawlere dukker opp jevnlig.
+# Sist gjennomgått: 2026-08-09.
+
+# --- KI-trening: ikke tillatt ---
+
+# OpenAI (trening). OAI-SearchBot og ChatGPT-User er bevisst IKKE blokkert
+# — de handler om å bli funnet i ChatGPT, ikke om trening.
+User-agent: GPTBot
+Disallow: /
+
+# Anthropic
+User-agent: ClaudeBot
+Disallow: /
+
+User-agent: anthropic-ai
+Disallow: /
+
+User-agent: Claude-Web
+Disallow: /
+
+# Google Gemini-trening. Dette påvirker IKKE rangeringen i Google-søk —
+# Googlebot er en egen crawler og er fortsatt velkommen.
+User-agent: Google-Extended
+Disallow: /
+
+# Apple-trening. Påvirker IKKE Siri eller Spotlight — Applebot er egen.
+User-agent: Applebot-Extended
+Disallow: /
+
+# Common Crawl — åpent arkiv som mange treningsdatasett bygger på.
+User-agent: CCBot
+Disallow: /
+
+# Meta
+User-agent: meta-externalagent
+Disallow: /
+
+User-agent: Meta-ExternalAgent
+Disallow: /
+
+User-agent: FacebookBot
+Disallow: /
+
+# ByteDance / TikTok
+User-agent: Bytespider
+Disallow: /
+
+# Perplexity
+User-agent: PerplexityBot
+Disallow: /
+
+# Bildespesifikke skrapere — særlig relevante for en fotoside.
+User-agent: ImagesiftBot
+Disallow: /
+
+User-agent: img2dataset
+Disallow: /
+
+# Øvrige
+User-agent: Amazonbot
+Disallow: /
+
+User-agent: cohere-ai
+Disallow: /
+
+User-agent: Diffbot
+Disallow: /
+
+User-agent: Omgilibot
+Disallow: /
+
+User-agent: Omgili
+Disallow: /
+
+User-agent: AI2Bot
+Disallow: /
+
+User-agent: YouBot
+Disallow: /
+
+User-agent: Webzio-Extended
+Disallow: /
+
+User-agent: Timpibot
+Disallow: /
+
+# --- Alle andre: velkommen ---
+# Søkemotorer skal fortsatt finne og indeksere siden.
+User-agent: *
+Allow: /
+Disallow: /admin/

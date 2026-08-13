@@ -170,6 +170,33 @@ Rekkefølgen er viktig: **fjern først bildet fra CMS-en**, publish, vent til by
 3. **Deploy → Manage deployments → rediger → ny versjon.** Uten dette steget peker nettsiden fortsatt på den gamle koden, og endringen får ingen effekt.
 4. Test ved å sende inn skjemaet på siden og sjekke at raden dukker opp i arket.
 
+**Laste opp robots.txt til bildebøtta**
+Nettsiden har allerede sin egen `robots.txt` (fila `public/robots.txt` i repoet). Den dekker alt på gauteaalokken.com, inkludert de nedskalerte bildene under `/optimized/` — altså bildene folk faktisk ser.
+
+Originalbildene ligger derimot på `pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev`, som er et **annet domene**. Crawlere leser robots.txt per domene, så den trenger sin egen:
+
+1. Åpne `scripts/r2-robots.txt` i repoet og last den ned.
+2. **Døp den om til `robots.txt`** (uten `r2-` foran).
+3. Cloudflare-dashbordet → **R2** → bøtta **foto-photos**.
+4. Trykk **Upload** og legg fila i **roten** av bøtta — ikke inne i `feed/`, `projects/` eller noen annen mappe.
+5. Sjekk at den virker: åpne https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/robots.txt i nettleseren. Du skal se teksten, ikke en feilmelding.
+
+Skal lista oppdateres senere, endrer du `scripts/r2-robots.txt` i repoet først, og laster opp på nytt. Da er de to filene aldri i utakt.
+
+**Blokkere KI-crawlere for alvor (anbefalt)**
+`robots.txt` er et *forbehold* — en høflig beskjed som de fleste store aktørene respekterer, men som en useriøs skraper kan ignorere. Vil du ha ekte håndheving, må bildene ligge på ditt eget domene inne i Cloudflare, ikke på deres `r2.dev`-adresse.
+
+Dette er den eneste endringen i hele oppsettet som faktisk *avviser* en crawler i stedet for å be den la være.
+
+1. **Koble bøtta til ditt eget domene.** Cloudflare → **R2** → **foto-photos** → **Settings** → **Public access** → **Custom Domains** → **Connect Domain**. Bruk f.eks. `bilder.gauteaalokken.com`. Cloudflare setter opp DNS selv hvis domenet allerede ligger i kontoen din.
+2. **Vent til domenet er aktivt** (noen minutter) og sjekk at et bilde lastes: `https://bilder.gauteaalokken.com/feed/<et-filnavn>.jpg`.
+3. **Slå på blokkering av KI-crawlere.** Cloudflare → velg domenet → **Security** → se etter innstillingen for AI-crawlere og skrapere. Den har hatt flere navn («Block AI Scrapers and Crawlers», «AI Crawl Control», «Bot Management»), så let etter noe med *AI* i navnet. Dette er én bryter.
+4. **Vurder hotlink-beskyttelse** samme sted. Den hindrer andre nettsteder i å vise bildene dine direkte fra din bøtte.
+
+**⚠️ Viktig hvis du gjør steg 1:** alle bilde-URL-ene i innholdsfilene peker på `pub-...r2.dev`. Bytter du domene, må du enten beholde det gamle domenet aktivt i tillegg, eller få alle URL-ene i `src/content/` og i `public/admin/config.yml` byttet til det nye. Det er en jobb for en KI-økt med hele repoet foran seg — ikke noe du gjør fil for fil i nettleseren. **Behold `r2.dev`-adressen aktiv til det er gjort**, ellers forsvinner alle bildene på siden.
+
+Du kan trygt gjøre steg 1–2 og la det ligge der en stund. Siden fortsetter å bruke den gamle adressen inntil URL-ene faktisk byttes.
+
 **Oppdatere CMS-en (Sveltia)**
 Versjonen er låst med vilje i `public/admin/index.html`. Gjør bare noe med den hvis noe faktisk er ødelagt — da byttes versjonsnummeret, og du sjekker at /admin fortsatt fungerer etterpå.
 
@@ -242,6 +269,7 @@ Prøv hard refresh (Cmd+Shift+R) og en annen nettleser først. Er den fortsatt r
 | Påmeldingsskjemaet sier «Noe gikk galt» | Apps Script er endret uten å bli redeployet, eller URL-en er feil | Redeploy scriptet, se punkt 10 |
 | Påmeldinger kommer ikke i arket, men skjemaet sier takk | Nytt felt lagt til i skjemaet uten at Apps Script har kolonnen | Oppdater og redeploy scriptet |
 | Lightboxen er treg | Den henter originalbildet fra R2 i full oppløsning | Last opp mindre originaler neste gang |
+| Søkemotorer slutter å finne siden | Noen har lagt til `Disallow: /` under `User-agent: *` i `public/robots.txt` | Kun de navngitte KI-crawlerne skal ha `Disallow: /`. Gruppa `User-agent: *` nederst skal ha `Allow: /` |
 | Bildene i et rutenett står ujevnt | Layoutkode som ikke har målt bredden på nytt | Last siden på nytt. Skjer det hver gang, er det en ekte feil — revert |
 
 ---
@@ -264,6 +292,8 @@ Prøv hard refresh (Cmd+Shift+R) og en annen nettleser først. Er den fortsatt r
 | Blogglisten (layout, kort) | `src/pages/blogg/index.astro` |
 | Blogginnlegg (blokker, galleri, lightbox) | `src/pages/blogg/[slug].astro` |
 | Portefølje-siden | `src/pages/portefolje.astro` |
+| Hvilke crawlere som blokkeres på nettsiden | `public/robots.txt` |
+| Hvilke crawlere som blokkeres på bildene | `scripts/r2-robots.txt` — **må lastes opp til R2 manuelt**, se punkt 10 |
 | Fotoverktøyene | `public/fotoverktoy/*.html` |
 | Alt innhold og alle bilder | CMS-en på /admin — ikke i kode |
 

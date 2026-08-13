@@ -84,6 +84,7 @@ foto/
 │
 ├── public/                        Kopieres rått til nettsiden, uendret.
 │   ├── CNAME                      "gauteaalokken.com" — knytter domenet til GitHub Pages. IKKE SLETT.
+│   ├── robots.txt                 Reserverer siden mot KI-trening. Blokkerer IKKE søkemotorer.
 │   ├── favicon.svg                Fanikon.
 │   ├── admin/
 │   │   ├── index.html             Laster Sveltia CMS. Versjonen er pinnet med vilje.
@@ -96,6 +97,8 @@ foto/
 │       └── icon.png
 │
 ├── scripts/
+│   ├── r2-robots.txt              Kopi av robots.txt som må lastes opp MANUELT til R2-bøtta.
+│   │                              Gjør ingenting så lenge den bare ligger i repoet.
 │   ├── sort-feed.mjs              Lokalt verktøy: sorterer R2-bilder etter dato eller farge og
 │   │                              skriver src/content/feed/index.yml på nytt. Kjøres manuelt.
 │   └── google-apps-script-paamelding.gs
@@ -565,6 +568,7 @@ Domenet `gauteaalokken.com` kommer fra `public/CNAME`, som kopieres til `dist/CN
 | Fil / innstilling | Hvorfor |
 |---|---|
 | `public/CNAME` | Slettes den, mister siden domenet `gauteaalokken.com`. |
+| Gruppa `User-agent: *` nederst i `public/robots.txt` | Den skal ha `Allow: /`. Settes den til `Disallow: /`, forsvinner hele siden fra Google og Bing. Kun de navngitte KI-crawlerne over skal blokkeres. |
 | `public/admin/config.yml` → `backend.repo: gauteaalokken/foto` og `branch: main` | Feil verdi = CMS-en kan ikke lagre noe som helst. |
 | R2-verdiene i `public/admin/config.yml` (bucket, account_id, public_url, access_key_id) | Endres de, mister CMS-en opplastingen og alle eksisterende bilde-URL-er slutter å stemme. |
 | `prefix:`-verdiene i `public/admin/config.yml` | Bestemmer hvilken mappe i R2 nye bilder havner i. Endres de, blir bildene spredt og gamle URL-er brytes ikke, men nye blir inkonsistente. |
@@ -642,6 +646,7 @@ Domenet `gauteaalokken.com` kommer fra `public/CNAME`, som kopieres til `dist/CN
 - **Filnavn med mellomrom var en reell feilkilde.** CMS-en lagrer dem med en ukodet space i URL-en, og `fetch()` hang da til timeouten slo inn på hvert av tre forsøk i stedet for å feile raskt. Løst i `fetchBuffer.ts` med `encodeURI(decodeURI(...))`. Unngå likevel mellomrom i nye filnavn.
 - **Bloggens `date` skrives uten fnutter** av CMS-ens datovelger, så YAML tolker den som en ekte dato og ikke en tekst. Derfor `z.coerce.date()` i schemaet. Dette er motsatt av `year` på prosjekter, som skal ha fnutter — ikke gjør dem like.
 - **Blogg og Portefølje er bygget og publisert selv når `showInNav` er av.** De er skjult fra menyen, ikke fra internett. Ikke legg noe der som ikke tåler å bli funnet.
+- **De to robots.txt-filene må holdes i takt.** `public/robots.txt` dekker gauteaalokken.com — inkludert de nedskalerte bildene under `/optimized/`, altså de som faktisk vises. `scripts/r2-robots.txt` dekker originalene på `pub-...r2.dev`, men **kun hvis den er lastet opp manuelt til roten av R2-bøtta**. Ligger den bare i repoet, gjør den ingenting. Endres den ene, endre den andre.
 - **`src/lib/markdown.ts` bygger på pakker som ikke står i `package.json`.** Se punkt 2. Fungerer i dag, men er verdt å kjenne til hvis bloggen plutselig slutter å bygge.
 
 ---
