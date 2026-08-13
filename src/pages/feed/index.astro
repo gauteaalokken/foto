@@ -256,6 +256,17 @@ const remainingPhotos = optimized.slice(INITIAL_BATCH);
     if (grid) new ResizeObserver(relayout).observe(grid);
     window.addEventListener('resize', relayout);
 
+    // Belt-and-suspenders, same reasoning as the infinite-scroll poll below:
+    // layout() is cheap and always correct for whatever's currently in the
+    // DOM, but relies on every relevant change (an image finishing loading,
+    // a width change) reliably triggering a re-run. Verified in testing that
+    // it can occasionally miss one — leaving a stale, gappy row until
+    // something else (e.g. a resize) forces a fresh pass — without a
+    // consistently reproducible cause. Re-running on a plain timer guarantees
+    // the grid self-corrects within about a second regardless of why any
+    // particular trigger didn't fire.
+    setInterval(layout, 1000);
+
     grid?.querySelectorAll('.cell').forEach((cell) => {
       const img = cell.querySelector('.photo');
       if (img) bindImage(img, cell);
