@@ -12,6 +12,14 @@
 // 5. Re-run "Deploy > Manage deployments" and create a new version any time
 //    you edit this script — edits don't take effect on the existing URL
 //    until redeployed.
+//
+// Note: the first run after adding the email notification below will ask for
+// permission to send mail on your behalf, since that's a new scope. Accept it,
+// otherwise the notification silently does nothing.
+
+// Where to send the notification. Leave empty to use the Google account that
+// owns this script — that's you, since the deployment runs as "Me".
+const NOTIFY_EMAIL = '';
 
 function doPost(e) {
   try {
@@ -50,12 +58,49 @@ function doPost(e) {
       data.message || '',
     ]);
 
+    notify(data);
+
     return jsonResponse({ status: 'ok' });
   } catch (err) {
     // Without this the script would return an HTML error page, which the form
     // can't parse — reporting the failure as JSON lets it tell the visitor
     // their sign-up didn't go through instead of showing a false success.
     return jsonResponse({ status: 'error', message: String(err) });
+  }
+}
+
+/** Emails a copy of the sign-up. Called only after the row is safely written. */
+function notify(data) {
+  try {
+    const to = NOTIFY_EMAIL || Session.getEffectiveUser().getEmail();
+    if (!to) return;
+
+    const name = [data.firstName, data.lastName].filter(String).join(' ') || 'Ukjent navn';
+
+    const lines = [
+      'Navn: ' + name,
+      'E-post: ' + (data.email || '—'),
+      'Telefon: ' + (data.phone || '—'),
+      'Runde: ' + (data.runde || '—'),
+      'Overnatting: ' + (data.overnatting || '—'),
+      '',
+      'Noe mer:',
+      data.message || '—',
+      '',
+      'Hele lista: ' + SpreadsheetApp.getActiveSpreadsheet().getUrl(),
+    ];
+
+    const options = { to: to, subject: 'Ny påmelding: ' + name, body: lines.join('\n') };
+
+    // Lets you reply straight to the person from the notification.
+    if (data.email) options.replyTo = data.email;
+
+    MailApp.sendEmail(options);
+  } catch (err) {
+    // Deliberately swallowed: the row is already saved at this point, so a mail
+    // quota or permission problem must not turn a sign-up that did go through
+    // into an error message for the visitor. Shows up in the Apps Script log.
+    console.error('Kunne ikke sende varsel: ' + err);
   }
 }
 
