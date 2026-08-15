@@ -31,7 +31,12 @@ if (blogSettingsEntry?.data.showInNav) {
 
   <nav class="site-nav">
     {navLinks.map((link) => (
-      <a href={withBase(link.href)}>{link.label}</a>
+      <a
+        href={withBase(link.href)}
+        class={link.label === "Fotoverktøy" ? "tool-link" : undefined}
+      >
+        {link.label}
+      </a>
     ))}
 
     <a href="mailto:gauteaalokken@gmail.com" aria-label="Email" class="icon-link">
@@ -63,8 +68,9 @@ if (blogSettingsEntry?.data.showInNav) {
   }
 
   .site-title {
-    font-size: 1.75rem;
-    font-weight: 500;
+    font-family: 'Space Mono', monospace;
+    font-size: 1.4rem;
+    font-weight: 700;
     color: #111;
     text-decoration: none;
     white-space: nowrap;
@@ -78,13 +84,23 @@ if (blogSettingsEntry?.data.showInNav) {
   }
 
   .site-nav a {
+    font-family: 'Space Mono', monospace;
     color: #111;
     text-decoration: none;
-    font-size: 0.95rem;
+    font-size: 0.85rem;
   }
 
   .site-nav a:hover {
     opacity: 0.6;
+  }
+
+  /* Visually separated from the portfolio pages — it's a utility, not part
+     of the photography work the rest of the nav links to. */
+  .tool-link {
+    margin-left: 0.5rem;
+    padding-left: 1.5rem;
+    border-left: 1px solid #ddd;
+    color: #999 !important;
   }
 
   .icon-link {

@@ -99,6 +99,13 @@ const prints = await mapWithConcurrency(entries, 4, async (entry) => {
     opacity: 1;
   }
 
+  /* Touch devices have no hover, so the title would otherwise never show. */
+  @media (hover: none) {
+    .title {
+      opacity: 1;
+    }
+  }
+
   .empty {
     text-align: center;
     color: #666;

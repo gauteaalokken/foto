@@ -86,39 +86,6 @@ if (emptyPositions.has(projects.length)) displayItems.push({ type: 'empty' });
   {projects.length === 0 && <p class="empty-state">Ingen prosjekter ennå.</p>}
 </Layout>
 
-<script>
-  // The server-rendered empty cells give every visitor a valid layout even
-  // without JS, but re-rolling them here means the arrangement is different
-  // on every page load instead of only changing when the site rebuilds.
-  const grid = document.querySelector<HTMLDivElement>('.projects-grid');
-
-  if (grid) {
-    const cards = Array.from(grid.querySelectorAll<HTMLAnchorElement>('.project-card'));
-
-    grid.querySelectorAll('.empty-cell').forEach((el) => el.remove());
-
-    const emptyCount = Math.max(1, Math.round(cards.length * 0.6));
-    const positions = new Set<number>();
-
-    while (positions.size < emptyCount && cards.length > 0) {
-      positions.add(1 + Math.floor(Math.random() * cards.length));
-    }
-
-    const makeEmptyCell = () => {
-      const el = document.createElement('div');
-      el.className = 'empty-cell';
-      el.setAttribute('aria-hidden', 'true');
-      return el;
-    };
-
-    cards.forEach((card, index) => {
-      if (positions.has(index)) grid.insertBefore(makeEmptyCell(), card);
-    });
-
-    if (positions.has(cards.length)) grid.appendChild(makeEmptyCell());
-  }
-</script>
-
 <style is:global>
   .projects-grid {
     display: grid;

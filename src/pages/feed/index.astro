@@ -184,10 +184,13 @@ const remainingPhotos = optimized.slice(INITIAL_BATCH);
 
     // Measures each photo's real shape once its thumbnail has actually loaded,
     // instead of fetching the original again at build time just to find out.
+    // Also fades the photo in once loaded, so the gray placeholder cells read
+    // as "still loading" rather than "broken" while photos are coming in.
     const bindImage = (img, cell) => {
       const applyRatio = () => {
         if (!img.naturalWidth || !img.naturalHeight) return;
         cell.dataset.ratio = String(img.naturalWidth / img.naturalHeight);
+        img.classList.add('loaded');
         scheduleLayout();
       };
 
@@ -385,6 +388,12 @@ const remainingPhotos = optimized.slice(INITIAL_BATCH);
     height: 100%;
     object-fit: cover;
     display: block;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  .photo.loaded {
+    opacity: 1;
   }
 
   .empty {
