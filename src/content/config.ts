@@ -108,4 +108,27 @@ const blogSettings = defineCollection({
   }),
 });
 
-export const collections = { feed, prints, projects, fjellmaraton, portfolio, blog, blogSettings };
+// Settings for the homepage itself — which of the built-in layouts it uses.
+// Kept separate from the project entries so an editor can switch styles
+// without touching any project content.
+const homepageSettings = defineCollection({
+  type: 'data',
+  schema: z.object({
+    // grid: current design, random "air" gaps scattered between projects.
+    // gridTight: same grid, no gaps — projects run back-to-back.
+    // fullscreenScroll: one project fills nearly the whole screen at a time,
+    // starting at a random project and scrolling chronologically from there.
+    layout: z.enum(['grid', 'gridTight', 'fullscreenScroll']).nullable().optional(),
+  }),
+});
+
+export const collections = {
+  feed,
+  prints,
+  projects,
+  fjellmaraton,
+  portfolio,
+  blog,
+  blogSettings,
+  homepageSettings,
+};

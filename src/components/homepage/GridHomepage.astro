@@ -1,0 +1,145 @@
+---
+import { withBase } from '../../lib/resolveImage';
+
+interface Project {
+  slug: string;
+  title: string;
+  year: string;
+  cover: { src: string; aspectRatio: number } | null;
+}
+
+interface Props {
+  projects: Project[];
+  tight?: boolean;
+}
+
+const { projects, tight = false } = Astro.props;
+
+type DisplayItem = { type: 'project'; project: Project } | { type: 'empty' };
+
+// Empty squares scattered randomly through the grid — the row is 4 slots
+// wide, but only about 2-3 of those 4 are ever real photos, so it reads as
+// a curated pick from a bigger archive rather than "this is literally
+// everything". Recomputed on every build — the exact spots aren't meant to
+// be stable, but they do stay put between page loads (no client-side
+// re-roll), so the grid doesn't visibly shuffle on refresh.
+const emptyCount = tight ? 0 : Math.max(1, Math.round(projects.length * 0.6));
+const emptyPositions = new Set<number>();
+// Never at position 0 — an empty tile with nothing above or beside it (e.g.
+// alone at the top of a single-column mobile layout) reads as broken rather
+// than curated, since there's no neighboring real photo for context.
+while (emptyPositions.size < emptyCount && projects.length > 0) {
+  emptyPositions.add(1 + Math.floor(Math.random() * projects.length));
+}
+
+const displayItems: DisplayItem[] = [];
+projects.forEach((project, index) => {
+  if (emptyPositions.has(index)) displayItems.push({ type: 'empty' });
+  displayItems.push({ type: 'project', project });
+});
+if (emptyPositions.has(projects.length)) displayItems.push({ type: 'empty' });
+---
+
+<div class="projects-grid">
+  {displayItems.map((item) =>
+    item.type === 'empty' ? (
+      <div class="empty-cell" aria-hidden="true" />
+    ) : (
+      <a class="project-card" href={withBase(`/prosjekter/${item.project.slug}`)}>
+        <div class="cover-wrap">
+          {item.project.cover && (
+            <img
+              class="cover"
+              src={item.project.cover.src}
+              style={`aspect-ratio: ${item.project.cover.aspectRatio}`}
+              alt={item.project.title}
+              loading="lazy"
+            />
+          )}
+        </div>
+        <div class="caption">
+          <span class="year">({item.project.year})</span>
+          <span class="title">{item.project.title}</span>
+        </div>
+      </a>
+    )
+  )}
+</div>
+
+{projects.length === 0 && <p class="empty-state">Ingen prosjekter ennå.</p>}
+
+<style is:global>
+  .projects-grid {
+    display: grid;
+    /* A fixed 4-column template rather than however-many-fit — since only
+       about 2-3 of every 4 slots end up holding a real photo, columns stay
+       the same width whether a row has 2, 3, or 4 filled. */
+    grid-template-columns: repeat(2, 1fr);
+    align-items: end;
+    gap: 40px 32px;
+    max-width: 1500px;
+    margin: 0 auto;
+    padding: 40px 32px 80px;
+  }
+
+  @media (min-width: 640px) {
+    .projects-grid {
+      grid-template-columns: repeat(4, 1fr);
+      gap: 48px 40px;
+    }
+  }
+
+  .project-card {
+    display: block;
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .cover-wrap {
+    overflow: hidden;
+    background: #eee;
+  }
+
+  .cover {
+    width: 100%;
+    height: auto;
+    display: block;
+    transition: transform 0.4s ease;
+  }
+
+  .project-card:hover .cover {
+    transform: scale(1.02);
+  }
+
+  .empty-cell {
+    aspect-ratio: 1 / 1;
+  }
+
+  .caption {
+    margin-top: 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .year {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.8rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #888;
+  }
+
+  .title {
+    font-family: 'Space Mono', monospace;
+    font-size: 1.2rem;
+    font-weight: 500;
+    line-height: 1.3;
+  }
+
+  .empty-state {
+    text-align: center;
+    color: #666;
+    padding: 80px 20px;
+  }
+</style>

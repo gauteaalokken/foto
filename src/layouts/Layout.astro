@@ -5,6 +5,7 @@ interface Props {
   title?: string;
   description?: string;
   image?: string;
+  bodyClass?: string;
 }
 
 const DEFAULT_DESCRIPTION =
@@ -20,6 +21,7 @@ const {
   title = 'Gaute Aaløkken',
   description = DEFAULT_DESCRIPTION,
   image = DEFAULT_OG_IMAGE,
+  bodyClass,
 } = Astro.props;
 
 const canonical = new URL(Astro.url.pathname, Astro.site ?? Astro.url.origin);
@@ -53,7 +55,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? Astro.url.origin);
     />
     <title>{title}</title>
   </head>
-  <body>
+  <body class={bodyClass}>
     <Header />
     <main>
       <slot />

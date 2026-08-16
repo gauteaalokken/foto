@@ -12,6 +12,24 @@ media_libraries:
     access_key_id: a74d879decb219fc298c10edd12ecda5
 
 collections:
+  - name: "homepageSettings"
+    label: "Forside-innstillinger"
+    files:
+      - name: "main"
+        label: "Forside-innstillinger"
+        file: "src/content/homepageSettings/index.yml"
+        fields:
+          - label: "Type forside"
+            name: "layout"
+            widget: "select"
+            default: "grid"
+            required: false
+            hint: "Bytt fritt mellom disse når som helst."
+            options:
+              - { label: "Rutenett med luft (tilfeldige tomme ruter mellom prosjektene)", value: "grid" }
+              - { label: "Rutenett uten luft (prosjektene ligger tett etter hverandre)", value: "gridTight" }
+              - { label: "Fullskjerm-scroll (ett prosjekt om gangen, glimt av neste)", value: "fullscreenScroll" }
+
   - name: "projects"
     label: "Projects"
     folder: "src/content/projects"
