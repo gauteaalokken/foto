@@ -315,9 +315,31 @@ const remainingPhotos = optimized.slice(INITIAL_BATCH);
     const lightboxImg = document.getElementById('lightbox-img');
     let currentIndex = -1;
 
+    // Opening the lightbox meant a black screen while the original downloaded
+    // straight from R2 — 15-20 MB for the biggest of them. The thumbnail on the
+    // page is already in the browser's cache, so it goes up immediately and the
+    // original takes its place the moment it arrives. The width is pinned to the
+    // size the original will take (same photo, same proportions), so the swap
+    // doesn't move anything on screen.
+    let pendingOriginal = 0;
+
     const show = (index) => {
       currentIndex = (index + allPhotoSrcs.length) % allPhotoSrcs.length;
-      if (lightboxImg) lightboxImg.src = allPhotoSrcs[currentIndex];
+      if (!lightboxImg) return;
+
+      const token = ++pendingOriginal;
+      const thumb = document.querySelector(`.photo-button[data-index="${currentIndex}"] img`);
+      const ratio = thumb?.naturalWidth ? thumb.naturalWidth / thumb.naturalHeight : 0;
+
+      lightboxImg.style.width = ratio ? `min(90vw, ${(90 * ratio).toFixed(2)}vh)` : '';
+      lightboxImg.src = thumb?.currentSrc || allPhotoSrcs[currentIndex];
+
+      const original = new Image();
+      original.addEventListener('load', () => {
+        // A slow original the visitor has already paged past is dropped.
+        if (token === pendingOriginal) lightboxImg.src = original.src;
+      });
+      original.src = allPhotoSrcs[currentIndex];
     };
 
     const openLightbox = (index) => {

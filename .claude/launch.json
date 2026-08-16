@@ -7,6 +7,12 @@
       "runtimeArgs": ["astro", "dev", "--port", "${PORT}"],
       "port": 4321,
       "autoPort": true
+    },
+    {
+      "name": "foto-preview",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["astro", "preview", "--port", "4399"],
+      "port": 4399
     }
   ]
 }

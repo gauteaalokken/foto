@@ -216,9 +216,31 @@ const photos = await mapWithConcurrency(pages, 4, async (page) => {
   const lightboxImg = document.getElementById('lightbox-img') as HTMLImageElement;
   let currentIndex = -1;
 
+  // Opening the lightbox meant a black screen while the original downloaded
+  // straight from R2 — 15-20 MB for the biggest of them. The thumbnail on the
+  // page is already in the browser's cache, so it goes up immediately and the
+  // original takes its place the moment it arrives. The width is pinned to the
+  // size the original will take (same photo, same proportions), so the swap
+  // doesn't move anything on screen.
+  let pendingOriginal = 0;
+
   const show = (index: number) => {
     currentIndex = (index + fullPhotos.length) % fullPhotos.length;
-    lightboxImg.src = fullPhotos[currentIndex];
+    if (!lightboxImg) return;
+
+    const token = ++pendingOriginal;
+    const thumb = buttons[currentIndex]?.querySelector('img');
+    const ratio = thumb?.naturalWidth ? thumb.naturalWidth / thumb.naturalHeight : 0;
+
+    lightboxImg.style.width = ratio ? `min(90vw, ${(90 * ratio).toFixed(2)}vh)` : '';
+    lightboxImg.src = thumb?.currentSrc || fullPhotos[currentIndex];
+
+    const original = new Image();
+    original.addEventListener('load', () => {
+      // A slow original the visitor has already paged past is dropped.
+      if (token === pendingOriginal) lightboxImg.src = original.src;
+    });
+    original.src = fullPhotos[currentIndex];
   };
 
   const open = (index: number) => {

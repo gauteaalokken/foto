@@ -126,17 +126,34 @@ const coverSizes = (aspectRatio: number) =>
     { passive: false }
   );
 
+  const scrollByPage = (direction: -1 | 1) => {
+    container?.scrollBy({ left: direction * (container.clientWidth || 1), behavior: 'smooth' });
+  };
+
   document.querySelectorAll<HTMLButtonElement>('.nav-prev').forEach((button) => {
     button.addEventListener('click', (event) => {
       event.preventDefault();
-      container?.scrollBy({ left: -(container.clientWidth || 1), behavior: 'smooth' });
+      scrollByPage(-1);
     });
   });
   document.querySelectorAll<HTMLButtonElement>('.nav-next').forEach((button) => {
     button.addEventListener('click', (event) => {
       event.preventDefault();
-      container?.scrollBy({ left: container.clientWidth || 1, behavior: 'smooth' });
+      scrollByPage(1);
     });
+  });
+
+  // Arrow keys move between projects too. Without this the page could only be
+  // driven by wheel, swipe or the hover arrows — and the arrows are invisible
+  // until the pointer is over the photo, so a visitor navigating by keyboard
+  // had nothing at all. The keys the page is already scrolled by sideways are
+  // the ones a sideways gallery should answer to.
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+    if (event.metaKey || event.ctrlKey || event.altKey) return;
+
+    event.preventDefault();
+    scrollByPage(event.key === 'ArrowLeft' ? -1 : 1);
   });
 
   // Once scrolling settles on the leading/trailing clone, silently (no

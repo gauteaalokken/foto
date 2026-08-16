@@ -72,6 +72,11 @@ const prints = await mapWithConcurrency(entries, 4, async (entry) => {
     display: block;
   }
 
+  /* Shown outright rather than on hover. This is the one page on the site
+     that sells something, and a visitor scanning it shouldn't have to point
+     at each frame to find out what it's called — the titles are how a print
+     gets asked for by name in an email. Phones never had the hover state to
+     begin with, so this also makes both views the same page. */
   .title {
     display: block;
     margin-top: 16px;
@@ -79,20 +84,12 @@ const prints = await mapWithConcurrency(entries, 4, async (entry) => {
     letter-spacing: 0.05em;
     text-transform: uppercase;
     font-size: 0.85rem;
-    opacity: 0;
-    transition: opacity 0.15s ease;
+    color: #555;
   }
 
   .print-card:hover .title,
   .print-card:focus-visible .title {
-    opacity: 1;
-  }
-
-  /* Touch devices have no hover, so the title would otherwise never show. */
-  @media (hover: none) {
-    .title {
-      opacity: 1;
-    }
+    color: #111;
   }
 
   .empty {
