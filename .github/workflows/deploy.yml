@@ -18,12 +18,15 @@ jobs:
           # Caches the downloaded packages themselves (~/.npm), so the install
           # step doesn't re-fetch every package from the registry each build.
           cache: npm
-      # `npm ci` rather than `npm install`: it installs exactly the versions in
-      # package-lock.json instead of quietly picking newer ones, so a build that
-      # worked yesterday can't break today because a dependency shipped an
-      # update. It also wipes node_modules, which is why the image cache below
-      # has to be restored after it and not before.
-      - run: npm ci
+      # `npm install`, not `npm ci`, on purpose. `npm ci` would be stricter, but
+      # it refuses to run when the lockfile doesn't fully describe the platform
+      # it's installing on — and this lockfile is written on a Mac while CI runs
+      # on Linux, where sharp pulls in two packages (@emnapi/core, @emnapi/runtime)
+      # that never appear in a macOS resolution. Tried on 2026-08-16: the build
+      # failed in 9 seconds on exactly that. `npm install` fills the gap instead
+      # of erroring, and still follows the lockfile for everything it does cover.
+      # Worth revisiting only if the lockfile is ever regenerated on Linux.
+      - run: npm install
       - uses: actions/cache@v4
         with:
           path: |

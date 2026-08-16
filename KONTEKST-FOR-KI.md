@@ -28,7 +28,7 @@ som drifter siden. Denne fila er den tekniske referansen for KI-en som hjelper t
 - Pakkebehandler: **npm** (`package-lock.json`, lockfileVersion 3). Ingen yarn/pnpm.
 - Node lokalt: **v24.11.1**, npm 11.6.2.
 - Node i GitHub Actions: **22** (satt i `.github/workflows/deploy.yml`).
-- CI installerer med **`npm ci`**, som følger `package-lock.json` nøyaktig. Et bygg kan derfor ikke plutselig havne på en nyere avhengighet enn den låste.
+- CI installerer med **`npm install`** (ikke `npm ci`). Lockfila er skrevet på en Mac, og på Linux trenger sharp to pakker til (`@emnapi/core`, `@emnapi/runtime`) som en macOS-oppløsning aldri får med seg. `npm ci` stopper på det og bygget feiler; `npm install` fyller inn hullet og følger ellers lockfila. Prøvd og verifisert 2026-08-16. Skal `npm ci` tas i bruk, må lockfila først genereres på Linux.
 
 **Avhengigheter (`dependencies`)**
 | Pakke | Versjon i package.json | Faktisk installert | Hva den gjør |
@@ -574,8 +574,8 @@ Med tom cache tar bygget vesentlig lenger — da skal over tusen bilder hentes f
 **Publisering — dette er GitHub Pages, ikke Cloudflare Pages.**
 `.github/workflows/deploy.yml`:
 1. Utløses av push til `main`, eller manuelt (`workflow_dispatch`).
-2. `actions/checkout@v4` → `actions/setup-node@v4` med Node 22 og `cache: npm` → `npm ci`.
-3. `actions/cache@v4` gjenoppretter `node_modules/.astro` og `node_modules/.image-staging` (nøkkel `image-cache-<run_id>`, restore-key `image-cache-`). Dette er grunnen til at bygg nummer to går fort — allerede skalerte bilder gjenbrukes. **Rekkefølgen er ikke tilfeldig:** `npm ci` sletter hele `node_modules`, så bildecachen må gjenopprettes *etter* installasjonen, ikke før.
+2. `actions/checkout@v4` → `actions/setup-node@v4` med Node 22 og `cache: npm` (mellomlagrer nedlastede pakker) → `npm install`.
+3. `actions/cache@v4` gjenoppretter `node_modules/.astro` og `node_modules/.image-staging` (nøkkel `image-cache-<run_id>`, restore-key `image-cache-`). Dette er grunnen til at bygg nummer to går fort — allerede skalerte bilder gjenbrukes. **Rekkefølgen er ikke tilfeldig:** installasjonen kan skrive om `node_modules`, så bildecachen må gjenopprettes *etter* den, ikke før.
 4. `npm run build`.
 5. `actions/upload-pages-artifact@v3` med `dist/` → `actions/deploy-pages@v4`.
 
