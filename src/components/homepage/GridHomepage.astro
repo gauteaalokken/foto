@@ -5,7 +5,7 @@ interface Project {
   slug: string;
   title: string;
   year: string;
-  cover: { src: string; aspectRatio: number } | null;
+  cover: { src: string; srcset: string; aspectRatio: number } | null;
 }
 
 interface Props {
@@ -51,6 +51,8 @@ if (emptyPositions.has(projects.length)) displayItems.push({ type: 'empty' });
             <img
               class="cover"
               src={item.project.cover.src}
+              srcset={item.project.cover.srcset}
+              sizes="(min-width: 640px) 25vw, 50vw"
               style={`aspect-ratio: ${item.project.cover.aspectRatio}`}
               alt={item.project.title}
               loading="lazy"

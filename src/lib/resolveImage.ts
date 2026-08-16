@@ -51,6 +51,82 @@ export async function resolveImage(src: string, width: number, quality: number):
 }
 
 /**
+ * Resolves one photo at several widths and returns a ready-made `srcset`, so
+ * a phone can fetch a ~800px file where a desktop gets the full 2000px one.
+ * Without this every device downloads the same file — the homepage covers run
+ * up to 2.7 MB each, which is a lot to send to a phone on mobile data for an
+ * image it will never render wider than ~350px.
+ *
+ * Downloads the original once and resizes it N times, rather than calling
+ * resolveImage() per width — that would re-fetch the same (large) original
+ * from R2 once for every size.
+ *
+ * Descriptors report each file's *real* width, not the width that was asked
+ * for: `withoutEnlargement` means a small original comes back smaller than
+ * requested, and claiming otherwise would have the browser pick a file
+ * expecting more detail than it holds. Sizes that collapse onto the same real
+ * width are emitted once.
+ */
+export async function resolveImageSrcSet(
+  src: string,
+  widths: number[],
+  quality: number
+): Promise<{ src: string; srcset: string; aspectRatio: number }> {
+  if (!isRemote(src)) return { src: withBase(src), srcset: '', aspectRatio: 1 };
+
+  const ordered = [...widths].sort((a, b) => a - b);
+  const entries = ordered.map((width) => ({
+    width,
+    filename: `${createHash('sha1').update(`${src}:${width}:${quality}`).digest('hex')}.webp`,
+  }));
+
+  await Promise.all(entries.map((entry) => markReferenced(entry.filename)));
+
+  const missing: typeof entries = [];
+  for (const entry of entries) {
+    if (!(await hasStagedFile(entry.filename))) missing.push(entry);
+  }
+
+  if (missing.length > 0) {
+    const buffer = await fetchWithRetry(src);
+
+    for (const entry of missing) {
+      const resized = await sharp(buffer)
+        .rotate()
+        .resize({ width: entry.width, withoutEnlargement: true })
+        .webp({ quality })
+        .toBuffer();
+
+      await stageImageWrite(entry.filename, resized);
+    }
+  }
+
+  const measured = await Promise.all(
+    entries.map(async (entry) => {
+      const metadata = await sharp(path.join(STAGING_DIR, entry.filename)).metadata();
+      return { ...entry, realWidth: metadata.width ?? entry.width, realHeight: metadata.height ?? 0 };
+    })
+  );
+
+  const seen = new Set<number>();
+  const candidates = measured.filter((entry) => {
+    if (seen.has(entry.realWidth)) return false;
+    seen.add(entry.realWidth);
+    return true;
+  });
+
+  const largest = candidates[candidates.length - 1];
+
+  return {
+    src: withBase(`optimized/${largest.filename}`),
+    srcset: candidates
+      .map((entry) => `${withBase(`optimized/${entry.filename}`)} ${entry.realWidth}w`)
+      .join(', '),
+    aspectRatio: largest.realHeight > 0 ? largest.realWidth / largest.realHeight : 1,
+  };
+}
+
+/**
  * Same as resolveImage, but also returns the resized photo's real aspect
  * ratio (read straight from the staged file's own metadata — not Astro's
  * inferSize, which has the bug described above). Callers can use this to

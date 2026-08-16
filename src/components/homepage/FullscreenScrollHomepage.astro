@@ -5,7 +5,7 @@ interface Project {
   slug: string;
   title: string;
   year: string;
-  cover: { src: string; aspectRatio: number } | null;
+  cover: { src: string; srcset: string; aspectRatio: number } | null;
 }
 
 interface Props {
@@ -30,7 +30,14 @@ const displayProjects = projects.length > 1 ? [projects[projects.length - 1], ..
       <div class="frame">
         <a class="image-link" href={withBase(`/prosjekter/${project.slug}`)}>
           {project.cover && (
-            <img class="scroll-cover" src={project.cover.src} alt={project.title} loading="lazy" />
+            <img
+              class="scroll-cover"
+              src={project.cover.src}
+              srcset={project.cover.srcset}
+              sizes="calc(100vw - 48px)"
+              alt={project.title}
+              loading="lazy"
+            />
           )}
         </a>
         <div class="scroll-caption">
