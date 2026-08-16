@@ -53,13 +53,38 @@ const displayProjects = projects.length > 1 ? [projects[projects.length - 1], ..
   const realCount = Number(container?.dataset.realCount ?? sections.length);
   const hasClones = sections.length === realCount + 2;
 
+  // Must match the .scroll-section padding and .scroll-caption margin-top
+  // in the stylesheet below.
+  const SECTION_PADDING = 24;
+  const CAPTION_GAP = 16;
+
   // No vertical scrolling at all: the container is sized to exactly fill
   // whatever space is left below the header, so the page never grows taller
   // than the viewport. Measured (not a fixed guess) since the header's real
   // height varies — e.g. it wraps onto two lines on narrow screens.
+  //
+  // The photo's height cap is derived from that same measurement rather than
+  // a plain `vh` value: `vh` is a fraction of the *whole* viewport, but the
+  // space actually available here is the viewport minus the header, minus the
+  // caption and padding. On short viewports (a phone held sideways, a small
+  // laptop window) a vh-based cap made the photo tall enough to push the
+  // caption below the fold — and since vertical scrolling is locked, the
+  // project title was simply unreachable.
   const sizeContainer = () => {
     if (!container || !header) return;
-    container.style.height = `${window.innerHeight - header.offsetHeight}px`;
+
+    const available = window.innerHeight - header.offsetHeight;
+    container.style.height = `${available}px`;
+
+    // Reserve the tallest caption, not the current one: every section shares
+    // one cap, and a long title wraps onto more lines than a short one.
+    const tallestCaption = Array.from(container.querySelectorAll<HTMLElement>('.scroll-caption')).reduce(
+      (max, el) => Math.max(max, el.offsetHeight),
+      0
+    );
+
+    const photoMax = Math.max(0, available - tallestCaption - CAPTION_GAP - SECTION_PADDING * 2);
+    container.style.setProperty('--photo-max-h', `${photoMax}px`);
   };
 
   sizeContainer();
@@ -129,7 +154,19 @@ const displayProjects = projects.length > 1 ? [projects[projects.length - 1], ..
   if (realCount > 0) {
     const firstRealIndex = hasClones ? 1 : 0;
     const randomIndex = firstRealIndex + Math.floor(Math.random() * realCount);
-    sections[randomIndex]?.scrollIntoView({ behavior: 'instant', inline: 'start' });
+    const landing = sections[randomIndex];
+
+    landing?.scrollIntoView({ behavior: 'instant', inline: 'start' });
+
+    // Every cover is lazy-loaded, which is right for the 15 nobody is looking
+    // at — but the one we just landed on *is* the page, and lazy-loading
+    // deprioritizes exactly that image. Which one it'll be isn't known until
+    // this runs (it's random), so it's promoted here instead of in the markup.
+    const landingImg = landing?.querySelector<HTMLImageElement>('.scroll-cover');
+    if (landingImg) {
+      landingImg.loading = 'eager';
+      landingImg.fetchPriority = 'high';
+    }
   }
 </script>
 
@@ -190,9 +227,13 @@ const displayProjects = projects.length > 1 ? [projects[projects.length - 1], ..
     /* Landscape photos hit max-width first (fill the available width);
        portrait photos hit max-height first (fill the available height) —
        object-fit: contain inside a box shaped like the viewport does this
-       automatically without needing to know a photo's orientation upfront. */
-    max-width: calc(96vw - 48px);
-    max-height: 78vh;
+       automatically without needing to know a photo's orientation upfront.
+
+       --photo-max-h is set in JS from the real space left after the header,
+       caption and padding (see sizeContainer). The 78vh fallback only
+       applies for the instant before that runs. */
+    max-width: calc(100vw - 48px);
+    max-height: var(--photo-max-h, 78vh);
     width: auto;
     height: auto;
     object-fit: contain;
@@ -244,8 +285,19 @@ const displayProjects = projects.length > 1 ? [projects[projects.length - 1], ..
     transition: opacity 0.2s ease;
   }
 
-  .scroll-section:hover .nav-arrow {
+  .scroll-section:hover .nav-arrow,
+  .nav-arrow:focus-visible {
     opacity: 1;
+  }
+
+  /* Touch devices have no hover, so the arrows would otherwise never appear —
+     leaving no visible hint that there are more projects to swipe to at all.
+     Shown permanently (a little softer) rather than on tap, since the point
+     is the affordance itself. */
+  @media (hover: none) {
+    .nav-arrow {
+      opacity: 0.75;
+    }
   }
 
   .nav-prev {
