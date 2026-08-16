@@ -13,24 +13,31 @@ interface Props {
 }
 
 const { projects } = Astro.props;
+
+// A clone of the last project before the first, and a clone of the first
+// project after the last — lets scrolling run continuously off either end
+// into what looks like the next real project, instead of just stopping.
+// A tiny script (see below) then silently snaps back to the real slide the
+// clone represents once scrolling settles, so the loop is seamless.
+const displayProjects = projects.length > 1 ? [projects[projects.length - 1], ...projects, projects[0]] : projects;
 ---
 
-<div class="scroll-homepage" id="scroll-homepage">
-  {projects.map((project) => (
+<div class="scroll-homepage" id="scroll-homepage" data-real-count={projects.length}>
+  {displayProjects.map((project) => (
     <div class="scroll-section">
       <button type="button" class="nav-arrow nav-prev" aria-label="Forrige prosjekt">&#8249;</button>
 
-      <a class="frame-link" href={withBase(`/prosjekter/${project.slug}`)}>
-        <div class="frame">
+      <div class="frame">
+        <a class="image-link" href={withBase(`/prosjekter/${project.slug}`)}>
           {project.cover && (
             <img class="scroll-cover" src={project.cover.src} alt={project.title} loading="lazy" />
           )}
-          <div class="scroll-caption">
-            <span class="year">({project.year})</span>
-            <span class="title">{project.title}</span>
-          </div>
+        </a>
+        <div class="scroll-caption">
+          <span class="year">({project.year})</span>
+          <span class="title">{project.title}</span>
         </div>
-      </a>
+      </div>
 
       <button type="button" class="nav-arrow nav-next" aria-label="Neste prosjekt">&#8250;</button>
     </div>
@@ -43,6 +50,8 @@ const { projects } = Astro.props;
   const container = document.getElementById('scroll-homepage');
   const header = document.querySelector<HTMLElement>('.site-header');
   const sections = Array.from(document.querySelectorAll<HTMLElement>('.scroll-section'));
+  const realCount = Number(container?.dataset.realCount ?? sections.length);
+  const hasClones = sections.length === realCount + 2;
 
   // No vertical scrolling at all: the container is sized to exactly fill
   // whatever space is left below the header, so the page never grows taller
@@ -75,27 +84,51 @@ const { projects } = Astro.props;
     { passive: false }
   );
 
-  const goTo = (index: number) => {
-    const clamped = Math.max(0, Math.min(sections.length - 1, index));
-    sections[clamped]?.scrollIntoView({ behavior: 'smooth', inline: 'start' });
-  };
-
-  sections.forEach((section, index) => {
-    section.querySelector('.nav-prev')?.addEventListener('click', (event) => {
+  document.querySelectorAll<HTMLButtonElement>('.nav-prev').forEach((button) => {
+    button.addEventListener('click', (event) => {
       event.preventDefault();
-      goTo(index - 1);
-    });
-    section.querySelector('.nav-next')?.addEventListener('click', (event) => {
-      event.preventDefault();
-      goTo(index + 1);
+      container?.scrollBy({ left: -(container.clientWidth || 1), behavior: 'smooth' });
     });
   });
+  document.querySelectorAll<HTMLButtonElement>('.nav-next').forEach((button) => {
+    button.addEventListener('click', (event) => {
+      event.preventDefault();
+      container?.scrollBy({ left: container.clientWidth || 1, behavior: 'smooth' });
+    });
+  });
+
+  // Once scrolling settles on the leading/trailing clone, silently (no
+  // animation) jump to the real slide it stands in for — from the visitor's
+  // point of view nothing changes, since the clone shows the same project,
+  // but it puts them back in the "real" range so the loop can keep going
+  // indefinitely in either direction. Debounced rather than reacting to
+  // every scroll event, since we only want to act once scrolling has
+  // actually stopped.
+  if (hasClones && container) {
+    let settleTimer: ReturnType<typeof setTimeout>;
+
+    container.addEventListener('scroll', () => {
+      clearTimeout(settleTimer);
+      settleTimer = setTimeout(() => {
+        const width = container.clientWidth;
+        if (!width) return;
+        const index = Math.round(container.scrollLeft / width);
+
+        if (index === 0) {
+          container.scrollTo({ left: width * realCount, behavior: 'instant' });
+        } else if (index === realCount + 1) {
+          container.scrollTo({ left: width * 1, behavior: 'instant' });
+        }
+      }, 120);
+    });
+  }
 
   // Lands the visitor on a random project instead of always the same one —
   // scrolling from there moves chronologically through the rest in either
   // direction, since the sections themselves stay in chronological order.
-  if (sections.length > 1) {
-    const randomIndex = Math.floor(Math.random() * sections.length);
+  if (realCount > 0) {
+    const firstRealIndex = hasClones ? 1 : 0;
+    const randomIndex = firstRealIndex + Math.floor(Math.random() * realCount);
     sections[randomIndex]?.scrollIntoView({ behavior: 'instant', inline: 'start' });
   }
 </script>
@@ -134,16 +167,9 @@ const { projects } = Astro.props;
     scroll-snap-align: start;
     scroll-snap-stop: always;
     background: #fff;
-  }
-
-  .frame-link {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 100%;
-    height: 100%;
-    color: inherit;
-    text-decoration: none;
     box-sizing: border-box;
     padding: 24px;
   }
@@ -152,12 +178,12 @@ const { projects } = Astro.props;
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    /* Fixed viewport-relative caps (not "fill whatever space is left"): the
-       image and its caption are sized and centered as one group, so the
-       caption always sits directly under the photo instead of pinned to the
-       bottom of the screen with a gap. Leaves enough below max-height for
-       the caption to fit without the pair overflowing the frame. */
     max-width: 100%;
+  }
+
+  .image-link {
+    display: block;
+    cursor: pointer;
   }
 
   .scroll-cover {
@@ -181,6 +207,7 @@ const { projects } = Astro.props;
     align-items: flex-start;
     gap: 4px;
     text-align: left;
+    color: inherit;
   }
 
   .scroll-caption .year {
