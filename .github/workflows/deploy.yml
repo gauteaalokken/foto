@@ -15,7 +15,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm install
+          # Caches the downloaded packages themselves (~/.npm), so the install
+          # step doesn't re-fetch every package from the registry each build.
+          cache: npm
+      # `npm ci` rather than `npm install`: it installs exactly the versions in
+      # package-lock.json instead of quietly picking newer ones, so a build that
+      # worked yesterday can't break today because a dependency shipped an
+      # update. It also wipes node_modules, which is why the image cache below
+      # has to be restored after it and not before.
+      - run: npm ci
       - uses: actions/cache@v4
         with:
           path: |

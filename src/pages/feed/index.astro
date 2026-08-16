@@ -39,7 +39,7 @@ const remainingPhotos = optimized.slice(INITIAL_BATCH);
     <div class="grid" id="feed-grid">
       {initialPhotos.map((photo, i) => (
         <div class="cell" data-ratio="1">
-          <button type="button" class="photo-button" data-index={i} aria-label="View photo full screen">
+          <button type="button" class="photo-button" data-index={i} aria-label="Vis bilde i fullskjerm">
             <img class="photo" src={photo.src} alt="" loading="lazy" decoding="async" />
           </button>
         </div>
@@ -47,15 +47,15 @@ const remainingPhotos = optimized.slice(INITIAL_BATCH);
     </div>
   </div>
 
-  {photos.length === 0 && <p class="empty">No photos in the feed yet.</p>}
+  {photos.length === 0 && <p class="empty">Ingen bilder i feeden ennå.</p>}
 
   <div id="feed-sentinel"></div>
 
   <div id="lightbox" class="lightbox" hidden>
-    <button type="button" id="lightbox-close" class="lightbox-close" aria-label="Close">&times;</button>
-    <button type="button" id="lightbox-prev" class="lightbox-nav lightbox-prev" aria-label="Previous photo">&#8249;</button>
+    <button type="button" id="lightbox-close" class="lightbox-close" aria-label="Lukk">&times;</button>
+    <button type="button" id="lightbox-prev" class="lightbox-nav lightbox-prev" aria-label="Forrige bilde">&#8249;</button>
     <img id="lightbox-img" class="lightbox-img" alt="" />
-    <button type="button" id="lightbox-next" class="lightbox-nav lightbox-next" aria-label="Next photo">&#8250;</button>
+    <button type="button" id="lightbox-next" class="lightbox-nav lightbox-next" aria-label="Neste bilde">&#8250;</button>
   </div>
 
   <script type="application/json" id="feed-remaining" set:html={JSON.stringify(remainingPhotos)} />
@@ -207,7 +207,7 @@ const remainingPhotos = optimized.slice(INITIAL_BATCH);
       button.type = 'button';
       button.className = 'photo-button';
       button.dataset.index = String(index);
-      button.setAttribute('aria-label', 'View photo full screen');
+      button.setAttribute('aria-label', 'Vis bilde i fullskjerm');
 
       const img = document.createElement('img');
       img.className = 'photo';

@@ -1,4 +1,5 @@
 import { fileURLToPath } from 'node:url';
+import { readFileSync } from 'node:fs';
 import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { defineConfig } from 'astro/config';
@@ -77,6 +78,29 @@ const flushStagedImages = {
   },
 };
 
+// /blogg and /portefolje are built and published whether or not the CMS links
+// them from the menu — showInNav only controls the menu (see Header.astro).
+// The sitemap is a different thing though: it's the list of pages the site
+// actively asks Google to index, and a page deliberately kept out of the menu
+// shouldn't be volunteered. Read straight from the YAML rather than through
+// astro:content, which isn't available this early in the config.
+const isLinkedInNav = (collection) => {
+  try {
+    const file = fileURLToPath(new URL(`./src/content/${collection}/index.yml`, import.meta.url));
+    return /^showInNav:\s*true\s*$/m.test(readFileSync(file, 'utf-8'));
+  } catch {
+    return false;
+  }
+};
+
+const unlistedPaths = [
+  // The CMS itself, and a set of private tools — neither belongs in search results.
+  '/admin',
+  '/fotoverktoy',
+  ...(isLinkedInNav('blogSettings') ? [] : ['/blogg']),
+  ...(isLinkedInNav('portfolio') ? [] : ['/portefolje']),
+];
+
 export default defineConfig({
   site: 'https://gauteaalokken.com',
   image: {
@@ -84,10 +108,8 @@ export default defineConfig({
   },
   integrations: [
     flushStagedImages,
-    // /admin is the CMS itself, and /fotoverktoy is a set of private tools —
-    // neither belongs in search results.
     sitemap({
-      filter: (page) => !page.includes('/admin') && !page.includes('/fotoverktoy'),
+      filter: (page) => !unlistedPaths.some((unlisted) => page.includes(unlisted)),
     }),
   ],
 });

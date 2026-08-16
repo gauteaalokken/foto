@@ -20,6 +20,16 @@ const { projects } = Astro.props;
 // A tiny script (see below) then silently snaps back to the real slide the
 // clone represents once scrolling settles, so the loop is seamless.
 const displayProjects = projects.length > 1 ? [projects[projects.length - 1], ...projects, projects[0]] : projects;
+
+// A cover is capped by the width available *and* by the height left over below
+// the header, so a standing photo is only ever as wide as its own proportions
+// allow at that height — often a third of the window. Telling the browser
+// "assume full width" instead made it pull the 2000px file (650–690 KB) for
+// every cover, including ones rendered ~500px wide. 78vh mirrors the CSS
+// fallback for --photo-max-h below; the exact figure JS measures afterwards
+// doesn't exist yet when the browser picks a file.
+const coverSizes = (aspectRatio: number) =>
+  `min(calc(100vw - 48px), calc(78vh * ${aspectRatio.toFixed(2)}))`;
 ---
 
 <div class="scroll-homepage" id="scroll-homepage" data-real-count={projects.length}>
@@ -34,7 +44,7 @@ const displayProjects = projects.length > 1 ? [projects[projects.length - 1], ..
               class="scroll-cover"
               src={project.cover.src}
               srcset={project.cover.srcset}
-              sizes="calc(100vw - 48px)"
+              sizes={coverSizes(project.cover.aspectRatio)}
               alt={project.title}
               loading="lazy"
             />

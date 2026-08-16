@@ -12,6 +12,11 @@ const normalizeUrl = (src: string) => {
   }
 };
 
+// Thrown for a response that arrived but wasn't a photo. Marked so the retry
+// loop below can tell "this will never work" (404) apart from "try again"
+// (503, connection reset).
+class PermanentFetchError extends Error {}
+
 export async function fetchWithRetry(src: string, attempts = 3): Promise<Buffer> {
   const url = normalizeUrl(src);
 
@@ -21,8 +26,26 @@ export async function fetchWithRetry(src: string, attempts = 3): Promise<Buffer>
 
     try {
       const res = await fetch(url, { signal: controller.signal });
+
+      // Without this, R2's 404 page — an HTML document — was handed to sharp
+      // as if it were image bytes, and the build died on "Input buffer has
+      // corrupt header: glib: XML parse error" without naming the photo. A
+      // photo deleted from R2 while its URL is still in a YAML file is the
+      // most likely build failure there is, so it gets to say so plainly.
+      if (!res.ok) {
+        const missing = res.status === 404;
+        throw new PermanentFetchError(
+          missing
+            ? `Fant ikke bildet i R2 (HTTP 404): ${url}\n` +
+              `  Bildet er slettet fra bøtta, men URL-en står fortsatt i en fil under src/content/.\n` +
+              `  Fjern bildet i CMS-en på /admin og publiser, så går bygget gjennom.`
+            : `R2 svarte HTTP ${res.status} for ${url}`
+        );
+      }
+
       return Buffer.from(await res.arrayBuffer());
     } catch (error) {
+      if (error instanceof PermanentFetchError) throw error;
       if (attempt === attempts) throw error;
     } finally {
       clearTimeout(timeout);
