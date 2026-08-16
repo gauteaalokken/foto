@@ -1,16 +1,19 @@
 import { defineCollection, z } from 'astro:content';
+import { glob } from 'astro/loaders';
+
+const collectionGlob = (name: string) => glob({ pattern: '**/*.yml', base: `./src/content/${name}` });
 
 const photoListSchema = z.object({
   photos: z.array(z.string()),
 });
 
 const feed = defineCollection({
-  type: 'data',
+  loader: collectionGlob('feed'),
   schema: photoListSchema,
 });
 
 const prints = defineCollection({
-  type: 'data',
+  loader: collectionGlob('prints'),
   schema: z.object({
     title: z.string(),
     photo: z.string(),
@@ -18,7 +21,7 @@ const prints = defineCollection({
 });
 
 const projects = defineCollection({
-  type: 'data',
+  loader: collectionGlob('projects'),
   schema: z.object({
     title: z.string(),
     year: z.string(),
@@ -35,7 +38,7 @@ const projects = defineCollection({
 });
 
 const fjellmaraton = defineCollection({
-  type: 'data',
+  loader: collectionGlob('fjellmaraton'),
   schema: z.object({
     // Shown above the sign-up form. Optional and nullable because the CMS
     // writes an explicit null rather than omitting the key when left empty.
@@ -48,7 +51,7 @@ const fjellmaraton = defineCollection({
 // a potential client. Always exists at /portefolje; showInNav just controls
 // whether it's linked from the site navigation — see Header.astro.
 const portfolio = defineCollection({
-  type: 'data',
+  loader: collectionGlob('portfolio'),
   schema: z.object({
     showInNav: z.boolean().nullable().optional(),
     photos: z.array(z.string()),
@@ -74,7 +77,7 @@ const blogBlockSchema = z.discriminatedUnion('type', [
 ]);
 
 const blog = defineCollection({
-  type: 'data',
+  loader: collectionGlob('blog'),
   schema: z.object({
     title: z.string(),
     // The CMS's datetime widget writes an unquoted date (e.g. `2026-08-07`),
@@ -97,7 +100,7 @@ const blog = defineCollection({
 // individual posts, so an editor can customize the front page without
 // touching post content.
 const blogSettings = defineCollection({
-  type: 'data',
+  loader: collectionGlob('blogSettings'),
   schema: z.object({
     showInNav: z.boolean().nullable().optional(),
     title: z.string().nullable().optional(),
@@ -112,7 +115,7 @@ const blogSettings = defineCollection({
 // Kept separate from the project entries so an editor can switch styles
 // without touching any project content.
 const homepageSettings = defineCollection({
-  type: 'data',
+  loader: collectionGlob('homepageSettings'),
   schema: z.object({
     // grid: current design, random "air" gaps scattered between projects.
     // gridTight: same grid, no gaps — projects run back-to-back.
