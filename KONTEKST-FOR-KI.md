@@ -1,7 +1,7 @@
 # KONTEKST-FOR-KI
 
 Startpakke for KI-modeller uten tilgang til repoet. Lim inn hele fila øverst i chatten.
-Sist oppdatert: 2026-08-09. Alle verdier er lest ut av repoet, ikke gjettet.
+Sist oppdatert: 2026-08-16. Alle verdier er lest ut av repoet, ikke gjettet.
 
 Søsterfila [VEDLIKEHOLD.md](VEDLIKEHOLD.md) er den praktiske steg-for-steg-guiden for mennesket
 som drifter siden. Denne fila er den tekniske referansen for KI-en som hjelper til.
@@ -11,11 +11,12 @@ som drifter siden. Denne fila er den tekniske referansen for KI-en som hjelper t
 ## 1. KORTVERSJON
 
 - Fotoportefølje for Gaute Aaløkken på **https://gauteaalokken.com**.
-- **Astro 4.16.19**, helt statisk side (ingen server, ingen database, ingen API-er utenom påmeldingsskjemaet).
+- **Astro 7.2.2**, helt statisk side (ingen server, ingen database, ingen API-er utenom påmeldingsskjemaet).
 - Innhold ligger som **YAML-filer i repoet** (`src/content/`), redigert via **Sveltia CMS** på `/admin`.
 - Bilder ligger i **Cloudflare R2** (offentlig bøtte), ikke i repoet. Innholdsfilene inneholder bare URL-er.
 - Publisering: push til `main` → **GitHub Actions** bygger → **GitHub Pages**. (Ikke Cloudflare Pages — Cloudflare brukes kun til bildelagring.)
 - Sider: forside (prosjekter), prosjektside per prosjekt, Prints, Feed, Flaksjøen Fjellmaraton (med påmeldingsskjema), Blogg, Portefølje, 404, samt statiske HTML-verktøy under `/fotoverktoy/`.
+- **Forsiden har fire innebygde layouter** som byttes fra CMS-en («Forside-innstillinger»), ikke i kode. Se punkt 4 og 8.
 - **Blogg og Portefølje finnes alltid** på `/blogg` og `/portefolje`, men er som standard ikke lenket fra menyen — det styres av `showInNav` i CMS-en.
 - Ingen CSS-rammeverk, ingen komponentbibliotek, ingen design tokens — all CSS er skrevet for hånd inne i hver `.astro`-fil.
 
@@ -26,12 +27,19 @@ som drifter siden. Denne fila er den tekniske referansen for KI-en som hjelper t
 **Kjøremiljø**
 - Pakkebehandler: **npm** (`package-lock.json`, lockfileVersion 3). Ingen yarn/pnpm.
 - Node lokalt: **v24.11.1**, npm 11.6.2.
-- Node i GitHub Actions: **20** (satt i `.github/workflows/deploy.yml`).
+- Node i GitHub Actions: **22** (satt i `.github/workflows/deploy.yml`).
+- CI installerer med **`npm ci`**, som følger `package-lock.json` nøyaktig. Et bygg kan derfor ikke plutselig havne på en nyere avhengighet enn den låste.
 
 **Avhengigheter (`dependencies`)**
 | Pakke | Versjon i package.json | Faktisk installert | Hva den gjør |
 |---|---|---|---|
-| `astro` | `^4.0.0` | **4.16.19** | Selve rammeverket. Bygger statiske HTML-sider, håndterer content collections og ruting. |
+| `astro` | `^7.2.2` | **7.2.2** | Selve rammeverket. Bygger statiske HTML-sider, håndterer content collections og ruting. |
+| `@astrojs/sitemap` | `^3.7.3` | 3.7.3 | Lager `sitemap-index.xml` + `sitemap-0.xml` ved bygg. Konfigureres i `astro.config.mjs`. |
+| `unified` | `^11.0.5` | 11.0.5 | Motoren som kjører markdown-konverteringen i `src/lib/markdown.ts`. |
+| `remark-parse` | `^11.0.0` | 11.0.0 | Leser markdown. |
+| `remark-gfm` | `^4.0.1` | 4.0.1 | GitHub-dialekt (tabeller, gjennomstreking). |
+| `remark-rehype` | `^11.1.2` | 11.1.2 | Markdown → HTML-struktur. |
+| `rehype-stringify` | `^10.0.1` | 10.0.1 | HTML-struktur → HTML-tekst. |
 
 **Utviklingsavhengigheter (`devDependencies`)**
 | Pakke | Versjon | Faktisk | Hva den gjør |
@@ -41,24 +49,13 @@ som drifter siden. Denne fila er den tekniske referansen for KI-en som hjelper t
 | `wrangler` | `^4.113.0` | 4.113.0 | Cloudflares CLI. Installert for manuell R2-administrasjon. Ingen `wrangler.toml` i repoet, og den kjører ikke i bygg eller deploy. |
 
 **Transitive pakker som betyr noe**
-- `sharp` **0.33.5** — kommer med Astro, brukes direkte av `src/lib/resolveImage.ts` og `scripts/sort-feed.mjs` til bildeskalering og fargeanalyse.
-- `vite` **5.4.21** — Astros byggeverktøy, brukes ikke direkte.
+- `sharp` **0.35.3** — kommer med Astro, brukes direkte av `src/lib/resolveImage.ts` og `scripts/sort-feed.mjs` til bildeskalering og fargeanalyse.
+- `vite` **8.2.1** — Astros byggeverktøy, brukes ikke direkte.
 
-**⚠️ Udeklarerte avhengigheter — viktig å vite om**
-`src/lib/markdown.ts` importerer fem pakker som **ikke står i `package.json`**:
-
-| Pakke | Installert | Brukes til |
-|---|---|---|
-| `unified` | 11.0.5 | Motoren som kjører markdown-konverteringen |
-| `remark-parse` | 11.0.0 | Leser markdown |
-| `remark-gfm` | 4.0.1 | GitHub-dialekt (tabeller, gjennomstreking) |
-| `remark-rehype` | 11.1.2 | Markdown → HTML-struktur |
-| `rehype-stringify` | 10.0.1 | HTML-struktur → HTML-tekst |
-
-De virker i dag fordi de følger med Astro og ligger låst i `package-lock.json`. Det er **ikke** en feil som må fikses nå, men det betyr at bloggens tekstblokker kan slutte å bygge hvis Astro en dag endrer sitt eget avhengighetstre. Skjer det, er løsningen å legge de fem inn i `dependencies` i `package.json` — ikke å skrive om `markdown.ts`.
+De fem markdown-pakkene (`unified` og de fire remark/rehype-pakkene) fulgte tidligere bare med Astro uten å stå i `package.json`. De står nå i `dependencies` med egne versjoner, så bloggens tekstblokker er ikke lenger avhengige av at Astro tilfeldigvis drar dem inn.
 
 **Integrasjoner**
-- Ingen offisielle Astro-integrasjoner (`@astrojs/*`) i det hele tatt.
+- Én offisiell Astro-integrasjon: **`@astrojs/sitemap`**.
 - Én egendefinert integrasjon, `flush-staged-images`, definert direkte i `astro.config.mjs`. Se punkt 9.
 - Ingen markdown-plugins — alt innhold er YAML/data, ingen `.md`-filer med innhold.
 - CMS: **Sveltia CMS 0.178.0**, lastet fra unpkg i `public/admin/index.html`. Ikke en npm-pakke.
@@ -97,26 +94,37 @@ foto/
 │       └── icon.png
 │
 ├── scripts/
-│   ├── r2-robots.txt              Kopi av robots.txt som må lastes opp MANUELT til R2-bøtta.
-│   │                              Gjør ingenting så lenge den bare ligger i repoet.
+│   ├── robots.txt                 Kopi av robots.txt som må lastes opp MANUELT til R2-bøtta.
+│   │                              Gjør ingenting så lenge den bare ligger i repoet. Heter det
+│   │                              samme som fila må hete i bøtta, så den kan lastes rett opp.
 │   ├── sort-feed.mjs              Lokalt verktøy: sorterer R2-bilder etter dato eller farge og
 │   │                              skriver src/content/feed/index.yml på nytt. Kjøres manuelt.
+│   ├── slett-ubrukte.mjs          Engangsjobb som ALLEREDE ER KJØRT (2026-08-13). Slettet 113
+│   │                              ubrukte filer fra R2. Lista er frosset — ikke kjør den på nytt
+│   │                              uten å lage lista på nytt først. Se toppen av fila.
 │   └── google-apps-script-paamelding.gs
 │                                  Kode som er limt inn i Google Apps Script (ikke i drift herfra).
 │                                  Tar imot påmeldinger og skriver dem til et Google Sheet.
 │
 ├── src/
+│   ├── content.config.ts          Definerer og validerer de åtte collections. Kode, ikke innhold.
+│   │                              NB: ligger i src/, ikke inne i src/content/.
 │   ├── content/
-│   │   ├── config.ts              Definerer og validerer de sju collections. Kode, ikke innhold.
 │   │   ├── projects/*.yml         14 prosjekter. Én fil per prosjekt. Skrives av CMS.
 │   │   ├── prints/*.yml           17 prints. Én fil per print. Skrives av CMS.
 │   │   ├── blog/*.yml             1 blogginnlegg. Én fil per innlegg. Skrives av CMS.
 │   │   ├── feed/index.yml         Én fil, 936 bilde-URL-er. Skrives av CMS eller sort-feed.mjs.
 │   │   ├── fjellmaraton/index.yml Én fil, 3 toppbilder + 46 galleribilder.
+│   │   ├── homepageSettings/index.yml  Én fil, ett felt: hvilken av de fire forsidene som vises.
 │   │   ├── blogSettings/index.yml Én fil. Tittel, intro, layout og nav-synlighet for /blogg.
 │   │   └── portfolio/index.yml    Én fil. Bildeliste + nav-synlighet for /portefolje. Tom i dag.
 │   ├── layouts/Layout.astro       Felles HTML-skall: <head>, meta/SEO, global CSS, header.
-│   ├── components/Header.astro    Toppmeny (eneste komponent i prosjektet).
+│   ├── components/
+│   │   ├── Header.astro           Toppmeny.
+│   │   └── homepage/              Én komponent per forsidelayout — index.astro velger mellom dem.
+│   │       ├── GridHomepage.astro            «grid» og «gridTight»
+│   │       ├── FullscreenScrollHomepage.astro «fullscreenScroll» (aktiv i dag)
+│   │       └── PortfolioGridHomepage.astro   «portfolioGrid»
 │   ├── lib/                       Hjelpekode for bildehåndtering. Rør bare hvis du vet hva du gjør.
 │   │   ├── resolveImage.ts        Skalerer et R2-bilde med sharp, returnerer lokal /optimized/-sti.
 │   │   ├── imageOutputQueue.ts    Mellomlagring av skalerte bilder på disk mellom bygg.
@@ -145,8 +153,8 @@ foto/
 
 ## 4. INNHOLDSMODELL
 
-Sju collections, definert to steder som må stemme overens:
-`src/content/config.ts` (validering ved bygg) og `public/admin/config.yml` (redigeringsskjema i CMS).
+Åtte collections, definert to steder som må stemme overens:
+`src/content.config.ts` (validering ved bygg) og `public/admin/config.yml` (redigeringsskjema i CMS).
 **Legger du til et felt ett sted må du legge det til begge stedene.**
 
 CMS-en committer **rett til `main`** — det er ikke satt opp noen kladde- eller godkjenningsflyt (`publish_mode` er ikke i bruk). Trykker redaktøren Publish, er endringen live så snart bygget er ferdig. Commit-meldingene fra CMS-en heter `Create Projects "x"` / `Update Projects "x"`.
@@ -234,6 +242,27 @@ title: Blog
 intro: Test
 ```
 
+### `homepageSettings` — enkeltfil
+- Fil: `src/content/homepageSettings/index.yml`
+
+| Felt | Type | Påkrevd | Styrer |
+|---|---|---|---|
+| `layout` | `grid` / `gridTight` / `fullscreenScroll` / `portfolioGrid` | Nei | Hvilken av de fire forsidene som vises. Standard `grid`. |
+
+| Verdi | Forside |
+|---|---|
+| `grid` | Rutenett med tilfeldige tomme ruter mellom prosjektene. |
+| `gridTight` | Samme rutenett uten tomme ruter. |
+| `fullscreenScroll` | Ett prosjekt om gangen i nesten full skjermhøyde, sideveis rulling, uendelig løkke. **Aktiv i dag.** |
+| `portfolioGrid` | Den gamle forsiden: masonry-rutenett av kuraterte bilder, henter samme bildeliste som `/portefolje`. |
+
+Hele fila i dag:
+```yaml
+layout: fullscreenScroll
+```
+
+`src/pages/index.astro` leser feltet og henter **kun** data den valgte layouten trenger — bytter du til `portfolioGrid`, lastes ikke prosjektene i det hele tatt, og motsatt. Selve utseendet ligger i hver sin komponent under `src/components/homepage/`.
+
 ### `portfolio` — enkeltfil
 - Fil: `src/content/portfolio/index.yml`
 
@@ -319,17 +348,18 @@ Full absolutt URL, alltid:
 `https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/<prefix>/<filnavn>.jpg`
 Koden sjekker på `^https?://` for å avgjøre om et bilde skal hentes fra R2 eller fra `public/`.
 
-**Hva som skjer med bildene under bygg — to helt ulike løp**
-1. **Egen pipeline** (forside, prosjektsider, feed, fjellmaraton) — `src/lib/resolveImage.ts`:
-   Laster ned originalen, skalerer med sharp, lagrer som **WebP** med filnavn = SHA1 av `URL:bredde:kvalitet`, i `node_modules/.image-staging/`. Etter bygget kopieres de til `dist/optimized/`. 1818 filer der i dag.
-   Mellomlageret gjenbrukes mellom bygg (og caches i GitHub Actions), så et uendret bilde skaleres aldri på nytt.
-2. **Astros egen `getImage()`** (kun de to print-sidene): legger resultatet i `dist/_astro/`. 35 filer.
-   Denne har **ingen mellomlagring mellom bygg** — print-originalene (6–23 MB per fil) lastes ned og skaleres på nytt ved hvert eneste bygg. Målt 2026-08-05: 18,5 av 27 sekunder av byggetiden gikk med til nettopp dette. Det er kjent, ikke en feil, og prisen for at print-sidene bruker Astros egen pipeline.
+**Hva som skjer med bildene under bygg — én pipeline for alt**
+`src/lib/resolveImage.ts` laster ned originalen, skalerer med sharp og lagrer som **WebP** med filnavn = SHA1 av `URL:bredde:kvalitet`, i `node_modules/.image-staging/`. Etter bygget kopieres de til `dist/optimized/`. 1893 filer der i dag.
+Mellomlageret gjenbrukes mellom bygg (og caches i GitHub Actions), så et uendret bilde skaleres aldri på nytt.
+
+**Astros egen `getImage()` brukes ikke lenger noe sted.** Print-sidene gjorde det tidligere, og lastet derfor ned og skalerte 6–23 MB-originaler på nytt ved hvert eneste bygg. De bruker nå samme pipeline som resten, og `dist/_astro/` inneholder bare én CSS-fil.
 
 **Bredder og kvalitet som faktisk brukes**
 | Sted | Bredde | Kvalitet | Kilde |
 |---|---|---|---|
-| Forside, prosjektomslag | 700 px | 80 | `src/pages/index.astro` |
+| Forside, omslag i rutenett (`grid`/`gridTight`) | 500 / 900 px (srcset) | 85 | `src/pages/index.astro` |
+| Forside, omslag i `fullscreenScroll` | 800 / 1400 / 2000 px (srcset) | 90 | `src/pages/index.astro` |
+| Forside, `portfolioGrid` | 1400 px | 82 | `src/pages/index.astro` |
 | Prosjektside, rutenett | 700 px | 82 | `src/pages/prosjekter/[slug].astro` |
 | Feed, miniatyr | 500 px | 60 | `src/pages/feed/index.astro` |
 | Fjellmaraton, rutenett | 700 px | 82 | `src/pages/fjellmaraton.astro` |
@@ -344,7 +374,9 @@ Koden sjekker på `^https?://` for å avgjøre om et bilde skal hentes fra R2 el
 | Blogg, galleri `carousel` | 1200 px | 85 | `src/pages/blogg/[slug].astro` |
 | Portefølje | 1400 px | 82 | `src/pages/portefolje.astro` |
 
-**Lightbox**: klikker man på et bilde, lastes **originalen fra R2** i full oppløsning — ikke den skalerte versjonen. Store originaler = treg lightbox.
+**`sizes` er ikke pynt.** Der et bilde har `srcset`, forteller `sizes` nettleseren hvor bredt bildet faktisk blir, og det er *den* verdien som avgjør hvilken fil som lastes ned. På `fullscreenScroll` er bildet begrenset av høyden som er igjen under menyen, ikke av vindusbredden, så `sizes` regnes ut per bilde fra dets eget sideforhold: `min(calc(100vw - 48px), calc(78vh * <sideforhold>))`. Skriver du «100vw» der i stedet, henter en telefon 2000px-fila til et bilde den viser 350px bredt.
+
+**Lightbox**: klikker man på et bilde, vises **miniatyrbildet som allerede ligger i nettleseren** med én gang, og **originalen fra R2** bytter det ut når den er lastet ferdig. Bredden låses til den størrelsen originalen kommer til å få (samme bilde, samme proporsjoner), så byttet flytter ingenting. Originalen er fortsatt i full oppløsning — store originaler betyr fortsatt lang ventetid før den skarpe versjonen er på plass, men skjermen er ikke svart mens man venter.
 
 **Å passe på ved opplasting**
 - Last opp gjennom CMS-en (`/admin`), så havner filen i riktig prefix automatisk.
@@ -358,29 +390,31 @@ Koden sjekker på `^https?://` for å avgjøre om et bilde skal hentes fra R2 el
 ## 6. DESIGNSYSTEM
 
 **Viktig og litt kjedelig: det finnes ingen design tokens i dette prosjektet.**
-Det er ingen `:root`-variabler, ingen tokens-fil, ingen CSS-rammeverk. Hver farge er skrevet rett inn i `<style>`-blokken i hver enkelt `.astro`-fil. Eneste custom property i hele kodebasen er `--ratio` i `fjellmaraton.astro`, og den er en layout-utregning, ikke et token.
+Det er ingen `:root`-variabler, ingen tokens-fil, ingen CSS-rammeverk. Hver farge er skrevet rett inn i `<style>`-blokken i hver enkelt `.astro`-fil. De to eneste custom properties i hele kodebasen er `--ratio` i `fjellmaraton.astro` og `--photo-max-h` i `FullscreenScrollHomepage.astro`, og begge er layout-utregninger, ikke tokens.
 
-**Farger som faktisk brukes (antall forekomster i `src/`)**
+**Farger som faktisk brukes (antall forekomster i `src/`, talt 2026-08-16)**
 | Verdi | Antall | Rolle | Filer |
 |---|---|---|---|
-| `#111` | 21 | Tekst, knapper, lenker, rammer | Header, Layout, 404, fjellmaraton (12×), begge print-sidene, prosjektside, blogg |
-| `#fff` | 9 | Hvit tekst/bakgrunn i knapper og lightbox | Flere |
-| `#eee` | 8 | Plassholderfarge bak bilder som ikke er lastet | index, feed, fjellmaraton (2×), prosjektside, blogg, portefølje |
+| `#111` | 24 | Tekst, knapper, lenker, rammer | Header, Layout, 404, fjellmaraton, begge print-sidene, prosjektside, blogg, forsidekomponentene |
+| `#fff` | 13 | Hvit tekst/bakgrunn i knapper, lightbox og fullskjermsforsiden | Flere |
+| `#666` | 8 | «Ingen bilder ennå»-tekst | Flere |
+| `#eee` | 8 | Plassholderfarge bak bilder som ikke er lastet | GridHomepage, feed, fjellmaraton, prosjektside, blogg |
+| `#888` | 7 | Årstall / dempet tekst / datoer | Forsidekomponentene, prosjektside, blogg-sidene, portefølje |
+| `rgba(0, 0, 0, 0.92)` | 6 | Lightbox-bakgrunn | Alle seks sidene med lightbox |
+| `#555` | 3 | Undertittel, print-titler i oversikten | 404, fjellmaraton, `prints/index.astro` |
+| `#ccc` | 3 | Skjemafelt-strek | fjellmaraton |
+| `#ddd` | 2 | Skillelinje | Header, print-side |
 | `#fafafa` | 2 | Sidebakgrunn | `Layout.astro` (body), `fjellmaraton.astro` (dialogpanel) |
-| `#fdfdfd` | 1 | Bakgrunn i toppmenyen | `Header.astro` |
 | `#f2f2f2` | 2 | Grå ramme rundt print-bilder | begge print-sidene |
-| `#888` | 6 | Årstall / dempet tekst / datoer | `index.astro`, prosjektside, blogg-sidene, portefølje |
-| `#666` | 4 | «Ingen bilder ennå»-tekst | flere |
-| `#555` | 2 | Undertittel | 404, fjellmaraton |
-| `#ccc` | 2 | Skjemafelt-strek | fjellmaraton |
-| `#ddd` | 1 | Skillelinje | print-side |
+| `#fdfdfd` | 1 | Bakgrunn i toppmenyen | `Header.astro` |
+| `#999` | 1 | Fotoverktøy-lenken i menyen | `Header.astro` |
+| `rgba(255, 255, 255, 0.85)` | 1 | Bla-pilene på fullskjermsforsiden | `FullscreenScrollHomepage.astro` |
+| `#444` | 1 | Dempet tekst i bloggen | `blogg/index.astro` |
+| `#f0f0f0` | 1 | Plassholder i bloggens karusell | `blogg/index.astro` |
+| `rgba(0, 0, 0, 0.55)` | 1 | Bakgrunn bak påmeldingsdialogen | fjellmaraton |
 | `#767676` | 1 | Placeholder i nedtrekksliste | fjellmaraton |
 | `#1a7a1a` | 1 | Grønn suksessmelding i skjema | fjellmaraton |
 | `#b00020` | 1 | Rød feilmelding i skjema | fjellmaraton |
-| `rgba(0,0,0,0.92)` | 3 | Lightbox-bakgrunn | feed, fjellmaraton, prosjektside |
-| `rgba(0,0,0,0.55)` | 1 | Bakgrunn bak påmeldingsdialogen | fjellmaraton |
-| `#444` | 1 | Dempet tekst i bloggen | `blogg/[slug].astro` |
-| `#f0f0f0` | 1 | Plassholder i bloggens karusell | `blogg/[slug].astro` |
 
 **Skrifter**
 | Stack | Brukes til | Definert i |
@@ -401,16 +435,16 @@ Space Mono lastes fra Google Fonts i `Layout.astro` med vekt 400 og 700.
 **Breakpoints — alle som finnes**
 | Breakpoint | Hva skjer | Fil |
 |---|---|---|
-| `min-width: 640px` | Forsiden går fra 2 til 4 kolonner | `index.astro` |
-| `min-width: 768px` | Prints går fra 1 til 2 kolonner | `prints/index.astro` |
+| `max-height: 500px`, `max-width: 640px` | Menyen krymper (mindre tittel, tettere lenker). Høyderegelen er der fordi fullskjermsforsiden regner ut bildehøyden som «vindu minus meny» | `Header.astro` |
+| `min-width: 640px` | Prosjektrutenettet på forsiden går fra 2 til 4 kolonner | `GridHomepage.astro` |
+| `min-width: 640px` / `1024px` / `1440px` | Masonry-rutenettene går 2 → 3 → 4 → 5 kolonner | `PortfolioGridHomepage.astro`, `portefolje.astro` |
+| `min-width: 640px` / `1024px` | Blogglisten går til flere kolonner | `blogg/index.astro` |
+| `min-width: 768px` / `1400px` | Prints går fra 1 til 2 til 3 kolonner | `prints/index.astro` |
 | `min-width: 900px` | Print-siden legger bilde og tekst side om side | `prints/[slug].astro` |
 | `max-width: 900px` | Fjellmaraton skjuler alle toppbilder unntatt banneret | `fjellmaraton.astro` |
-| `min-width: 1400px` | Prints går til 3 kolonner | `prints/index.astro` |
 | `max-width: 480px` | Fornavn/etternavn stables i skjemaet | `fjellmaraton.astro` |
 | `min-width: 500px` / `max-width: 500px` | Bloggens bildepar side om side vs. stablet | `blogg/[slug].astro` |
-| `min-width: 640px` (2×) | Blogglisten og portefølje går til flere kolonner | `blogg/index.astro`, `portefolje.astro` |
-| `min-width: 1024px` (2×) | Enda flere kolonner i blogg og portefølje | `blogg/index.astro`, `portefolje.astro` |
-| `min-width: 1440px` | Portefølje til maks kolonneantall | `portefolje.astro` |
+| `hover: none` | Bla-pilene på fullskjermsforsiden vises permanent, siden touch ikke har hover | `FullscreenScrollHomepage.astro` |
 
 I tillegg finnes JS-baserte breakpoints i rutenettene (ikke CSS): feed bruker 480/768/1200/1440 px til å velge 5/7/9/14/20 kolonner; prosjektsider og fjellmaraton bruker 640/1024 px til 2/3/4 kolonner.
 
@@ -434,7 +468,7 @@ Les dette før du endrer en `.astro`-fil. Astro ligner på React/Next på overfl
 
 **Regler som er lette å bomme på:**
 
-- **`<style>` er scoped til sin egen fil.** En klasse du skriver i `index.astro` treffer ikke elementer i en annen fil. Derfor står `is:global` på stilene i `index.astro` og `feed/index.astro` — der lager JavaScript elementer etter at siden er lastet, og scoped CSS ville ikke truffet dem. **Fjern aldri `is:global` fra de to filene.**
+- **`<style>` er scoped til sin egen fil.** En klasse du skriver i én fil treffer ikke elementer i en annen. Derfor står `is:global` på stilene i de tre forsidekomponentene, i `feed/index.astro` og i `Layout.astro` — der lages elementene enten av JavaScript etter at siden er lastet, eller stilene skal gjelde hele dokumentet. **Fjern aldri `is:global` fra disse fem filene.**
 - **`<script>` kjører i nettleseren**, ikke under bygget. Den ser ikke variabler fra frontmatteren. To måter å sende data inn på, begge i bruk her:
   - `define:vars={{ gap: GAP }}` — sender enkle verdier inn (brukes i `feed/index.astro`).
   - `<script type="application/json" id="…" set:html={JSON.stringify(data)} />` og så `JSON.parse` i nettleseren (brukes i feed, fjellmaraton og prosjektsider til lightbox-listene).
@@ -484,7 +518,7 @@ Lagret som `src/pages/om.astro` blir dette `/om`. Importstien til `Layout` har e
 **Ruter**
 | URL | Fil | Innhold |
 |---|---|---|
-| `/` | `src/pages/index.astro` | Rutenett med prosjektomslag + tilfeldige tomme ruter |
+| `/` | `src/pages/index.astro` | Velger én av fire forsidelayouter ut fra `homepageSettings`, og rendrer tilhørende komponent |
 | `/prosjekter/<slug>` | `src/pages/prosjekter/[slug].astro` | Ett prosjekt: alle sider i rad-justert rutenett + lightbox |
 | `/prints` | `src/pages/prints/index.astro` | Alle prints i kolonnelayout |
 | `/prints/<slug>` | `src/pages/prints/[slug].astro` | Én print: bilde, priser, bestilling på e-post |
@@ -497,18 +531,23 @@ Lagret som `src/pages/om.astro` blir dette `/om`. Importstien til `Layout` har e
 | `/admin` | `public/admin/index.html` | Sveltia CMS (ikke en Astro-side) |
 | `/fotoverktoy/*` | `public/fotoverktoy/*.html` | Frittstående HTML-verktøy, helt utenfor Astro |
 
-**Komponenter og layout** (det er bare to)
-- `src/layouts/Layout.astro` — props: `title` (str., default «Gaute Aaløkken»), `description` (str., default fotografi-teksten), `image` (str., default et R2-bilde). Gir `<head>`, all SEO/Open Graph/Twitter-meta, canonical-URL, Google Fonts, global CSS og `<Header />`. Alle sider bruker den.
+**Komponenter og layout** (det er fem)
+- `src/layouts/Layout.astro` — props: `title` (str., default «Gaute Aaløkken»), `description` (str., default fotografi-teksten), `image` (str., default et R2-bilde), `bodyClass` (str., valgfri — brukes bare av fullskjermsforsiden, som må låse rullingen på `<body>`). Gir `<head>`, all SEO/Open Graph/Twitter-meta, canonical-URL, Google Fonts, global CSS og `<Header />`. Alle sider bruker den.
 - `src/components/Header.astro` — ingen props. Navnelenke til forsiden, meny (Flaksjøen Fjellmaraton, Prints, Feed, Fotoverktøy), e-post-ikon og Instagram-ikon. Leser i tillegg `portfolio` og `blogSettings` fra innholdet, og skyter inn «Portefølje» og «Blogg» på plass 1 i menyen når `showInNav` er satt.
+- `src/components/homepage/GridHomepage.astro` — props: `projects`, `tight`. Rutenettforsiden. `tight` slår av de tilfeldige tomme rutene.
+- `src/components/homepage/FullscreenScrollHomepage.astro` — props: `projects`. Ett prosjekt om gangen, sideveis rulling med uendelig løkke (klonet første/siste), tilfeldig startprosjekt, piltaster og bla-piler.
+- `src/components/homepage/PortfolioGridHomepage.astro` — props: `photos`. Den gamle forsiden: masonry + lightbox.
+
+Forsidekomponentene tar imot ferdig oppløste bilder fra `index.astro` og gjør ingen bildebehandling selv.
 
 **Hjelpefunksjoner**
 - `src/lib/resolveImage.ts` — `resolveImage(url, bredde, kvalitet)` → sti til skalert WebP. `resolveImageWithAspectRatio(...)` → samme + reelt sideforhold. `withBase(sti)`, `isRemote(sti)`.
 - `src/lib/imageOutputQueue.ts` — les/skriv mellomlager på disk, og manifest over hvilke bilder bygget faktisk brukte.
 - `src/lib/fetchBuffer.ts` — `fetchWithRetry(url)`, 15 s timeout, 3 forsøk.
 - `src/lib/concurrency.ts` — `mapWithConcurrency(liste, maksSamtidig, fn)`.
-- `src/lib/markdown.ts` — `markdownToHtml(markdown)`. Brukes kun av bloggens `text`-blokker. Se advarselen om udeklarerte avhengigheter i punkt 2.
+- `src/lib/markdown.ts` — `markdownToHtml(markdown)`. Brukes kun av bloggens `text`-blokker.
 
-Hvilke sider bruker hva: forside, prosjektside, feed og fjellmaraton bruker `lib/`-pipelinen; **prints-sidene bruker Astros `getImage()` i stedet** og har sine egne lokale kopier av `withBase`/`isRemote`.
+**Alle sider bruker `lib/`-pipelinen.** `resolveImageSrcSet` brukes der ett bilde trengs i flere størrelser (forsideomslag, fjellmaraton-banner), `resolveImageWithAspectRatio` der rutenettet må vite sideforholdet før bildet er lastet, og `resolveImage` ellers. `prints/index.astro` har fortsatt sin egen lokale kopi av `withBase` — den gjør det samme som den i `lib/`.
 
 ---
 
@@ -522,17 +561,21 @@ npm run preview    astro preview  — viser bygget resultat lokalt
 npm run sort-feed  node scripts/sort-feed.mjs — sorterer feed-YAML. Kjøres manuelt, ikke i bygg.
 ```
 
-**Målt bygg 2026-08-09 (lokalt, varm cache):** 44 HTML-sider. De 44 er 14 prosjektsider + 17 print-sider + 1 blogginnlegg + forside, /prints, /feed, /fjellmaraton, /blogg, /portefolje og /404, pluss /admin og de fire fotoverktøy-sidene som kopieres rått fra `public/`.
+**Målt bygg 2026-08-16 (lokalt, varm cache): 39 sider på 1,6 sekunder.** De 39 Astro bygger er 14 prosjektsider + 17 print-sider + 1 blogginnlegg + forside, /prints, /feed, /fjellmaraton, /blogg, /portefolje og /404. I tillegg kopieres /admin og de fire fotoverktøy-sidene rått fra `public/`, så `dist/` ender med 44 HTML-filer.
+
+Med tom cache tar bygget vesentlig lenger — da skal over tusen bilder hentes fra R2 og skaleres på nytt.
 
 **Det finnes ingen tester, ingen linting og ingen typesjekk** — verken lokalt eller i CI. `npm run build` er den eneste kontrollen som finnes: går den gjennom, er endringen syntaktisk og innholdsmessig gyldig. Foreslå aldri at brukeren «kjører testene».
 
-**Output**: `dist/`. Git-ignorert. Inneholder `index.html`, `404.html`, `CNAME`, `favicon.svg`, `admin/`, `fotoverktoy/`, `feed/`, `fjellmaraton/`, `prints/`, `prosjekter/`, `_astro/` (35 filer) og `optimized/` (1818 filer).
+**Output**: `dist/`, ca. 114 MB. Git-ignorert. Inneholder `index.html`, `404.html`, `CNAME`, `favicon.svg`, `robots.txt`, `sitemap-index.xml`, `sitemap-0.xml`, `admin/`, `fotoverktoy/`, `feed/`, `fjellmaraton/`, `prints/`, `prosjekter/`, `blogg/`, `portefolje/`, `_astro/` (1 CSS-fil) og `optimized/` (1893 filer).
+
+**Sitemap**: `@astrojs/sitemap` lager fila ved hvert bygg. Filteret i `astro.config.mjs` holder `/admin` og `/fotoverktoy` ute alltid, og `/blogg` og `/portefolje` ute så lenge `showInNav` er av for dem — en side som med vilje er holdt utenfor menyen skal ikke meldes inn til Google. Sidene bygges og publiseres uansett; det er bare sitemapen de holdes ute av.
 
 **Publisering — dette er GitHub Pages, ikke Cloudflare Pages.**
 `.github/workflows/deploy.yml`:
 1. Utløses av push til `main`, eller manuelt (`workflow_dispatch`).
-2. `actions/checkout@v4` → `actions/setup-node@v4` med Node 20 → `npm install`.
-3. `actions/cache@v4` gjenoppretter `node_modules/.astro` og `node_modules/.image-staging` (nøkkel `image-cache-<run_id>`, restore-key `image-cache-`). Dette er grunnen til at bygg nummer to går fort — allerede skalerte bilder gjenbrukes.
+2. `actions/checkout@v4` → `actions/setup-node@v4` med Node 22 og `cache: npm` → `npm ci`.
+3. `actions/cache@v4` gjenoppretter `node_modules/.astro` og `node_modules/.image-staging` (nøkkel `image-cache-<run_id>`, restore-key `image-cache-`). Dette er grunnen til at bygg nummer to går fort — allerede skalerte bilder gjenbrukes. **Rekkefølgen er ikke tilfeldig:** `npm ci` sletter hele `node_modules`, så bildecachen må gjenopprettes *etter* installasjonen, ikke før.
 4. `npm run build`.
 5. `actions/upload-pages-artifact@v3` med `dist/` → `actions/deploy-pages@v4`.
 
@@ -556,7 +599,7 @@ Domenet `gauteaalokken.com` kommer fra `public/CNAME`, som kopieres til `dist/CN
 - CMS-en lager filnavnet automatisk fra tittelen når du oppretter noe nytt.
 - **Årstall**: alltid streng i enkeltfnutter, `year: '2024'`. Uten fnutter tolkes det som tall og valideringen brekker.
 - **Bilde-URL-er**: alltid full absolutt R2-URL.
-- **Språk**: siden er norsk (`<html lang="no">`). Synlig tekst på norsk, men noen tomtilstander er fortsatt engelske («No prints listed yet.», «No photos in the feed yet.»), og skjemaets feltnavn er engelske («First Name», «Email»). Ingen flerspråklig oppsett — print-sidene har rett og slett norsk og engelsk tekst under hverandre.
+- **Språk**: siden er norsk (`<html lang="no">`). All synlig tekst og alle `aria-label`-er er norske. Unntakene er skjemaets feltnavn på fjellmaraton («First Name», «Email») og print-sidene, som med vilje har norsk og engelsk tekst under hverandre. Ingen flerspråklig oppsett.
 - **Commit-meldinger**: én linje, engelsk, imperativ («Add a CMS field for…»). CMS-genererte commits heter `Create Projects "x"` / `Update Projects "x"`.
 - **CSS**: skrives i `<style>` nederst i hver `.astro`-fil. `is:global` brukes bare der JS bygger elementer dynamisk (forside, feed).
 - **Kommentarer i koden er lange og forklarer hvorfor.** Behold dem — de dokumenterer feil som allerede er rettet.
@@ -573,12 +616,12 @@ Domenet `gauteaalokken.com` kommer fra `public/CNAME`, som kopieres til `dist/CN
 | R2-verdiene i `public/admin/config.yml` (bucket, account_id, public_url, access_key_id) | Endres de, mister CMS-en opplastingen og alle eksisterende bilde-URL-er slutter å stemme. |
 | `prefix:`-verdiene i `public/admin/config.yml` | Bestemmer hvilken mappe i R2 nye bilder havner i. Endres de, blir bildene spredt og gamle URL-er brytes ikke, men nye blir inkonsistente. |
 | Versjonsnummeret `@sveltia/cms@0.178.0` i `public/admin/index.html` | Pinnet med vilje. Fjernes versjonen, kan en oppdatering hos leverandøren ta ned CMS-en uten forvarsel. |
-| `src/content/config.ts` | Skjemaene her validerer alle YAML-filer. Legger du til et påkrevd felt, feiler bygget på alle eksisterende filer som mangler det. `.nullable()` er der fordi CMS-en skriver `null`, ikke tomt. |
-| `astro.config.mjs` — `image.remotePatterns` | Fjernes R2-verten, nekter Astro å behandle bildene på print-sidene. |
+| `src/content.config.ts` | Skjemaene her validerer alle YAML-filer. Legger du til et påkrevd felt, feiler bygget på alle eksisterende filer som mangler det. `.nullable()` er der fordi CMS-en skriver `null`, ikke tomt. |
+| `astro.config.mjs` — `image.remotePatterns` | Slipper R2-verten gjennom Astros bildehåndtering. Ingen sider bruker den lenger (alt går via `lib/`), men fjernes den, brekker enhver fremtidig bruk av Astros egne bildekomponenter mot R2. |
 | `astro.config.mjs` — `flush-staged-images`-integrasjonen | Uten den havner ingen skalerte bilder i `dist/optimized/`, og alle bilder på forside/feed/prosjekter/fjellmaraton blir døde. |
 | `astro.config.mjs` — `setGlobalDispatcher(new Agent({...}))` | Uten timeouts kan én treg R2-forbindelse henge byggejobben i det uendelige. |
 | `astro.config.mjs` — `site: 'https://gauteaalokken.com'` | Styrer canonical-URL og delingslenker. |
-| `src/lib/resolveImage.ts`, `imageOutputQueue.ts`, `fetchBuffer.ts`, `concurrency.ts` | Bildepipelinen. Endres hash-formelen eller mellomlagerstien, må alle 1831 bilder lastes ned og skaleres på nytt. |
+| `src/lib/resolveImage.ts`, `imageOutputQueue.ts`, `fetchBuffer.ts`, `concurrency.ts` | Bildepipelinen. Endres hash-formelen eller mellomlagerstien, må alle 1893 bilder lastes ned og skaleres på nytt. |
 | URL-kodingen i `src/lib/fetchBuffer.ts` (`normalizeUrl`) | Filnavn med mellomrom (f.eks. «FFM 26 4_1.jpg») får en ukodet space i URL-en fra CMS-en. Uten denne funksjonen henger `fetch()` til timeouten slår inn — på hvert forsøk — i stedet for å feile raskt. |
 | `showInNav`-logikken i `src/components/Header.astro` | Styrer om Blogg og Portefølje er lenket fra menyen. Sidene finnes uansett — fjernes logikken, blir de enten alltid synlige eller umulige å nå fra menyen. |
 | Filnavn i `src/content/projects/` og `src/content/prints/` | Filnavnet **er** URL-en. |
@@ -598,6 +641,8 @@ Domenet `gauteaalokken.com` kommer fra `public/CNAME`, som kopieres til `dist/CN
 
 2. **Endre rekkefølgen på forsiden** → sett `order` i prosjektfilen (via CMS-feltet «Order»). Lavest tall først; alle med tall kommer foran alle uten. Ikke rør sorteringskoden i `src/pages/index.astro`.
 
+2b. **Bytte selve forsidelayouten** → CMS → «Forside-innstillinger» → «Type forside». Fire valg, beskrevet i punkt 4. Dette er en innholdsendring, ikke en kodeendring — ikke skriv om `index.astro` for å bytte utseende.
+
 3. **Bytte omslagsbilde på et prosjekt** → sett `cover`-feltet i CMS-en. Ikke flytt om på `pages`-listen for å oppnå det.
 
 4. **Endre menyen** → `src/components/Header.astro`, listen `navLinks` (linje 5–10). Hvert element er `{ label, href }`. Legg til/fjern/endre rekkefølge der. Ikke skriv `<a>`-taggene manuelt i HTML-en under.
@@ -614,7 +659,7 @@ Domenet `gauteaalokken.com` kommer fra `public/CNAME`, som kopieres til `dist/CN
 
 10. **Legge til / bytte bilder på fjellmaraton-banneret** → CMS-feltet «Bilder over skjemaet». Husk at **første bilde blir banneret i midten**, og at det er det eneste som vises på mobil.
 
-11. **Legge til et nytt felt i en collection** → må gjøres to steder samtidig: skjema i `public/admin/config.yml` og validering i `src/content/config.ts`. Gjør nye felter valgfrie med `.nullable().optional()` — CMS-en skriver `null` og ikke tomt når feltet står tomt.
+11. **Legge til et nytt felt i en collection** → må gjøres to steder samtidig: skjema i `public/admin/config.yml` og validering i `src/content.config.ts`. Gjør nye felter valgfrie med `.nullable().optional()` — CMS-en skriver `null` og ikke tomt når feltet står tomt.
 
 12. **Skrive et blogginnlegg** → CMS → **Blog** → **New Blog**. Fyll ut Title og Date, og bygg innlegget av blokker under «Content blocks». Rekkefølgen på blokkene er rekkefølgen på siden. Skal stilen på et bildegalleri endres senere, bytt **Layout**-nedtrekkslisten i blokken — ikke slett og legg inn bildene på nytt.
 
@@ -628,7 +673,7 @@ Domenet `gauteaalokken.com` kommer fra `public/CNAME`, som kopieres til `dist/CN
 
 ## 13. KJENTE FALLGRUVER
 
-- **Et bilde som er slettet i R2, men står igjen i en YAML-fil, får bygget til å feile.** Fjern URL-en fra innholdet først, deretter filen i R2.
+- **Et bilde som er slettet i R2, men står igjen i en YAML-fil, får bygget til å feile.** Fjern URL-en fra innholdet først, deretter filen i R2. Feilmeldingen sier nå hvilken URL som mangler og hva som må gjøres — `fetchBuffer.ts` sjekker svarkoden i stedet for å sende R2s 404-side videre til sharp, som ga «Input buffer has corrupt header: glib: XML parse error» uten å nevne noe filnavn.
 - **`sort-feed.mjs` lister hele bøtta**, ikke bare `feed/`-mappa. Kjører du den, kan prosjekt- og print-bilder havne i feed-lista. Se gjennom endringen før du committer.
 - **CMS-en skriver `null`, ikke tomme nøkler.** Derfor er `order` og `cover` `.nullable()` i schemaet. Fjerner du `.nullable()`, brekker 13 eksisterende prosjektfiler. `order: null` ble tidligere tolket som 0 og kastet alle prosjekter uten rekkefølge helt øverst — det er fikset, ikke gjeninnfør det.
 - **`year` uten fnutter** tolkes som tall og feiler valideringen.
@@ -639,15 +684,14 @@ Domenet `gauteaalokken.com` kommer fra `public/CNAME`, som kopieres til `dist/CN
 - **Feed-en har både IntersectionObserver og en `setInterval`-poll** for etterlasting. Pollingen ser overflødig ut, men den er der fordi feeden i praksis satte seg fast uten at årsaken lot seg reprodusere. Ikke fjern den.
 - **Skjemaet sender med `Content-Type: text/plain`** med vilje, for å unngå en CORS-preflight som Apps Script ikke kan svare på. `mode: 'no-cors'` ville skjult feil og meldt suksess selv når påmeldingen forsvant.
 - **Endrer du Apps Script-koden, må du lage en ny deployment**; eksisterende URL peker på den gamle versjonen til du redeployer.
-- **Sidene bruker to ulike bildepipelines.** Prints bruker Astros `getImage()`, resten bruker `lib/resolveImage.ts`. Det er ikke en feil, men forklarer hvorfor prints-bilder havner i `dist/_astro/` og resten i `dist/optimized/`.
 - **Første bygg etter at cachen er borte tar lang tid** (over tusen bilder skal hentes og skaleres). Det er normalt.
 - **Tomme ruter på forsiden trekkes tilfeldig på nytt ved hver sidevisning.** De er ikke et innholdsfelt, og de skal ikke være stabile.
-- **Lightboxen laster originalbildet fra R2.** Er originalen 15 MB, tar den 15 MB å åpne.
+- **Lightboxen viser miniatyrbildet først og bytter til originalen fra R2 når den er lastet.** Er originalen 15 MB, tar det fortsatt 15 MB før den skarpe versjonen er på plass — men skjermen er ikke tom mens man venter. Bredden er låst til originalens størrelse, så byttet flytter ingenting. Fjerner du miniatyr-trinnet, er du tilbake til svart skjerm.
 - **Filnavn med mellomrom var en reell feilkilde.** CMS-en lagrer dem med en ukodet space i URL-en, og `fetch()` hang da til timeouten slo inn på hvert av tre forsøk i stedet for å feile raskt. Løst i `fetchBuffer.ts` med `encodeURI(decodeURI(...))`. Unngå likevel mellomrom i nye filnavn.
 - **Bloggens `date` skrives uten fnutter** av CMS-ens datovelger, så YAML tolker den som en ekte dato og ikke en tekst. Derfor `z.coerce.date()` i schemaet. Dette er motsatt av `year` på prosjekter, som skal ha fnutter — ikke gjør dem like.
 - **Blogg og Portefølje er bygget og publisert selv når `showInNav` er av.** De er skjult fra menyen, ikke fra internett. Ikke legg noe der som ikke tåler å bli funnet.
-- **De to robots.txt-filene må holdes i takt.** `public/robots.txt` dekker gauteaalokken.com — inkludert de nedskalerte bildene under `/optimized/`, altså de som faktisk vises. `scripts/r2-robots.txt` dekker originalene på `pub-...r2.dev`, men **kun hvis den er lastet opp manuelt til roten av R2-bøtta**. Ligger den bare i repoet, gjør den ingenting. Endres den ene, endre den andre.
-- **`src/lib/markdown.ts` bygger på pakker som ikke står i `package.json`.** Se punkt 2. Fungerer i dag, men er verdt å kjenne til hvis bloggen plutselig slutter å bygge.
+- **De to robots.txt-filene må holdes i takt.** `public/robots.txt` dekker gauteaalokken.com — inkludert de nedskalerte bildene under `/optimized/`, altså de som faktisk vises. `scripts/robots.txt` dekker originalene på `pub-...r2.dev`, men **kun hvis den er lastet opp manuelt til roten av R2-bøtta**. Ligger den bare i repoet, gjør den ingenting. Endres den ene, endre den andre.
+- **`sizes` styrer hvilken bildefil som lastes ned.** Se punkt 5. Setter du «100vw» på et bilde som i praksis vises smalt, henter nettleseren den største fila i `srcset` uten grunn.
 
 ---
 
@@ -682,4 +726,4 @@ Følgende lot seg ikke lese ut av repoet og er ikke dokumentert her:
 - **Hvorfor fire prosjekter mangler `cover`-nøkkelen helt** — sannsynligvis bare at de ble opprettet før feltet ble lagt til 2026-08-02.
 - **Om det finnes analytics, søkeordsverktøy eller andre eksterne tjenester** koblet til siden.
 - **Hva `/portefolje` skal inneholde** — sida finnes og virker, men bildelista er tom.
-- **Om blogginnlegget `2026-08-07-test` skal bli stående** eller er en test som skal slettes. Det inneholder Lorem Ipsum-tekst og ligger publisert på `/blogg/2026-08-07-test`.
+- **Om blogginnlegget `2026-08-07-test` skal bli stående** eller er en test som skal slettes. Det inneholder Lorem Ipsum-tekst og ligger publisert på `/blogg/2026-08-07-test`. Det meldes ikke lenger inn i sitemapen (siden `/blogg` er skjult fra menyen), men er fortsatt å finne for den som har lenka.

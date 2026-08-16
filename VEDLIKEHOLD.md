@@ -3,7 +3,7 @@
 Praktisk steg-for-steg for å drifte gauteaalokken.com uten kodebakgrunn.
 Teknisk referanse ligger i [KONTEKST-FOR-KI.md](KONTEKST-FOR-KI.md) — den er til KI-modeller, denne er til deg.
 
-Sist oppdatert: 2026-08-09.
+Sist oppdatert: 2026-08-16.
 
 **Faste adresser**
 | Hva | Hvor |
@@ -69,6 +69,22 @@ De tomme rutene i rutenettet på forsiden er tilfeldige og trekkes på nytt hver
 
 ---
 
+## 4b. Bytte hele forsiden
+
+Forsiden finnes i fire ferdige varianter. Du bytter mellom dem i CMS-en, ikke i koden:
+**CMS → Forside-innstillinger → «Type forside»**.
+
+| Valg | Hva du får |
+|---|---|
+| **Rutenett med luft** | Prosjektomslag i rutenett, med tilfeldige tomme ruter imellom. |
+| **Rutenett uten luft** | Samme rutenett, men prosjektene ligger tett etter hverandre. |
+| **Fullskjerm-scroll** | Ett prosjekt om gangen i nesten hele skjermen. Du blar sideveis — med piltastene, hjulet, sveip eller pilene på hver side — og det går rundt i ring uten å stoppe. Hver besøkende starter på et tilfeldig prosjekt. **Dette er valget siden står på i dag.** |
+| **Portefølje** | Den gamle forsiden: et rutenett av dine beste bilder, ikke knyttet til noe prosjekt. Henter samme bildeliste som `/portefolje`, så den blir tom hvis den lista er tom. |
+
+Bytt så ofte du vil — ingenting av innholdet går tapt, og du kan alltid bytte tilbake. Bare husk at «Portefølje» trenger bilder under **Portfolio (for clients)** for å vise noe.
+
+---
+
 ## 5. Legge til bilder i Feed
 
 1. CMS → **Feed** → **Photos**.
@@ -111,6 +127,8 @@ Feeden har 936 bilder i dag. Lista i CMS-en er lang — nye bilder legges neders
 ## 8. Blogg og Portefølje
 
 Begge sidene **finnes alltid** på `/blogg` og `/portefolje`. Bryteren i CMS-en styrer bare om de er lenket fra menyen — den skjuler dem ikke fra internett. Ikke legg noe der som ikke tåler å bli funnet.
+
+Så lenge bryteren er av, ber siden heller ikke Google om å ta dem med i søk (de holdes utenfor sitemapen). Det er en forskjell på å ikke bli foreslått og å være hemmelig: har noen lenka, virker den fortsatt.
 
 **Skrive et blogginnlegg**
 1. CMS → **Blog** → **New Blog**.
@@ -175,13 +193,12 @@ Nettsiden har allerede sin egen `robots.txt` (fila `public/robots.txt` i repoet)
 
 Originalbildene ligger derimot på `pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev`, som er et **annet domene**. Crawlere leser robots.txt per domene, så den trenger sin egen:
 
-1. Åpne `scripts/r2-robots.txt` i repoet og last den ned.
-2. **Døp den om til `robots.txt`** (uten `r2-` foran).
-3. Cloudflare-dashbordet → **R2** → bøtta **foto-photos**.
-4. Trykk **Upload** og legg fila i **roten** av bøtta — ikke inne i `feed/`, `projects/` eller noen annen mappe.
-5. Sjekk at den virker: åpne https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/robots.txt i nettleseren. Du skal se teksten, ikke en feilmelding.
+1. Åpne `scripts/robots.txt` i repoet og last den ned. Den heter allerede det den skal hete i bøtta, så du trenger ikke døpe den om.
+2. Cloudflare-dashbordet → **R2** → bøtta **foto-photos**.
+3. Trykk **Upload** og legg fila i **roten** av bøtta — ikke inne i `feed/`, `projects/` eller noen annen mappe.
+4. Sjekk at den virker: åpne https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/robots.txt i nettleseren. Du skal se teksten, ikke en feilmelding.
 
-Skal lista oppdateres senere, endrer du `scripts/r2-robots.txt` i repoet først, og laster opp på nytt. Da er de to filene aldri i utakt.
+Skal lista oppdateres senere, endrer du `scripts/robots.txt` i repoet først, og laster opp på nytt. Da er de to filene aldri i utakt.
 
 **Blokkere KI-crawlere for alvor (anbefalt)**
 `robots.txt` er et *forbehold* — en høflig beskjed som de fleste store aktørene respekterer, men som en useriøs skraper kan ignorere. Vil du ha ekte håndheving, må bildene ligge på ditt eget domene inne i Cloudflare, ikke på deres `r2.dev`-adresse.
@@ -206,7 +223,7 @@ Versjonen er låst med vilje i `public/admin/index.html`. Gjør bare noe med den
 
 Trengs kun til å sortere feeden på nytt, eller til å se en endring før den går live.
 
-Engangsoppsett: installer Node 20 eller nyere, last ned repoet, og lag fila `.env.local` i mappa med linjen `R2_SECRET_ACCESS_KEY=…` (hemmeligheten fra Cloudflare).
+Engangsoppsett: installer Node 22 eller nyere (samme versjon som GitHub bygger med), last ned repoet, og lag fila `.env.local` i mappa med linjen `R2_SECRET_ACCESS_KEY=…` (hemmeligheten fra Cloudflare).
 
 ```bash
 npm install
@@ -260,7 +277,7 @@ Prøv hard refresh (Cmd+Shift+R) og en annen nettleser først. Er den fortsatt r
 
 | Symptom | Sannsynlig årsak | Løsning |
 |---|---|---|
-| Bygget feiler rett etter at du slettet noe i R2 | Et bilde er slettet i R2 mens URL-en fortsatt står i en YAML-fil | Fjern URL-en i CMS-en, publish |
+| Bygget feiler rett etter at du slettet noe i R2 | Et bilde er slettet i R2 mens URL-en fortsatt står i en YAML-fil | Loggen sier «Fant ikke bildet i R2 (HTTP 404)» og hvilken URL det gjelder. Fjern det bildet i CMS-en, publish |
 | Bygget feiler etter en manuell YAML-endring | Årstall uten fnutter (`year: 2024` i stedet for `year: '2024'`), eller feil innrykk | Rett i CMS-en, som skriver formatet riktig |
 | Bygget tar veldig lang tid | Mange nye bilder, eller mellomlageret er tomt | Normalt. Vent — det går fort igjen neste gang |
 | CMS-en kan ikke lagre | GitHub-innlogging utløpt, eller feil `repo`/`branch` i `public/admin/config.yml` | Logg inn på nytt. Endre aldri repo/branch |
@@ -281,19 +298,23 @@ Prøv hard refresh (Cmd+Shift+R) og en annen nettleser først. Er den fortsatt r
 | Menyen øverst | `src/components/Header.astro` |
 | Sidetittel, delingstekst, standard delingsbilde | `src/layouts/Layout.astro` |
 | Bakgrunnsfarge og standardskrift for hele siden | `src/layouts/Layout.astro` |
-| Forsiden: rutenett, antall kolonner, tekst under bildene | `src/pages/index.astro` |
+| Hvilken av de fire forsidene som vises | CMS → Forside-innstillinger — ikke i kode, se punkt 4b |
+| Forsiden: rutenettet med luft | `src/components/homepage/GridHomepage.astro` |
+| Forsiden: fullskjerm-scroll (bla-piler, størrelse, bildetekst) | `src/components/homepage/FullscreenScrollHomepage.astro` |
+| Forsiden: portefølje-varianten | `src/components/homepage/PortfolioGridHomepage.astro` |
+| Forsiden: sortering av prosjekter, bildestørrelser | `src/pages/index.astro` |
 | Prosjektsider: layout, «Tilbake»-lenke | `src/pages/prosjekter/[slug].astro` |
 | Prints-oversikten | `src/pages/prints/index.astro` |
 | Priser, størrelser og all tekst på print-sider | `src/pages/prints/[slug].astro` |
 | Feed-siden | `src/pages/feed/index.astro` |
 | Fjellmaraton: tekst, skjema, knapp, banner-layout | `src/pages/fjellmaraton.astro` |
 | 404-siden | `src/pages/404.astro` |
-| Hvilke felter CMS-en viser | `public/admin/config.yml` **og** `src/content/config.ts` (begge!) |
+| Hvilke felter CMS-en viser | `public/admin/config.yml` **og** `src/content.config.ts` (begge!) |
 | Blogglisten (layout, kort) | `src/pages/blogg/index.astro` |
 | Blogginnlegg (blokker, galleri, lightbox) | `src/pages/blogg/[slug].astro` |
 | Portefølje-siden | `src/pages/portefolje.astro` |
 | Hvilke crawlere som blokkeres på nettsiden | `public/robots.txt` |
-| Hvilke crawlere som blokkeres på bildene | `scripts/r2-robots.txt` — **må lastes opp til R2 manuelt**, se punkt 10 |
+| Hvilke crawlere som blokkeres på bildene | `scripts/robots.txt` — **må lastes opp til R2 manuelt**, se punkt 10 |
 | Fotoverktøyene | `public/fotoverktoy/*.html` |
 | Alt innhold og alle bilder | CMS-en på /admin — ikke i kode |
 
