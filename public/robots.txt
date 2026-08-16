@@ -103,3 +103,5 @@ Disallow: /
 User-agent: *
 Allow: /
 Disallow: /admin/
+
+Sitemap: https://gauteaalokken.com/sitemap-index.xml

@@ -2,6 +2,7 @@ import { fileURLToPath } from 'node:url';
 import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { defineConfig } from 'astro/config';
+import sitemap from '@astrojs/sitemap';
 import { setGlobalDispatcher, Agent } from 'undici';
 import { MANIFEST_FILENAME, STAGING_DIR, readManifest, resetManifest } from './src/lib/imageOutputQueue.ts';
 
@@ -81,5 +82,12 @@ export default defineConfig({
   image: {
     remotePatterns: [{ protocol: 'https', hostname: 'pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev' }],
   },
-  integrations: [flushStagedImages],
+  integrations: [
+    flushStagedImages,
+    // /admin is the CMS itself, and /fotoverktoy is a set of private tools —
+    // neither belongs in search results.
+    sitemap({
+      filter: (page) => !page.includes('/admin') && !page.includes('/fotoverktoy'),
+    }),
+  ],
 });
