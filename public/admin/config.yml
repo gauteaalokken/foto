@@ -29,6 +29,7 @@ collections:
               - { label: "Rutenett med luft (tilfeldige tomme ruter mellom prosjektene)", value: "grid" }
               - { label: "Rutenett uten luft (prosjektene ligger tett etter hverandre)", value: "gridTight" }
               - { label: "Fullskjerm-scroll (ett prosjekt om gangen, glimt av neste)", value: "fullscreenScroll" }
+              - { label: "Portefølje (gammel forside — rutenett med dine beste bilder, ikke knyttet til prosjekter)", value: "portfolioGrid" }
 
   - name: "projects"
     label: "Projects"

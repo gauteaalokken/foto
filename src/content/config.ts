@@ -118,7 +118,9 @@ const homepageSettings = defineCollection({
     // gridTight: same grid, no gaps — projects run back-to-back.
     // fullscreenScroll: one project fills nearly the whole screen at a time,
     // starting at a random project and scrolling chronologically from there.
-    layout: z.enum(['grid', 'gridTight', 'fullscreenScroll']).nullable().optional(),
+    // portfolioGrid: the original homepage — a masonry grid of curated
+    // photos (the same set shown at /portefolje), not tied to any project.
+    layout: z.enum(['grid', 'gridTight', 'fullscreenScroll', 'portfolioGrid']).nullable().optional(),
   }),
 });
 
