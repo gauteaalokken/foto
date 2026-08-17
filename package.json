@@ -1,5 +1,6 @@
 {
   "name": "photo-portfolio",
+  "type": "module",
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",

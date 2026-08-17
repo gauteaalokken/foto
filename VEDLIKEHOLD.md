@@ -343,3 +343,43 @@ Full liste med begrunnelse står i KONTEKST-FOR-KI.md punkt 11. Det viktigste:
 - [ ] Sletter jeg bilder? → fjernet fra CMS-en **først**, R2 **etterpå**.
 - [ ] Etter publisering: sjekket jeg Actions-fanen for grønn hake?
 - [ ] Ser siden riktig ut på mobil? Fjellmaraton-banneret oppfører seg annerledes der.
+
+---
+
+## 17. Ting bare du vet — fyll ut denne
+
+Alt i punktene over kan leses ut av koden. Det under kan det ikke. Står det tomt, må den som skal hjelpe deg neste gang gjette — og det er akkurat de tingene som stopper siden helt når de ryker: et domene som ikke ble fornyet, en Cloudflare-konto ingen husker passordet til.
+
+Fyll ut ved å redigere denne fila på github.com (blyantikonet → skriv → **Commit changes**). Ti minutter, én gang.
+
+> **⚠️ Dette repoet er offentlig.** Skriv aldri passord, API-nøkler, gjenopprettingskoder eller kontonummer her. Skriv *hvor* de ligger («i 1Password»), ikke hva de er. Alt under er ment å tåle å bli lest av hvem som helst.
+
+**Domenet**
+- Registrar (hvor `gauteaalokken.com` er kjøpt):
+- Fornyes omtrent (måned/år) — og er automatisk fornyelse på?
+- Hvem administrerer DNS-postene:
+- Hvilken e-postadresse får varsler om fornyelse:
+
+**GitHub**
+- Kontoen som eier repoet:
+- Er tofaktor slått på, og hvor ligger gjenopprettingskodene (bare hvor):
+- Pages-innstillingene (Settings → Pages): kilde skal være **GitHub Actions**, custom domain `gauteaalokken.com`, «Enforce HTTPS» på. Stemmer det i dag?
+
+**Cloudflare (bildene)**
+- E-post/konto som eier bøtta `foto-photos`:
+- Betalt plan eller gratis, og hvem betaler:
+- Hvor ligger `R2_SECRET_ACCESS_KEY` trygt (bare hvor):
+- Er bøtta koblet til eget domene, og er blokkering av KI-crawlere slått på? (Se punkt 10.)
+
+**Påmeldingene (Fjellmaraton)**
+- Google-kontoen som eier arket og Apps Script:
+- Lenke til Google Sheet-et:
+- Sist redeployet script (dato):
+
+**Bildene ellers**
+- Hvor originalbildene finnes utenom R2 (disk, backup-tjeneste):
+- Sist sjekket at den kopien faktisk virker:
+
+**Hvis du blir borte en stund**
+- Hvem kan overta / kontaktes:
+- Hva som må skje minst én gang i året for at siden skal leve videre:

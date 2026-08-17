@@ -715,7 +715,7 @@ Til KI-modellen som leser dette:
 
 ## 15. ÅPNE PUNKTER — fylles inn manuelt
 
-Følgende lot seg ikke lese ut av repoet og er ikke dokumentert her:
+Følgende lot seg ikke lese ut av repoet og er ikke dokumentert her. **Spørsmålene står som utfyllingsliste i `VEDLIKEHOLD.md` punkt 17** — er de besvart der, er det den lista som gjelder, ikke denne. Er de fortsatt tomme: spør brukeren i stedet for å gjette.
 
 - **GitHub Pages-innstillinger** (kilde satt til «GitHub Actions», custom domain, «Enforce HTTPS») — ligger i GitHub-grensesnittet, ikke i repoet.
 - **DNS-oppsettet for `gauteaalokken.com`** — hvilken registrar, og hvilke A-/CNAME-poster som peker på GitHub Pages.

@@ -44,8 +44,22 @@ const photos = await mapWithConcurrency(pages, 4, async (page) => {
     <div class="grid" id="project-grid">
       {photos.map((photo, index) => (
         <div class="cell" data-ratio={photo.ratio}>
-          <button type="button" class="photo-button" data-index={index} aria-label="Vis bilde i fullskjerm">
-            <img class="photo" src={photo.src} alt="" loading="lazy" decoding="async" />
+          {/* Prosjekttittel + nummer heller enn tom alt: det er den eneste
+              beskrivelsen som finnes per bilde, den gir Google noe å gå på,
+              og nummeret forteller en skjermleserbruker hvor i rekka man er. */}
+          <button
+            type="button"
+            class="photo-button"
+            data-index={index}
+            aria-label={`${title} — bilde ${index + 1} av ${photos.length}, vis i fullskjerm`}
+          >
+            <img
+              class="photo"
+              src={photo.src}
+              alt={`${title} — bilde ${index + 1} av ${photos.length}`}
+              loading="lazy"
+              decoding="async"
+            />
           </button>
         </div>
       ))}
