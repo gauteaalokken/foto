@@ -391,7 +391,16 @@ const widthShare = (photo: (typeof topRow)[number]) => Math.round((photo.ratio /
 </script>
 
 <script>
-  // Replace with the URL from your Google Apps Script deployment (see scripts/google-apps-script-paamelding.gs)
+  // Adressen til Google Apps Script-distribusjonen som tar imot påmeldingene.
+  //
+  // Skal du oppdatere skriptet: bruk ALLTID Implementer > Administrer
+  // distribusjoner > blyantikon > Versjon "Ny versjon" > Implementer. Da
+  // beholder distribusjonen denne adressen. Lager du en «Ny distribusjon» i
+  // stedet, får den en annen adresse, og påmeldingene fortsetter å gå hit — til
+  // den gamle koden — uten noen feilmelding.
+  //
+  // Full framgangsmåte: scripts/LES-MEG-paamelding.md
+  // Koden som kjører der: scripts/google-apps-script-paamelding.gs
   const GAS_URL = 'https://script.google.com/macros/s/AKfycby-Hz4Rdv6K1AF7QXBVKmxn-AtJfBPTvCwkHFoOEX7PqfSaXOqs5m9cA7iQaklz8oMJ/exec';
 
   const form = document.getElementById('paamelding-form') as HTMLFormElement;
