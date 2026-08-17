@@ -7,6 +7,9 @@ import { resolveImageWithAspectRatio, isRemote, withBase } from '../lib/resolveI
 const raceGallery = await getEntry('fjellmaraton', 'index');
 const racePhotos = raceGallery?.data.photos ?? [];
 const topPhotos = raceGallery?.data.topPhotos ?? [];
+// Alle rundene ligger klare i CMS-et, men en løype vises først når det faktisk
+// finnes en fil å laste ned — ellers ville en tom rad sett ødelagt ut.
+const routes = (raceGallery?.data.routes ?? []).filter((route) => route.file);
 
 const GRID_WIDTH = 700;
 
@@ -99,6 +102,26 @@ const widthShare = (photo: (typeof topRow)[number]) => Math.round((photo.ratio /
     <h2>Påmelding 26</h2>
 
     <button type="button" id="open-signup" class="signup-button">Meld deg på</button>
+
+    {routes.length > 0 && (
+      <div class="routes">
+        <h3>Løyper</h3>
+        <ul>
+          {routes.map((route) => (
+            <li>
+              {/* download gir fila et fornuftig navn når nettleseren laster den
+                  ned. Attributtet ignoreres for filer fra et annet domene, som
+                  R2 er — da avgjør nettleseren selv, og en .gpx lastes ned
+                  framfor å vises. */}
+              <a href={route.file} download>
+                {route.name}
+                <span class="routes-format">GPX</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
+    )}
   </div>
 
   <div id="signup-modal" class="modal" hidden>
@@ -514,6 +537,52 @@ const widthShare = (photo: (typeof topRow)[number]) => Math.round((photo.ratio /
   .signup-button:hover {
     background: #fff;
     color: #111;
+  }
+
+  .routes {
+    margin-top: 3rem;
+  }
+
+  .routes h3 {
+    font-size: 0.85rem;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #888;
+    margin: 0 0 0.75rem;
+  }
+
+  .routes ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .routes li + li {
+    border-top: 1px solid #e5e5e5;
+  }
+
+  .routes a {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.85rem 0;
+    color: #111;
+    text-decoration: none;
+    font-size: 1.05rem;
+  }
+
+  .routes a:hover {
+    opacity: 0.6;
+  }
+
+  .routes-format {
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    color: #888;
+    border: 1px solid #ddd;
+    padding: 0.2rem 0.5rem;
   }
 
   /* Dialog holding the sign-up form. */
