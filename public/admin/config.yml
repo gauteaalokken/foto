@@ -131,19 +131,19 @@ collections:
                 public_url: https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev
                 access_key_id: a74d879decb219fc298c10edd12ecda5
                 prefix: "fjellmaraton/"
-          - label: "GPX-løyper"
-            name: "routes"
+          - label: "Filer til nedlasting"
+            name: "downloads"
             widget: "list"
             required: false
-            label_singular: "Løype"
+            label_singular: "Fil"
             summary: "{{fields.name}}"
-            hint: "Løyper til nedlasting, vises under påmeldingsknappen. Legg til én per runde."
+            hint: "Vises under påmeldingsknappen. Kan være hva som helst — GPX-løyper, PDF, bilder. Rekkefølgen her er rekkefølgen på siden, og du kan dra dem opp og ned."
             fields:
-              - { label: "Navn", name: "name", widget: "string", hint: "F.eks. «Korte runden 12k» — dette er teksten folk trykker på." }
-              - label: "GPX-fil"
+              - { label: "Navn", name: "name", widget: "string", hint: "Teksten folk trykker på, f.eks. «Korte runden 12k» eller «Startkontingent 2026». Trenger ikke ligne på filnavnet." }
+              - label: "Fil"
                 name: "file"
                 widget: "file"
-                hint: "Selve .gpx-fila."
+                hint: "Selve fila. Filtypen (GPX, PDF …) vises automatisk ved siden av navnet."
                 media_libraries:
                   cloudflare_r2:
                     bucket: foto-photos

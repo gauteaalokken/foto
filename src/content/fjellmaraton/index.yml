@@ -2,7 +2,7 @@ topPhotos:
   - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/44.jpg
   - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/FFM 26 4_1.jpg
   - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/FFM 26 4_2.jpg
-routes:
+downloads:
   - name: Korte runden 12k
     file: https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/gpx/Lunch_Trail_Run_Flaksjøen_Fjelllmaraton_stuttløypa_.gpx
   - name: Mellomrunden 21k

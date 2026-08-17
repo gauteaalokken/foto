@@ -7,9 +7,20 @@ import { resolveImageWithAspectRatio, isRemote, withBase } from '../lib/resolveI
 const raceGallery = await getEntry('fjellmaraton', 'index');
 const racePhotos = raceGallery?.data.photos ?? [];
 const topPhotos = raceGallery?.data.topPhotos ?? [];
-// Alle rundene ligger klare i CMS-et, men en løype vises først når det faktisk
-// finnes en fil å laste ned — ellers ville en tom rad sett ødelagt ut.
-const routes = (raceGallery?.data.routes ?? []).filter((route) => route.file);
+// Oppføringer kan ligge klare i CMS-et uten fil ennå; de vises først når det
+// faktisk finnes noe å laste ned, ellers ville en tom rad sett ødelagt ut.
+const downloads = (raceGallery?.data.downloads ?? []).filter((item) => item.file);
+
+// Filnavn fra CMS-et kan inneholde mellomrom og norske tegn, som må kodes for
+// å bli en gyldig lenke. Er adressen allerede kodet (inneholder %-sekvenser),
+// lar vi den være — encodeURI ville da kodet selve prosenttegnet på nytt.
+const safeUrl = (url: string) => (/%[0-9A-Fa-f]{2}/.test(url) ? url : encodeURI(url));
+
+// Filtypen leses ut av fila, så merkelappen stemmer uansett hva som lastes opp.
+const fileLabel = (url: string) => {
+  const extension = url.split(/[?#]/)[0].split('.').pop() ?? '';
+  return /^[a-z0-9]{1,5}$/i.test(extension) ? extension.toUpperCase() : 'FIL';
+};
 
 const GRID_WIDTH = 700;
 
@@ -103,19 +114,19 @@ const widthShare = (photo: (typeof topRow)[number]) => Math.round((photo.ratio /
 
     <button type="button" id="open-signup" class="signup-button">Meld deg på</button>
 
-    {routes.length > 0 && (
+    {downloads.length > 0 && (
       <div class="routes">
-        <h3>Løyper</h3>
+        <h3>Nedlastinger</h3>
         <ul>
-          {routes.map((route) => (
+          {downloads.map((item) => (
             <li>
               {/* download gir fila et fornuftig navn når nettleseren laster den
                   ned. Attributtet ignoreres for filer fra et annet domene, som
                   R2 er — da avgjør nettleseren selv, og en .gpx lastes ned
                   framfor å vises. */}
-              <a href={route.file} download>
-                {route.name}
-                <span class="routes-format">GPX</span>
+              <a href={safeUrl(item.file)} download>
+                {item.name}
+                <span class="routes-format">{fileLabel(item.file)}</span>
               </a>
             </li>
           ))}

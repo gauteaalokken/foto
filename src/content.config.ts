@@ -43,8 +43,9 @@ const fjellmaraton = defineCollection({
     // Shown above the sign-up form. Optional and nullable because the CMS
     // writes an explicit null rather than omitting the key when left empty.
     topPhotos: z.array(z.string()).nullable().optional(),
-    // GPX-løyper som kan lastes ned under påmeldingen.
-    routes: z
+    // Filer til nedlasting under påmeldingen — GPX-løyper i dag, men hva som
+    // helst senere. Navnet er fritt; filtypen leses ut av selve fila.
+    downloads: z
       .array(
         z.object({
           name: z.string(),
