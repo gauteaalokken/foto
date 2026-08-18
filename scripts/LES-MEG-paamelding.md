@@ -15,7 +15,7 @@ Nettsiden sender påmeldingene til **én bestemt nettadresse**. Den adressen st�
 i `src/pages/fjellmaraton.astro` og er akkurat nå:
 
 ```
-https://script.google.com/macros/s/AKfycby-Hz4Rdv6K1AF7QXBVKmxn-AtJfBPTvCwkHFoOEX7PqfSaXOqs5m9cA7iQaklz8oMJ/exec
+https://script.google.com/macros/s/AKfycbwFp6qwhb72J4qkg3a82rSNTviuDEcRw6WcgE21cS-0y3Y-BGpBc3jYY35hiIMR8vV1/exec
 ```
 
 Denne adressen hører til **én** distribusjon i Apps Script. Lager du en ny
