@@ -13,7 +13,7 @@
 // Øk dette tallet hver gang du endrer koden her. Det sendes tilbake i svaret,
 // så det er mulig å se utenfra hvilken versjon som faktisk er distribuert —
 // uten å måtte lete i Google. Se "Sjekk hvilken versjon som kjører" i README.
-const SCRIPT_VERSION = 2;
+const SCRIPT_VERSION = 3;
 
 // Hvem varselet går til. Skrevet ut i klartekst med vilje: tidligere sto det
 // tomt her og koden spurte Google om eierens adresse i stedet. Den returnerer
@@ -69,9 +69,26 @@ function doPost(e) {
   }
 }
 
+// Brukes når sendVarsel kjøres manuelt fra menyen i Apps Script.
+const TEST_PAAMELDING = {
+  firstName: 'Test',
+  lastName: 'Testesen',
+  email: 'test@example.com',
+  phone: '00000000',
+  runde: 'Korte runden 12k',
+  overnatting: 'Hytta',
+  message: 'Dette er en test sendt fra Apps Script.',
+};
+
 /** Sender varsel om én påmelding. Kalles først etter at raden er lagret. */
 function sendVarsel(data) {
   try {
+    // Kjører du denne manuelt fra menyen øverst, følger det ingen påmelding
+    // med. Da sender vi en testmelding i stedet for å stoppe med en feil om
+    // at «firstName» ikke finnes — det er lett å velge denne framfor
+    // testVarsel i nedtrekkslista, og begge bør gjøre noe fornuftig.
+    if (!data) data = TEST_PAAMELDING;
+
     const navn = [data.firstName, data.lastName].filter(String).join(' ') || 'Ukjent navn';
 
     const linjer = [
@@ -114,15 +131,7 @@ function sendVarsel(data) {
  * aldri noe. Kommer det en e-post, virker varslingen.
  */
 function testVarsel() {
-  sendVarsel({
-    firstName: 'Test',
-    lastName: 'Testesen',
-    email: 'test@example.com',
-    phone: '00000000',
-    runde: 'Korte runden 12k',
-    overnatting: 'Hytta',
-    message: 'Dette er en test sendt fra Apps Script.',
-  });
+  sendVarsel(TEST_PAAMELDING);
 }
 
 function jsonResponse(payload) {

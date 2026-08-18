@@ -75,7 +75,7 @@ Sjekk også at raden kom i regnearket, og at du fikk e-posten.
 
 ## Sjekk hvilken versjon som kjører
 
-Øverst i skriptet står det `const SCRIPT_VERSION = 2;`. Tallet sendes tilbake i
+Øverst i skriptet står det `const SCRIPT_VERSION = 3;`. Tallet sendes tilbake i
 svaret hver gang noen melder seg på, så det er mulig å se hvilken kode som
 faktisk er distribuert — uten å lete i Google.
 
@@ -107,7 +107,8 @@ ligger i Google.
 2. **Har Google fått lov til å sende e-post?** Velg funksjonen `testVarsel`
    i nedtrekksmenyen øverst i Apps Script og trykk **Kjør**. Første gang
    kommer det et spørsmål om tillatelse — godta det. Får du en e-post, virker
-   varslingen.
+   varslingen. (`sendVarsel` sender også en testmelding om du velger den ved
+   et uhell.)
 3. **Står det noe i loggen?** Åpne **Kjøringer** i menyen til venstre og se
    etter rader merket med feil.
 
