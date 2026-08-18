@@ -73,6 +73,20 @@ Sjekk også at raden kom i regnearket, og at du fikk e-posten.
 
 ---
 
+## Sjekk hvilken versjon som kjører
+
+Øverst i skriptet står det `const SCRIPT_VERSION = 2;`. Tallet sendes tilbake i
+svaret hver gang noen melder seg på, så det er mulig å se hvilken kode som
+faktisk er distribuert — uten å lete i Google.
+
+Endrer du skriptet, øk tallet med én før du distribuerer. Da vet du at en
+påmelding som svarer med det nye tallet kjørte den nye koden.
+
+Dette er den sikreste måten å oppdage at en «Ny distribusjon» har stjålet
+trafikken: da fortsetter svaret å inneholde det gamle tallet.
+
+---
+
 ## Husk å kopiere endringen tilbake hit
 
 Endrer du koden inne i Google, finnes den bare der. Kopier den da inn i
@@ -86,11 +100,20 @@ ligger i Google.
 
 ## Hvis noe ikke virker
 
-**Ingen e-post kommer.** Første gang skriptet sender e-post må du gi Google
-tillatelse til det. Åpne Apps Script, velg funksjonen `notify` og trykk
-**Kjør** én gang, så kommer spørsmålet om tillatelse. E-postvarslingen er
-lagd slik at den aldri kan velte selve påmeldingen — feiler den, blir raden
-lagret uansett, og feilen havner i **Kjøringer**.
+**Ingen e-post kommer.** Gå gjennom disse tre i rekkefølge:
+
+1. **Er den nye koden distribuert?** Lim inn hele fila på nytt, og distribuer
+   med «Ny versjon» som beskrevet over. Bare det å lagre er ikke nok.
+2. **Har Google fått lov til å sende e-post?** Velg funksjonen `testVarsel`
+   i nedtrekksmenyen øverst i Apps Script og trykk **Kjør**. Første gang
+   kommer det et spørsmål om tillatelse — godta det. Får du en e-post, virker
+   varslingen.
+3. **Står det noe i loggen?** Åpne **Kjøringer** i menyen til venstre og se
+   etter rader merket med feil.
+
+E-postvarslingen er lagd slik at den aldri kan velte selve påmeldingen —
+feiler den, blir raden lagret uansett, og feilen havner i **Kjøringer**. Det
+er derfor det er mulig å få rader i regnearket uten å få e-post.
 
 **Skjemaet sier «Noe gikk galt».** Da kom påmeldingen *ikke* inn. Se i
 **Kjøringer** etter en rad som er markert med feil.

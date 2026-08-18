@@ -1,33 +1,33 @@
-// Paste this into script.google.com as the code for a Google Sheets
-// container-bound script, then deploy it as a web app (see instructions below).
+// Denne koden kjører i Google Apps Script, ikke på nettsiden. Fila her er en
+// referansekopi — den gjør ingenting før den er limt inn i Apps Script og
+// distribuert på nytt.
 //
-// Setup:
-// 1. Create a new Google Sheet (e.g. "Påmelding 26").
-// 2. Extensions > Apps Script, delete the placeholder code, paste this file.
-// 3. Deploy > New deployment > type "Web app".
-//    - Execute as: Me
-//    - Who has access: Anyone
-// 4. Copy the deployment URL and paste it into GAS_URL in
-//    src/pages/fjellmaraton.astro.
-// 5. Re-run "Deploy > Manage deployments" and create a new version any time
-//    you edit this script — edits don't take effect on the existing URL
-//    until redeployed.
+// Full framgangsmåte: scripts/LES-MEG-paamelding.md
 //
-// Note: the first run after adding the email notification below will ask for
-// permission to send mail on your behalf, since that's a new scope. Accept it,
-// otherwise the notification silently does nothing.
+// Kort versjon for å oppdatere:
+//   Implementer > Administrer distribusjoner > blyantikon >
+//   Versjon: "Ny versjon" > Implementer
+// Bruk ALDRI "Ny distribusjon" — det lager en ny adresse som nettsiden ikke
+// kjenner, og påmeldingene fortsetter til den gamle koden.
 
-// Where to send the notification. Leave empty to use the Google account that
-// owns this script — that's you, since the deployment runs as "Me".
-const NOTIFY_EMAIL = '';
+// Øk dette tallet hver gang du endrer koden her. Det sendes tilbake i svaret,
+// så det er mulig å se utenfra hvilken versjon som faktisk er distribuert —
+// uten å måtte lete i Google. Se "Sjekk hvilken versjon som kjører" i README.
+const SCRIPT_VERSION = 2;
+
+// Hvem varselet går til. Skrevet ut i klartekst med vilje: tidligere sto det
+// tomt her og koden spurte Google om eierens adresse i stedet. Den returnerer
+// tom streng i enkelte oppsett, og da hoppet varslingen stille over — rad i
+// regnearket, men ingen e-post og ingen feilmelding.
+const NOTIFY_EMAIL = 'gaute.aalokken@gmail.com';
 
 function doPost(e) {
   try {
     const data = JSON.parse(e.postData.contents);
 
-    // Honeypot: the matching form field is positioned off-screen, so a real
-    // visitor never fills it and anything in it means a bot. Reply "ok" so the
-    // bot can't tell it was rejected — just don't write the row.
+    // Honningkrukke: feltet ligger utenfor skjermen på nettsiden, så et ekte
+    // menneske fyller det aldri ut. Er det fylt, er det en robot. Vi svarer
+    // "ok" så roboten ikke skjønner at den ble avvist — men lagrer ingenting.
     if (data.website) {
       return jsonResponse({ status: 'ok' });
     }
@@ -36,11 +36,11 @@ function doPost(e) {
 
     if (sheet.getLastRow() === 0) {
       sheet.appendRow([
-        'Timestamp',
-        'First Name',
-        'Last Name',
-        'Email',
-        'Phone',
+        'Tidspunkt',
+        'Fornavn',
+        'Etternavn',
+        'E-post',
+        'Telefon',
         'Runde',
         'Overnatting',
         'Noe mer',
@@ -58,27 +58,24 @@ function doPost(e) {
       data.message || '',
     ]);
 
-    notify(data);
+    sendVarsel(data);
 
     return jsonResponse({ status: 'ok' });
   } catch (err) {
-    // Without this the script would return an HTML error page, which the form
-    // can't parse — reporting the failure as JSON lets it tell the visitor
-    // their sign-up didn't go through instead of showing a false success.
+    // Uten dette ville Apps Script returnert en HTML-feilside, som skjemaet
+    // ikke klarer å lese. Ved å svare med JSON kan skjemaet si fra til den som
+    // meldte seg på at det ikke gikk gjennom, i stedet for å vise falsk suksess.
     return jsonResponse({ status: 'error', message: String(err) });
   }
 }
 
-/** Emails a copy of the sign-up. Called only after the row is safely written. */
-function notify(data) {
+/** Sender varsel om én påmelding. Kalles først etter at raden er lagret. */
+function sendVarsel(data) {
   try {
-    const to = NOTIFY_EMAIL || Session.getEffectiveUser().getEmail();
-    if (!to) return;
+    const navn = [data.firstName, data.lastName].filter(String).join(' ') || 'Ukjent navn';
 
-    const name = [data.firstName, data.lastName].filter(String).join(' ') || 'Ukjent navn';
-
-    const lines = [
-      'Navn: ' + name,
+    const linjer = [
+      'Navn: ' + navn,
       'E-post: ' + (data.email || '—'),
       'Telefon: ' + (data.phone || '—'),
       'Runde: ' + (data.runde || '—'),
@@ -90,21 +87,46 @@ function notify(data) {
       'Hele lista: ' + SpreadsheetApp.getActiveSpreadsheet().getUrl(),
     ];
 
-    const options = { to: to, subject: 'Ny påmelding: ' + name, body: lines.join('\n') };
+    const alternativer = {
+      to: NOTIFY_EMAIL,
+      subject: 'Ny påmelding: ' + navn,
+      body: linjer.join('\n'),
+    };
 
-    // Lets you reply straight to the person from the notification.
-    if (data.email) options.replyTo = data.email;
+    // Gjør at du kan svare direkte til den som meldte seg på.
+    if (data.email) alternativer.replyTo = data.email;
 
-    MailApp.sendEmail(options);
+    MailApp.sendEmail(alternativer);
   } catch (err) {
-    // Deliberately swallowed: the row is already saved at this point, so a mail
-    // quota or permission problem must not turn a sign-up that did go through
-    // into an error message for the visitor. Shows up in the Apps Script log.
-    console.error('Kunne ikke sende varsel: ' + err);
+    // Svelges med vilje: raden er allerede lagret her, så et problem med kvote
+    // eller tillatelser skal ikke gjøre en påmelding som faktisk gikk gjennom
+    // om til en feilmelding for den som meldte seg på. Feilen havner i
+    // "Kjøringer" i menyen til venstre.
+    console.error('Klarte ikke sende varsel: ' + err);
   }
 }
 
+/**
+ * Kjør denne manuelt i Apps Script for å teste e-postvarselet.
+ *
+ * Velg "testVarsel" i nedtrekksmenyen øverst og trykk Kjør. Første gang spør
+ * Google om tillatelse til å sende e-post — godta den, ellers sender skriptet
+ * aldri noe. Kommer det en e-post, virker varslingen.
+ */
+function testVarsel() {
+  sendVarsel({
+    firstName: 'Test',
+    lastName: 'Testesen',
+    email: 'test@example.com',
+    phone: '00000000',
+    runde: 'Korte runden 12k',
+    overnatting: 'Hytta',
+    message: 'Dette er en test sendt fra Apps Script.',
+  });
+}
+
 function jsonResponse(payload) {
+  payload.version = SCRIPT_VERSION;
   return ContentService.createTextOutput(
     JSON.stringify(payload)
   ).setMimeType(ContentService.MimeType.JSON);
