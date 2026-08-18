@@ -131,6 +131,16 @@ collections:
                 public_url: https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev
                 access_key_id: a74d879decb219fc298c10edd12ecda5
                 prefix: "fjellmaraton/"
+          - label: "Adresse-knapp"
+            name: "address"
+            widget: "object"
+            required: false
+            collapsed: false
+            hint: "Knapp over nedlastingene som åpner kartet."
+            fields:
+              - { label: "Vis knappen", name: "enabled", widget: "boolean", default: true, required: false, hint: "Skru av for å skjule knappen uten å slette lenka." }
+              - { label: "Tekst på knappen", name: "label", widget: "string", default: "Adresse", required: false }
+              - { label: "Lenke til kart", name: "url", widget: "string", required: false, hint: "Del stedet i Google Maps og lim inn lenka her." }
           - label: "Filer til nedlasting"
             name: "downloads"
             widget: "list"

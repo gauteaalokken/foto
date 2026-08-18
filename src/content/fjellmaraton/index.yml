@@ -1,3 +1,7 @@
+address:
+  enabled: true
+  label: Adresse
+  url: https://maps.app.goo.gl/a3pqe7Trdr3ZoraY6
 topPhotos:
   - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/44.jpg
   - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/FFM 26 4_1.jpg

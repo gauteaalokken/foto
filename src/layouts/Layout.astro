@@ -25,6 +25,12 @@ const {
 } = Astro.props;
 
 const canonical = new URL(Astro.url.pathname, Astro.site ?? Astro.url.origin);
+
+// Link previews are fetched by a crawler that never loads the page, so the
+// image has to be an absolute address. Pages that hand us a locally generated
+// file pass a site-relative path, which this turns into a full URL; an R2
+// address is already absolute and comes back unchanged.
+const ogImage = new URL(image, canonical).href;
 ---
 
 <!doctype html>
@@ -40,12 +46,12 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? Astro.url.origin);
     <meta property="og:site_name" content="Gaute Aaløkken" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
-    <meta property="og:image" content={image} />
+    <meta property="og:image" content={ogImage} />
     <meta property="og:url" content={canonical.href} />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
-    <meta name="twitter:image" content={image} />
+    <meta name="twitter:image" content={ogImage} />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

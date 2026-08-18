@@ -2,7 +2,7 @@
 import Layout from '../layouts/Layout.astro';
 import { getEntry } from 'astro:content';
 import { mapWithConcurrency } from '../lib/concurrency';
-import { resolveImageWithAspectRatio, isRemote, withBase } from '../lib/resolveImage';
+import { resolveImageWithAspectRatio, resolveOgImage, isRemote, withBase } from '../lib/resolveImage';
 
 const raceGallery = await getEntry('fjellmaraton', 'index');
 const racePhotos = raceGallery?.data.photos ?? [];
@@ -10,6 +10,10 @@ const topPhotos = raceGallery?.data.topPhotos ?? [];
 // Oppføringer kan ligge klare i CMS-et uten fil ennå; de vises først når det
 // faktisk finnes noe å laste ned, ellers ville en tom rad sett ødelagt ut.
 const downloads = (raceGallery?.data.downloads ?? []).filter((item) => item.file);
+
+// Adresseknappen slås av og på i CMS-et, og skjules uansett om lenka mangler.
+const address = raceGallery?.data.address;
+const showAddress = Boolean(address?.enabled && address?.url);
 
 // Filnavn fra CMS-et kan inneholde mellomrom og norske tegn, som må kodes for
 // å bli en gyldig lenke. Er adressen allerede kodet (inneholder %-sekvenser),
@@ -78,12 +82,18 @@ const topRow = banner ? [...leftOfBanner, banner, ...rightOfBanner] : [];
 // own when the page holds one, two or three photos.
 const topRatioSum = topRow.reduce((sum, photo) => sum + photo.ratio, 0);
 const widthShare = (photo: (typeof topRow)[number]) => Math.round((photo.ratio / topRatioSum) * 100);
+
+// Banneret er bildet siden handler om, så det er det folk bør se når lenka
+// deles. Originalen er 28 MB — langt over det de fleste tjenester gidder å
+// laste ned — så vi lager en egen liten JPEG til formålet.
+const shareSource = topPhotos[0] ?? racePhotos[0];
+const shareImage = shareSource ? await resolveOgImage(shareSource) : undefined;
 ---
 
 <Layout
   title="Flaksjøen Fjellmaraton — Gaute Aaløkken"
   description="Påmelding til Flaksjøen Fjellmaraton 26. Velg mellom korte runden (12k) og mellomrunden (21k), og meld deg på her."
-  image={racePhotos[0]}
+  image={shareImage}
 >
   {topRow.length > 0 && (
     <div class="top-wrap">
@@ -113,6 +123,12 @@ const widthShare = (photo: (typeof topRow)[number]) => Math.round((photo.ratio /
     <h2>Påmelding 26</h2>
 
     <button type="button" id="open-signup" class="signup-button">Meld deg på</button>
+
+    {showAddress && (
+      <a class="address-button" href={safeUrl(address!.url!)} target="_blank" rel="noopener">
+        {address!.label || 'Adresse'}
+      </a>
+    )}
 
     {downloads.length > 0 && (
       <div class="routes">
@@ -548,6 +564,27 @@ const widthShare = (photo: (typeof topRow)[number]) => Math.round((photo.ratio /
   .signup-button:hover {
     background: #fff;
     color: #111;
+  }
+
+  /* Sekundær i forhold til «Meld deg på»: samme form, men bare omriss, så den
+     ikke konkurrerer med hovedhandlingen på siden. */
+  .address-button {
+    display: inline-block;
+    /* Venstremargen skiller den fra «Meld deg på», som står rett før. */
+    margin: 1rem 0 0 0.75rem;
+    font-family: Helvetica, 'Helvetica Neue', Arial, sans-serif;
+    font-size: 1rem;
+    letter-spacing: 0.02em;
+    background: transparent;
+    color: #111;
+    border: 1.5px solid #111;
+    padding: 0.9rem 2.75rem;
+    text-decoration: none;
+  }
+
+  .address-button:hover {
+    background: #111;
+    color: #fff;
   }
 
   .routes {

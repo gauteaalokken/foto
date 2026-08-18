@@ -25,22 +25,46 @@ export const isRemote = (path: string) => /^https?:\/\//.test(path);
  * resized file, which caused photos to render squeezed/cropped. Leaving height
  * unset lets the browser just use the image's real proportions once it loads.
  */
-async function resolveStagedFilename(src: string, width: number, quality: number): Promise<string> {
-  const filename = `${createHash('sha1').update(`${src}:${width}:${quality}`).digest('hex')}.webp`;
+async function resolveStagedFilename(
+  src: string,
+  width: number,
+  quality: number,
+  format: 'webp' | 'jpeg' = 'webp'
+): Promise<string> {
+  // The cache key deliberately omits the format for webp, so every file
+  // already staged from earlier builds stays valid instead of being rebuilt.
+  const key = format === 'webp' ? `${src}:${width}:${quality}` : `${src}:${width}:${quality}:${format}`;
+  const extension = format === 'jpeg' ? 'jpg' : 'webp';
+  const filename = `${createHash('sha1').update(key).digest('hex')}.${extension}`;
   await markReferenced(filename);
 
   if (!(await hasStagedFile(filename))) {
     const buffer = await fetchWithRetry(src);
-    const resized = await sharp(buffer)
-      .rotate()
-      .resize({ width, withoutEnlargement: true })
-      .webp({ quality })
-      .toBuffer();
+    const pipeline = sharp(buffer).rotate().resize({ width, withoutEnlargement: true });
+    const resized = await (format === 'jpeg'
+      ? pipeline.jpeg({ quality, mozjpeg: true })
+      : pipeline.webp({ quality })
+    ).toBuffer();
 
     await stageImageWrite(filename, resized);
   }
 
   return filename;
+}
+
+/**
+ * A photo sized for link previews (iMessage, Facebook, Slack …).
+ *
+ * JPEG rather than the webp everything else uses: several link scrapers still
+ * don't read webp, and a preview that silently fails to render is worse than a
+ * slightly larger file. Small on purpose too — the originals here run to 28 MB,
+ * far past what those services will download before giving up.
+ */
+export async function resolveOgImage(src: string, width = 1200, quality = 80): Promise<string> {
+  if (!isRemote(src)) return withBase(src);
+
+  const filename = await resolveStagedFilename(src, width, quality, 'jpeg');
+  return withBase(`optimized/${filename}`);
 }
 
 export async function resolveImage(src: string, width: number, quality: number): Promise<string> {
