@@ -13,7 +13,7 @@
 // Øk dette tallet hver gang du endrer koden her. Det sendes tilbake i svaret,
 // så det er mulig å se utenfra hvilken versjon som faktisk er distribuert —
 // uten å måtte lete i Google. Se "Sjekk hvilken versjon som kjører" i README.
-const SCRIPT_VERSION = 3;
+const SCRIPT_VERSION = 4;
 
 // Hvem varselet går til. Skrevet ut i klartekst med vilje: tidligere sto det
 // tomt her og koden spurte Google om eierens adresse i stedet. Den returnerer
@@ -114,6 +114,15 @@ function sendVarsel(data) {
     if (data.email) alternativer.replyTo = data.email;
 
     MailApp.sendEmail(alternativer);
+
+    // Logges med vilje også når det går bra: uten dette ser en kjøring der
+    // e-posten aldri ble sendt helt lik en der den ble sendt og havnet i
+    // søppelpost. Kvoten er med fordi et tomt kvotetall er en av de få
+    // måtene sending kan feile på uten at det er noe galt med koden.
+    console.log(
+      'Varsel sendt til ' + NOTIFY_EMAIL +
+      ' (' + MailApp.getRemainingDailyQuota() + ' e-poster igjen av dagskvoten)'
+    );
   } catch (err) {
     // Svelges med vilje: raden er allerede lagret her, så et problem med kvote
     // eller tillatelser skal ikke gjøre en påmelding som faktisk gikk gjennom

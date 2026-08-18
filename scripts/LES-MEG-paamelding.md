@@ -75,7 +75,7 @@ Sjekk også at raden kom i regnearket, og at du fikk e-posten.
 
 ## Sjekk hvilken versjon som kjører
 
-Øverst i skriptet står det `const SCRIPT_VERSION = 3;`. Tallet sendes tilbake i
+Øverst i skriptet står det `const SCRIPT_VERSION = 4;`. Tallet sendes tilbake i
 svaret hver gang noen melder seg på, så det er mulig å se hvilken kode som
 faktisk er distribuert — uten å lete i Google.
 
@@ -109,8 +109,14 @@ ligger i Google.
    kommer det et spørsmål om tillatelse — godta det. Får du en e-post, virker
    varslingen. (`sendVarsel` sender også en testmelding om du velger den ved
    et uhell.)
-3. **Står det noe i loggen?** Åpne **Kjøringer** i menyen til venstre og se
-   etter rader merket med feil.
+3. **Står det noe i loggen?** Åpne **Kjøringer** i menyen til venstre og
+   trykk på raden for å utvide den. Skriptet logger nå én linje hver gang et
+   varsel faktisk blir sendt («Varsel sendt til …»). Mangler den linja, ble
+   e-posten aldri sendt — står den der, ble den sendt, og da er det levering
+   du skal se etter (sjekk søppelpost).
+
+   Merk at raden viser «Fullført» selv når e-posten feiler. Det er med vilje:
+   en påmelding skal aldri gå tapt fordi varselet ikke kom fram.
 
 E-postvarslingen er lagd slik at den aldri kan velte selve påmeldingen —
 feiler den, blir raden lagret uansett, og feilen havner i **Kjøringer**. Det
