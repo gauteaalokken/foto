@@ -9,6 +9,7 @@ publisert med GitHub Pages, med bilder i Cloudflare R2 og redigering via Sveltia
 |---|---|---|
 | **[VEDLIKEHOLD.md](VEDLIKEHOLD.md)** | Deg | Praktisk steg-for-steg: legge til prosjekt, laste opp bilder, angre en endring, feilsøking. |
 | **[KONTEKST-FOR-KI.md](KONTEKST-FOR-KI.md)** | KI-modeller | Full teknisk referanse. Lim inn hele fila øverst i en chat før du ber om hjelp med koden. |
+| **[KONTEKST-KORT.md](KONTEKST-KORT.md)** | KI-modeller | Kortversjon av samme, til chat-modeller med begrenset kvote. Nok til små endringer: farge, tekst, menylenke, ny side. |
 
 ## Kommandoer
 
