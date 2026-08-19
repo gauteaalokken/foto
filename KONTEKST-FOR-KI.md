@@ -436,6 +436,7 @@ Space Mono lastes fra Google Fonts i `Layout.astro` med vekt 400 og 700.
 | Breakpoint | Hva skjer | Fil |
 |---|---|---|
 | `max-height: 500px`, `max-width: 640px` | Menyen krymper (mindre tittel, tettere lenker). Høyderegelen er der fordi fullskjermsforsiden regner ut bildehøyden som «vindu minus meny» | `Header.astro` |
+| `max-width: 640px` | Lenkene forsvinner inn i én menyknapp (hamburger). Panelet som åpner seg ligger absolutt plassert under toppmenyen, så menyen er like høy åpen som lukket — fullskjermsforsiden måler den høyden bare ved lasting og ved `resize` | `Header.astro` |
 | `min-width: 640px` | Prosjektrutenettet på forsiden går fra 2 til 4 kolonner | `GridHomepage.astro` |
 | `min-width: 640px` / `1024px` / `1440px` | Masonry-rutenettene går 2 → 3 → 4 → 5 kolonner | `PortfolioGridHomepage.astro`, `portefolje.astro` |
 | `min-width: 640px` / `1024px` | Blogglisten går til flere kolonner | `blogg/index.astro` |
@@ -533,7 +534,7 @@ Lagret som `src/pages/om.astro` blir dette `/om`. Importstien til `Layout` har e
 
 **Komponenter og layout** (det er fem)
 - `src/layouts/Layout.astro` — props: `title` (str., default «Gaute Aaløkken»), `description` (str., default fotografi-teksten), `image` (str., default et R2-bilde), `bodyClass` (str., valgfri — brukes bare av fullskjermsforsiden, som må låse rullingen på `<body>`). Gir `<head>`, all SEO/Open Graph/Twitter-meta, canonical-URL, Google Fonts, global CSS og `<Header />`. Alle sider bruker den.
-- `src/components/Header.astro` — ingen props. Navnelenke til forsiden, meny (Flaksjøen Fjellmaraton, Prints, Feed, Fotoverktøy), e-post-ikon og Instagram-ikon. Leser i tillegg `portfolio` og `blogSettings` fra innholdet, og skyter inn «Portefølje» og «Blogg» på plass 1 i menyen når `showInNav` er satt.
+- `src/components/Header.astro` — ingen props. Navnelenke til forsiden, meny (Flaksjøen Fjellmaraton, Prints, Feed, Fotoverktøy), e-post-ikon og Instagram-ikon. Leser i tillegg `portfolio` og `blogSettings` fra innholdet, og skyter inn «Portefølje» og «Blogg» på plass 1 i menyen når `showInNav` er satt. Under 640 px bredde ligger hele menyen bak én knapp; panelet lukker seg ved trykk på en lenke, trykk utenfor og Escape.
 - `src/components/homepage/GridHomepage.astro` — props: `projects`, `tight`. Rutenettforsiden. `tight` slår av de tilfeldige tomme rutene.
 - `src/components/homepage/FullscreenScrollHomepage.astro` — props: `projects`. Ett prosjekt om gangen, sideveis rulling med uendelig løkke (klonet første/siste), tilfeldig startprosjekt, piltaster og bla-piler.
 - `src/components/homepage/PortfolioGridHomepage.astro` — props: `photos`. Den gamle forsiden: masonry + lightbox.
