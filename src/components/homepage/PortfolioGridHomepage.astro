@@ -147,14 +147,14 @@ const { photos } = Astro.props;
 
   .empty {
     text-align: center;
-    color: #666;
+    color: var(--ink-muted);
     padding: 80px 20px;
   }
 
   .lightbox {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.92);
+    background: var(--overlay);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -176,7 +176,7 @@ const { photos } = Astro.props;
     position: absolute;
     background: none;
     border: none;
-    color: #fff;
+    color: var(--ink-inverse);
     font-size: 2.5rem;
     line-height: 1;
     cursor: pointer;

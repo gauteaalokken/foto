@@ -99,7 +99,7 @@ if (emptyPositions.has(projects.length)) displayItems.push({ type: 'empty' });
 
   .cover-wrap {
     overflow: hidden;
-    background: #eee;
+    background: var(--placeholder);
   }
 
   .cover {
@@ -125,15 +125,15 @@ if (emptyPositions.has(projects.length)) displayItems.push({ type: 'empty' });
   }
 
   .year {
-    font-family: 'Space Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 0.8rem;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: #888;
+    color: var(--ink-subtle);
   }
 
   .title {
-    font-family: 'Space Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 1.2rem;
     font-weight: 500;
     line-height: 1.3;
@@ -141,7 +141,7 @@ if (emptyPositions.has(projects.length)) displayItems.push({ type: 'empty' });
 
   .empty-state {
     text-align: center;
-    color: #666;
+    color: var(--ink-muted);
     padding: 80px 20px;
   }
 </style>

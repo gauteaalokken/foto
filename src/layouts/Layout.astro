@@ -1,4 +1,11 @@
 ---
+// Space Mono, servert fra vårt eget domene i stedet for Google Fonts. Den lå
+// før bak en render-blokkerende <link> mot to fremmede verter (fonts.googleapis
+// .com for CSS-en, fonts.gstatic.com for selve fila), altså to DNS-oppslag og
+// to TLS-håndtrykk før første tekst kunne tegnes. Latin-subsettet dekker æ, ø
+// og å, og de to vektene veier drøyt 30 kB til sammen.
+import '@fontsource/space-mono/latin-400.css';
+import '@fontsource/space-mono/latin-700.css';
 import Header from '../components/Header.astro';
 
 interface Props {
@@ -53,12 +60,6 @@ const ogImage = new URL(image, canonical).href;
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={ogImage} />
 
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap"
-      rel="stylesheet"
-    />
     <title>{title}</title>
   </head>
   <body class={bodyClass}>
@@ -70,8 +71,41 @@ const ogImage = new URL(image, canonical).href;
 </html>
 
 <style is:global>
+  /* Ett sted for farger, skrift og streker. Verdiene lå tidligere skrevet ut
+     for hånd i hver enkelt fil — #111 alene 29 ganger — og samme rolle hadde
+     drevet fra hverandre underveis: sekundærtekst fantes som #444, #555 og
+     #666, streker som #ccc, #ddd, #e5e5e5 og #eee. Rollen er nå navnet, så
+     en endring skjer ett sted i stedet for i tretten filer. */
   :root {
     color-scheme: light;
+
+    --font-mono: 'Space Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+
+    /* Tekst */
+    --ink: #111;
+    --ink-muted: #555;
+    --ink-subtle: #888;
+    --ink-inverse: #fff;
+
+    /* Flater. Siden, headeren og fullskjermseksjonene på forsiden lå på tre
+       nesten like hvitfarger (#fafafa, #fdfdfd, #fff), som ga en så vidt
+       synlig skjøt under headeren — de deler denne nå.
+       --surface-sunken matcher feltet print-mockupene har innebygd. */
+    --surface: #fafafa;
+    --surface-raised: #fff;
+    --surface-sunken: #f3f3f3;
+    --placeholder: #eee;
+    --overlay: rgba(0, 0, 0, 0.92);
+
+    /* Streker, fra svakest til sterkest */
+    --line-soft: #eee;
+    --line: #ddd;
+    --line-strong: #ccc;
+
+    /* Status */
+    --success: #1a7a1a;
+    --danger: #b00020;
   }
 
   * {
@@ -80,8 +114,8 @@ const ogImage = new URL(image, canonical).href;
 
   body {
     margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-    background: #fafafa;
-    color: #111;
+    font-family: var(--font-body);
+    background: var(--surface);
+    color: var(--ink);
   }
 </style>

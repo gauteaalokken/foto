@@ -307,7 +307,7 @@ const photos = await mapWithConcurrency(pages, 4, async (page) => {
   .back-link {
     display: inline-block;
     margin-bottom: 2.5rem;
-    color: #111;
+    color: var(--ink);
     text-decoration: none;
     font-size: 0.9rem;
   }
@@ -324,21 +324,21 @@ const photos = await mapWithConcurrency(pages, 4, async (page) => {
   }
 
   .project-header h1 {
-    font-family: 'Space Mono', monospace;
+    font-family: var(--font-mono);
     font-size: clamp(2rem, 5vw, 3.25rem);
     font-weight: 500;
     margin: 0;
   }
 
   .project-year {
-    font-family: 'Space Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 1rem;
-    color: #888;
+    color: var(--ink-subtle);
   }
 
   .empty {
     text-align: center;
-    color: #666;
+    color: var(--ink-muted);
     padding: 40px 20px;
   }
 
@@ -353,7 +353,7 @@ const photos = await mapWithConcurrency(pages, 4, async (page) => {
     width: 300px;
     aspect-ratio: 1;
     overflow: hidden;
-    background: #eee;
+    background: var(--placeholder);
   }
 
   .photo-button {
@@ -376,7 +376,7 @@ const photos = await mapWithConcurrency(pages, 4, async (page) => {
   .lightbox {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.92);
+    background: var(--overlay);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -398,7 +398,7 @@ const photos = await mapWithConcurrency(pages, 4, async (page) => {
     position: absolute;
     background: none;
     border: none;
-    color: #fff;
+    color: var(--ink-inverse);
     font-size: 2.5rem;
     line-height: 1;
     cursor: pointer;

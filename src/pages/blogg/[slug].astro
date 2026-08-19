@@ -337,7 +337,7 @@ const indexedBlocks: IndexedBlock[] = preparedBlocks.map((block) => {
   .back-link {
     display: inline-block;
     margin-bottom: 2.5rem;
-    color: #111;
+    color: var(--ink);
     text-decoration: none;
     font-size: 0.9rem;
   }
@@ -351,16 +351,16 @@ const indexedBlocks: IndexedBlock[] = preparedBlocks.map((block) => {
   }
 
   .post-header h1 {
-    font-family: 'Space Mono', monospace;
+    font-family: var(--font-mono);
     font-size: clamp(2rem, 5vw, 3rem);
     font-weight: 500;
     margin: 0 0 0.5rem;
   }
 
   .post-date {
-    font-family: 'Space Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 0.9rem;
-    color: #888;
+    color: var(--ink-subtle);
   }
 
   .blocks {
@@ -410,7 +410,7 @@ const indexedBlocks: IndexedBlock[] = preparedBlocks.map((block) => {
   .block-image figcaption {
     margin-top: 0.5rem;
     font-size: 0.85rem;
-    color: #888;
+    color: var(--ink-subtle);
   }
 
   .block-pair {
@@ -466,7 +466,7 @@ const indexedBlocks: IndexedBlock[] = preparedBlocks.map((block) => {
 
   .block-feed .cell {
     overflow: hidden;
-    background: #eee;
+    background: var(--placeholder);
   }
 
   .block-feed img {
@@ -510,7 +510,7 @@ const indexedBlocks: IndexedBlock[] = preparedBlocks.map((block) => {
   .lightbox {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.92);
+    background: var(--overlay);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -532,7 +532,7 @@ const indexedBlocks: IndexedBlock[] = preparedBlocks.map((block) => {
     position: absolute;
     background: none;
     border: none;
-    color: #fff;
+    color: var(--ink-inverse);
     font-size: 2.5rem;
     line-height: 1;
     cursor: pointer;

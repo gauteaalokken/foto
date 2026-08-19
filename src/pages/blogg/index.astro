@@ -144,7 +144,7 @@ const posts = await mapWithConcurrency(entries, 3, async (entry) => {
   }
 
   .page-header h1 {
-    font-family: 'Space Mono', monospace;
+    font-family: var(--font-mono);
     font-size: clamp(2rem, 5vw, 2.75rem);
     font-weight: 500;
     margin: 0;
@@ -153,7 +153,7 @@ const posts = await mapWithConcurrency(entries, 3, async (entry) => {
   .intro {
     max-width: 60ch;
     margin: 1rem 0 0;
-    color: #444;
+    color: var(--ink-muted);
     line-height: 1.6;
   }
 
@@ -197,7 +197,7 @@ const posts = await mapWithConcurrency(entries, 3, async (entry) => {
   .cover-wrap {
     aspect-ratio: 4 / 3;
     overflow: hidden;
-    background: #eee;
+    background: var(--placeholder);
   }
 
   .cover {
@@ -220,14 +220,14 @@ const posts = await mapWithConcurrency(entries, 3, async (entry) => {
   }
 
   .date {
-    font-family: 'Space Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 0.8rem;
     letter-spacing: 0.04em;
-    color: #888;
+    color: var(--ink-subtle);
   }
 
   .title {
-    font-family: 'Space Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 1.2rem;
     font-weight: 500;
     line-height: 1.3;
@@ -249,7 +249,7 @@ const posts = await mapWithConcurrency(entries, 3, async (entry) => {
   .featured-cover-wrap {
     aspect-ratio: 16 / 9;
     overflow: hidden;
-    background: #eee;
+    background: var(--placeholder);
   }
 
   .featured-cover {
@@ -273,35 +273,35 @@ const posts = await mapWithConcurrency(entries, 3, async (entry) => {
     justify-content: center;
     gap: 1.5rem;
     margin-top: 28px;
-    font-family: 'Space Mono', monospace;
+    font-family: var(--font-mono);
   }
 
   .featured-nav button {
     background: none;
-    border: 1px solid #ccc;
+    border: 1px solid var(--line-strong);
     border-radius: 50%;
     width: 40px;
     height: 40px;
     font-size: 1.25rem;
     line-height: 1;
     cursor: pointer;
-    color: #111;
+    color: var(--ink);
   }
 
   .featured-nav button:hover {
-    background: #f0f0f0;
+    background: var(--surface-sunken);
   }
 
   #featured-counter {
     font-size: 0.85rem;
-    color: #888;
+    color: var(--ink-subtle);
     min-width: 4ch;
     text-align: center;
   }
 
   .empty-state {
     text-align: center;
-    color: #666;
+    color: var(--ink-muted);
     padding: 80px 20px;
   }
 </style>
