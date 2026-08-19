@@ -1,8 +1,8 @@
 ---
 import Layout from '../../layouts/Layout.astro';
-import { getCollection } from 'astro:content';
+import { getCollection, getEntry } from 'astro:content';
 import { mapWithConcurrency } from '../../lib/concurrency';
-import { resolveImage } from '../../lib/resolveImage';
+import { resolveImageWithAspectRatio } from '../../lib/resolveImage';
 
 const entries = await getCollection('prints');
 entries.sort((a, b) => a.data.title.localeCompare(b.data.title));
@@ -12,20 +12,35 @@ const withBase = (path: string) =>
 
 const PHOTO_WIDTH = 900;
 
+// Størrelsene står i printSettings, samme kilde som pristabellen på hver
+// printside — slik at en ny størrelse ikke etterlater denne teksten utdatert.
+const settings = await getEntry('printSettings', 'index');
+const sizeNames = (settings?.data.sizes ?? []).map((size) => size.name).join(', ');
+
+// Proporsjonene hentes ut her, ikke bare filnavnet: uten dem har kortene
+// ingen høyde før bildet er lastet, så rutenettet legger seg først som en
+// stripe av titler og hopper deretter på plass etter hvert som bildene kommer.
 const prints = await mapWithConcurrency(entries, 4, async (entry) => {
   const { title, photo } = entry.data;
-  return { slug: entry.id, title, src: await resolveImage(photo, PHOTO_WIDTH, 85) };
+  const resolved = await resolveImageWithAspectRatio(photo, PHOTO_WIDTH, 85);
+  return { slug: entry.id, title, src: resolved.src, aspectRatio: resolved.aspectRatio };
 });
 ---
 
 <Layout
   title="Prints — Gaute Aaløkken"
-  description="Fine-art prints til salgs, i A2, A3 og A4 — med eller uten ramme i eik og glass."
+  description={`Fine-art prints til salgs${sizeNames ? `, i ${sizeNames}` : ''} — med eller uten ramme i eik og glass.`}
 >
   <div class="grid">
     {prints.map((print) => (
       <a class="print-card" href={withBase(`prints/${print.slug}`)}>
-        <img class="photo" src={print.src} alt={print.title} loading="lazy" />
+        <img
+          class="photo"
+          src={print.src}
+          style={`aspect-ratio: ${print.aspectRatio}`}
+          alt={print.title}
+          loading="lazy"
+        />
         <span class="title">{print.title}</span>
       </a>
     ))}
@@ -55,6 +70,12 @@ const prints = await mapWithConcurrency(entries, 4, async (entry) => {
     }
   }
 
+  /* Ingen padding rundt bildet. Mockupene har allerede et jevnt lyst felt
+     innebygd, så 40px kort-padding utenpå ga boks-i-boks — og spiste bredde
+     der det gjorde mest vondt: på en 375px-skjerm ble kortet 335px, bildet
+     255px, og selve fotografiet inni rammen rundt 130px. Bakgrunnen står
+     igjen (samme verdi som mockupenes eget felt) slik at en framtidig mockup
+     uten innebygd felt fortsatt får et kort å ligge på. */
   .print-card {
     display: block;
     width: 100%;
@@ -62,9 +83,7 @@ const prints = await mapWithConcurrency(entries, 4, async (entry) => {
     break-inside: avoid;
     text-decoration: none;
     color: inherit;
-    background: #f2f2f2;
-    padding: 40px;
-    box-sizing: border-box;
+    background: var(--surface-sunken);
   }
 
   .photo {
@@ -79,22 +98,22 @@ const prints = await mapWithConcurrency(entries, 4, async (entry) => {
      begin with, so this also makes both views the same page. */
   .title {
     display: block;
-    margin-top: 16px;
+    padding: 16px 20px 20px;
     text-align: center;
     letter-spacing: 0.05em;
     text-transform: uppercase;
     font-size: 0.85rem;
-    color: #555;
+    color: var(--ink-muted);
   }
 
   .print-card:hover .title,
   .print-card:focus-visible .title {
-    color: #111;
+    color: var(--ink);
   }
 
   .empty {
     text-align: center;
-    color: #666;
+    color: var(--ink-muted);
     padding: 40px 20px;
   }
 </style>

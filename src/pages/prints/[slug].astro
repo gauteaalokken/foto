@@ -1,7 +1,8 @@
 ---
 import Layout from '../../layouts/Layout.astro';
-import { getCollection } from 'astro:content';
+import { getCollection, getEntry } from 'astro:content';
 import { isRemote, resolveImage } from '../../lib/resolveImage';
+import { INSTAGRAM_URL, SITE_EMAIL, mailtoWithSubject } from '../../lib/site';
 
 export async function getStaticPaths() {
   const entries = await getCollection('prints');
@@ -17,13 +18,22 @@ const { title, photo } = entry.data;
 
 const photoSrc = await resolveImage(photo, 1000, 90);
 
-const email = 'gaute.aalokken@gmail.com';
-const mailtoHref = `mailto:${email}?subject=${encodeURIComponent(`Print order: ${title}`)}`;
+const settings = await getEntry('printSettings', 'index');
+const sizes = settings?.data.sizes ?? [];
+const currency = settings?.data.currency ?? 'NOK';
+
+const mailtoHref = mailtoWithSubject(`Bestilling av print: ${title}`);
+
+// Prisene står i tabellen uten valuta (norsk leser trenger den ikke), men den
+// engelske versjonen og prisintervallet over knappen sier den eksplisitt.
+const nok = (amount: number) => amount.toLocaleString('nb-NO');
+const framed = sizes.filter((size) => size.framePrice != null);
+const cheapest = sizes.length ? Math.min(...sizes.map((size) => size.price)) : null;
 ---
 
 <Layout
   title={`${title} print — Gaute Aaløkken`}
-  description={`${title} — fine-art print til salgs i A2, A3 og A4, med eller uten ramme i eik og glass.`}
+  description={`${title} — fine-art print til salgs i ${sizes.map((s) => s.name).join(', ')}, med eller uten ramme i eik og glass.`}
   image={isRemote(photo) ? photo : undefined}
 >
   <div class="print-page">
@@ -34,53 +44,106 @@ const mailtoHref = `mailto:${email}?subject=${encodeURIComponent(`Print order: $
     <div class="details">
       <h1>{title}</h1>
 
-      <p>English below</p>
+      {cheapest != null && (
+        <p class="from-price">Fra {nok(cheapest)},– {currency}</p>
+      )}
 
-      <p>Bildet printes i følgende størrelser:</p>
-      <p class="prices">
-        A2 - 420 x 594 mm - 1200,-<br />
-        A3 - 297 x 420 mm - 600,-<br />
-        A4 - 210 x 297 mm - 300,-
+      {/* Over folden, ikke etter hele pristabellen og en engelsk oversettelse:
+          det er den ene handlingen siden finnes for. */}
+      <a class="order-button" href={mailtoHref}>Bestill på e-post</a>
+
+      <p class="order-note">
+        Eller send en melding på <a href={INSTAGRAM_URL} target="_blank" rel="noopener">Instagram</a>.
+        Betaling skjer med Vipps eller bankoverføring.
       </p>
 
-      <p>
-        Bildet kan også kjøpes med ramme i eik og glass for:<br />
-      </p>
-      <p class="prices">
-        50x70 cm - 2200,-<br />
-        40x50 cm - 1200,-<br />
-        30x40 cm - 800,-
-      </p>
+      {sizes.length > 0 && (
+        <table class="sizes">
+          <thead>
+            <tr>
+              <th scope="col">Størrelse</th>
+              <th scope="col" class="dim">Mål</th>
+              <th scope="col" class="num">Uten ramme</th>
+              <th scope="col" class="num">Med ramme</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sizes.map((size) => (
+              <tr>
+                <th scope="row">{size.name}</th>
+                <td class="dim">{size.dimensions}</td>
+                <td class="num">{nok(size.price)},–</td>
+                <td class="num">
+                  {size.framePrice != null ? (
+                    <>
+                      {nok(size.framePrice)},–
+                      {size.frameSize && <span class="frame-size">{size.frameSize}</span>}
+                    </>
+                  ) : (
+                    <span class="dash">—</span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
 
-      <p>Flere bilder kan selges til pakkepris.</p>
+      <ul class="facts">
+        <li>Printes på fine-art fotopapir på fotoprinter.</li>
+        {framed.length > 0 && <li>Ramme i eik med glass.</li>}
+        <li>Flere bilder kan selges til pakkepris — spør gjerne.</li>
+      </ul>
 
-      <p>Bildet vil bli printet på fine-art fotopapir, og printes på fotoprinter.</p>
+      {/* Den engelske teksten lå tidligere i fullt monn midt på siden og
+          skjøv bestillingsknappen under folden. Samme innhold, sammenslått. */}
+      <details class="english">
+        <summary>In English</summary>
 
-      <p>Ta kontakt på e-post eller Instagram for å bestille. Betaling skjer på Vipps eller bankoverføring.</p>
+        <p>
+          {title} is available as a fine art print in {sizes.map((s) => s.name).join(', ')},
+          printed on fine art photo paper.
+          {framed.length > 0 && ' Frames are oak with glass.'}
+        </p>
 
-      <hr />
+        {sizes.length > 0 && (
+          <table class="sizes">
+            <thead>
+              <tr>
+                <th scope="col">Size</th>
+                <th scope="col" class="dim">Dimensions</th>
+                <th scope="col" class="num">Unframed</th>
+                <th scope="col" class="num">Framed</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sizes.map((size) => (
+                <tr>
+                  <th scope="row">{size.name}</th>
+                  <td class="dim">{size.dimensions}</td>
+                  <td class="num">{nok(size.price)} {currency}</td>
+                  <td class="num">
+                    {size.framePrice != null ? (
+                      <>
+                        {nok(size.framePrice)} {currency}
+                        {size.frameSize && <span class="frame-size">{size.frameSize}</span>}
+                      </>
+                    ) : (
+                      <span class="dash">—</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
 
-      <p><strong>English</strong></p>
-
-      <p>The print is available in the following sizes on fine art paper:</p>
-      <p class="prices">
-        A2 - 420 x 594 mm - 1200,- NOK<br />
-        A3 - 297 x 420 mm - 600,- NOK<br />
-        A4 - 210 x 297 mm - 300,- NOK
-      </p>
-
-      <p>The pictures can also be bought with frames of oak and glass for:</p>
-      <p class="prices">
-        50x70 cm - 2200,- NOK<br />
-        40x50 cm - 1200,- NOK<br />
-        30x40 cm - 800,- NOK
-      </p>
-
-      <p>If you want to buy more pictures we can find a package deal.</p>
-
-      <p>Payment is done via Vipps or bank transfer.</p>
-
-      <a class="order-button" href={mailtoHref}>Order by email</a>
+        <p>
+          Buying several prints? We can find a package deal. Payment is by Vipps or bank
+          transfer. Order at <a href={mailtoHref}>{SITE_EMAIL}</a> or on
+          {' '}<a href={INSTAGRAM_URL} target="_blank" rel="noopener">Instagram</a>.
+        </p>
+      </details>
     </div>
   </div>
 </Layout>
@@ -102,52 +165,175 @@ const mailtoHref = `mailto:${email}?subject=${encodeURIComponent(`Print order: $
     }
   }
 
+  /* Ingen egen padding eller bakgrunn: mockup-bildene har allerede et jevnt
+     lyst felt rundt rammen, så et kort utenpå ga boks-i-boks og stjal bredde
+     fra selve fotografiet. */
   .image-side {
-    background: #f2f2f2;
-    padding: 30px;
     flex: 1 1 50%;
-    box-sizing: border-box;
+    min-width: 0;
   }
 
   .photo {
     width: 100%;
     display: block;
+    background: var(--surface-sunken);
   }
 
   .details {
     flex: 1 1 50%;
+    min-width: 0;
   }
 
   .details h1 {
-    font-size: 2.5rem;
-    margin: 0 0 24px;
+    font-family: var(--font-mono);
+    font-size: clamp(2rem, 4vw, 2.5rem);
+    font-weight: 500;
+    margin: 0 0 0.5rem;
   }
 
-  .details p {
-    line-height: 1.6;
-  }
-
-  .prices {
-    font-weight: 600;
-  }
-
-  hr {
-    border: none;
-    border-top: 1px solid #ddd;
-    margin: 32px 0;
+  .from-price {
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
+    color: var(--ink-subtle);
+    margin: 0 0 1.5rem;
   }
 
   .order-button {
     display: inline-block;
-    margin-top: 16px;
-    padding: 12px 24px;
-    background: #111;
-    color: #fff;
+    padding: 14px 28px;
+    background: var(--ink);
+    color: var(--ink-inverse);
     text-decoration: none;
     border-radius: 4px;
+    font-size: 1rem;
   }
 
   .order-button:hover {
     opacity: 0.85;
+  }
+
+  .order-note {
+    margin: 1rem 0 2.5rem;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: var(--ink-muted);
+  }
+
+  .order-note a,
+  .english a {
+    color: inherit;
+  }
+
+  .sizes {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+  }
+
+  .sizes th,
+  .sizes td {
+    text-align: left;
+    padding: 12px 8px;
+    border-bottom: 1px solid var(--line-soft);
+  }
+
+  .sizes th:first-child,
+  .sizes td:first-child {
+    padding-left: 0;
+  }
+
+  .sizes th:last-child,
+  .sizes td:last-child {
+    padding-right: 0;
+  }
+
+  .sizes thead th {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    font-weight: 400;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-subtle);
+    border-bottom-color: var(--line);
+  }
+
+  .sizes tbody th {
+    font-family: var(--font-mono);
+    font-weight: 700;
+  }
+
+  .sizes .dim {
+    color: var(--ink-muted);
+    white-space: nowrap;
+  }
+
+  /* Priskolonnene høyrestilles så sifrene står under hverandre. */
+  .sizes .num {
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .frame-size {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--ink-subtle);
+  }
+
+  .dash {
+    color: var(--ink-subtle);
+  }
+
+  .facts {
+    margin: 1.5rem 0 0;
+    padding: 0;
+    list-style: none;
+    font-size: 0.9rem;
+    line-height: 1.7;
+    color: var(--ink-muted);
+  }
+
+  .facts li {
+    padding-left: 1.1rem;
+    position: relative;
+  }
+
+  .facts li::before {
+    content: '—';
+    position: absolute;
+    left: 0;
+    color: var(--ink-subtle);
+  }
+
+  .english {
+    margin-top: 2.5rem;
+    border-top: 1px solid var(--line);
+    padding-top: 1.5rem;
+  }
+
+  .english summary {
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-subtle);
+  }
+
+  .english summary:hover {
+    color: var(--ink);
+  }
+
+  .english p {
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: var(--ink-muted);
+  }
+
+  /* Under den lille skjermbredden står de fire kolonnene for trangt. Målene er
+     det som tåler å ryke — størrelsesnavnet sier det samme kortere. */
+  @media (max-width: 420px) {
+    .sizes .dim {
+      display: none;
+    }
   }
 </style>
