@@ -162,23 +162,23 @@ const shareImage = shareSource ? await resolveOgImage(shareSource) : undefined;
         <span class="group-label">Navn</span>
         <div class="row">
           <label>
-            First Name
+            Fornavn
             <input type="text" name="firstName" required />
           </label>
           <label>
-            Last Name
+            Etternavn
             <input type="text" name="lastName" required />
           </label>
         </div>
       </div>
 
       <label class="field">
-        Email
+        E-post
         <input type="email" name="email" required />
       </label>
 
       <label class="field">
-        Phone
+        Telefon
         <input type="tel" name="phone" />
       </label>
 
@@ -191,7 +191,7 @@ const shareImage = shareSource ? await resolveOgImage(shareSource) : undefined;
       </label>
 
       <label class="field">
-        Hvordan tenker du å sove
+        Hvordan tenker du å sove?
         <select name="overnatting">
           <option value="" selected disabled>Sengeplasser i hytta blir fordelt etter ansiennitet</option>
           <option value="Hytta">Hytta</option>
@@ -553,17 +553,17 @@ const shareImage = shareSource ? await resolveOgImage(shareSource) : undefined;
     font-family: Helvetica, 'Helvetica Neue', Arial, sans-serif;
     font-size: 1rem;
     letter-spacing: 0.02em;
-    background: #111;
-    color: #fff;
-    border: 1.5px solid #111;
+    background: var(--ink);
+    color: var(--ink-inverse);
+    border: 1.5px solid var(--ink);
     padding: 0.9rem 2.75rem;
     margin-top: 1.5rem;
     cursor: pointer;
   }
 
   .signup-button:hover {
-    background: #fff;
-    color: #111;
+    background: var(--surface-raised);
+    color: var(--ink);
   }
 
   /* Sekundær i forhold til «Meld deg på»: samme form, men bare omriss, så den
@@ -576,15 +576,15 @@ const shareImage = shareSource ? await resolveOgImage(shareSource) : undefined;
     font-size: 1rem;
     letter-spacing: 0.02em;
     background: transparent;
-    color: #111;
-    border: 1.5px solid #111;
+    color: var(--ink);
+    border: 1.5px solid var(--ink);
     padding: 0.9rem 2.75rem;
     text-decoration: none;
   }
 
   .address-button:hover {
-    background: #111;
-    color: #fff;
+    background: var(--ink);
+    color: var(--ink-inverse);
   }
 
   .routes {
@@ -596,7 +596,7 @@ const shareImage = shareSource ? await resolveOgImage(shareSource) : undefined;
     font-weight: 500;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: #888;
+    color: var(--ink-subtle);
     margin: 0 0 0.75rem;
   }
 
@@ -607,7 +607,7 @@ const shareImage = shareSource ? await resolveOgImage(shareSource) : undefined;
   }
 
   .routes li + li {
-    border-top: 1px solid #e5e5e5;
+    border-top: 1px solid var(--line);
   }
 
   .routes a {
@@ -616,7 +616,7 @@ const shareImage = shareSource ? await resolveOgImage(shareSource) : undefined;
     justify-content: space-between;
     gap: 1rem;
     padding: 0.85rem 0;
-    color: #111;
+    color: var(--ink);
     text-decoration: none;
     font-size: 1.05rem;
   }
@@ -628,8 +628,8 @@ const shareImage = shareSource ? await resolveOgImage(shareSource) : undefined;
   .routes-format {
     font-size: 0.75rem;
     letter-spacing: 0.08em;
-    color: #888;
-    border: 1px solid #ddd;
+    color: var(--ink-subtle);
+    border: 1px solid var(--line);
     padding: 0.2rem 0.5rem;
   }
 
@@ -654,7 +654,7 @@ const shareImage = shareSource ? await resolveOgImage(shareSource) : undefined;
     position: relative;
     width: 100%;
     max-width: 560px;
-    background: #fafafa;
+    background: var(--surface);
     padding: 2.5rem 2rem;
     /* Helvetica for the form itself, rather than the system stack the rest of
        the page inherits. The inputs already use `font: inherit`, so they pick
@@ -666,7 +666,7 @@ const shareImage = shareSource ? await resolveOgImage(shareSource) : undefined;
     font-family: inherit;
     font-size: 1.5rem;
     font-weight: 500;
-    color: #111;
+    color: var(--ink);
     margin: 0 0 2rem;
   }
 
@@ -678,7 +678,7 @@ const shareImage = shareSource ? await resolveOgImage(shareSource) : undefined;
     border: none;
     font-size: 2rem;
     line-height: 1;
-    color: #111;
+    color: var(--ink);
     cursor: pointer;
     padding: 0.25rem 0.5rem;
   }
@@ -722,7 +722,7 @@ const shareImage = shareSource ? await resolveOgImage(shareSource) : undefined;
     height: auto;
     min-width: 0;
     overflow: hidden;
-    background: #eee;
+    background: var(--placeholder);
   }
 
   .top-photos .top-cell img {
@@ -776,7 +776,7 @@ const shareImage = shareSource ? await resolveOgImage(shareSource) : undefined;
     width: 300px;
     aspect-ratio: 1;
     overflow: hidden;
-    background: #eee;
+    background: var(--placeholder);
   }
 
   .photo-button {
@@ -799,7 +799,7 @@ const shareImage = shareSource ? await resolveOgImage(shareSource) : undefined;
   .lightbox {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.92);
+    background: var(--overlay);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -821,7 +821,7 @@ const shareImage = shareSource ? await resolveOgImage(shareSource) : undefined;
     position: absolute;
     background: none;
     border: none;
-    color: #fff;
+    color: var(--ink-inverse);
     font-size: 2.5rem;
     line-height: 1;
     cursor: pointer;
@@ -853,7 +853,7 @@ const shareImage = shareSource ? await resolveOgImage(shareSource) : undefined;
   h2 {
     font-weight: 400;
     font-size: 1.25rem;
-    color: #555;
+    color: var(--ink-muted);
     margin-top: 0;
     margin-bottom: 2.5rem;
   }
@@ -914,10 +914,10 @@ const shareImage = shareSource ? await resolveOgImage(shareSource) : undefined;
   input,
   select {
     font: inherit;
-    color: #111;
+    color: var(--ink);
     background: transparent;
     border: none;
-    border-bottom: 1px solid #ccc;
+    border-bottom: 1px solid var(--line-strong);
     padding: 0.5rem 0;
     appearance: none;
     -webkit-appearance: none;
@@ -932,14 +932,14 @@ const shareImage = shareSource ? await resolveOgImage(shareSource) : undefined;
   }
 
   select:invalid {
-    color: #767676;
+    color: var(--ink-muted);
   }
 
   textarea {
     font: inherit;
-    color: #111;
+    color: var(--ink);
     background: transparent;
-    border: 1px solid #ccc;
+    border: 1px solid var(--line-strong);
     padding: 0.75rem;
     resize: vertical;
   }
@@ -948,29 +948,29 @@ const shareImage = shareSource ? await resolveOgImage(shareSource) : undefined;
   select:focus,
   textarea:focus {
     outline: none;
-    border-color: #111;
+    border-color: var(--ink);
   }
 
   button {
     align-self: flex-start;
     font: inherit;
-    background: #fff;
-    color: #111;
-    border: 1.5px solid #111;
+    background: var(--surface-raised);
+    color: var(--ink);
+    border: 1.5px solid var(--ink);
     padding: 0.9rem 2.5rem;
     cursor: pointer;
   }
 
   button:hover {
-    background: #111;
-    color: #fff;
+    background: var(--ink);
+    color: var(--ink-inverse);
   }
 
   button:disabled {
     opacity: 0.5;
     cursor: default;
-    background: #fff;
-    color: #111;
+    background: var(--surface-raised);
+    color: var(--ink);
   }
 
   #form-status {
@@ -979,10 +979,10 @@ const shareImage = shareSource ? await resolveOgImage(shareSource) : undefined;
   }
 
   #form-status.success {
-    color: #1a7a1a;
+    color: var(--success);
   }
 
   #form-status.error {
-    color: #b00020;
+    color: var(--danger);
   }
 </style>
