@@ -103,6 +103,16 @@ const unlistedPaths = [
 
 export default defineConfig({
   site: 'https://gauteaalokken.com',
+  // Ingen omdirigering fra de gamle .html-adressene til fotoverktøyene, og det
+  // er et bevisst valg. Astro lager en omdirigering som mappa `grid.html/` med
+  // en index.html i — og både GitHub Pages og `astro preview` prøver `grid.html`
+  // *før* `grid/index.html` når noen ber om /fotoverktoy/grid. Da fanget
+  // omdirigeringen selve verktøysida og sendte den til seg selv i en evig
+  // løkke. Prøvd og verifisert 2026-08-19.
+  //
+  // /fotoverktoy/index.html virker fortsatt av seg selv: Astro legger
+  // landingssiden på nøyaktig den filstien. De tre andre gamle adressene gir
+  // 404 — de sto bare i menyen, som nå peker på de nye.
   image: {
     remotePatterns: [{ protocol: 'https', hostname: 'pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev' }],
   },

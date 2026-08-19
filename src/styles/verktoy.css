@@ -1,0 +1,357 @@
+/*
+  FELLES UTSEENDE FOR ALLE FOTOVERKTØYENE
+  =======================================
+  Vil du endre hvordan verktøyene ser ut, gjør du det her — én gang, for alle
+  tre. De lå tidligere som fire løsrevne HTML-filer i public/, hver med sin
+  egen kopi av toppmenyen og sitt eget sett knappefarger; da måtte samme
+  endring gjøres fire steder, og ble i praksis glemt i minst ett av dem.
+
+  Fargene kommer fra nettstedets egne variabler (definert i
+  src/layouts/Layout.astro), så verktøyene følger med når resten av siden
+  endrer seg.
+
+  ── Vil du ha farget aksent i stedet for svart? ──
+  Bytt --tool-accent nedenfor. Den styrer primærknapper, valgt alternativ,
+  fokusramme rundt felt og slipp-soner — alt på én gang.
+
+  Alt her ligger under .tool-app, slik at klassenavn som .sidebar og
+  .btn-primary ikke kan smitte over på resten av nettstedet.
+*/
+
+:root {
+  --tool-accent: var(--ink);
+  --tool-accent-text: var(--ink-inverse);
+  /* Svak tone av aksenten — aktive felt, slipp-soner, markert rad. */
+  --tool-accent-soft: #ededed;
+
+  --tool-sidebar-width: 320px;
+  --tool-radius: 6px;
+}
+
+/* ── Skallet ────────────────────────────────────────────────────────────────
+   Verktøyene fyller det som er igjen under toppmenyen. De gamle filene målte
+   menyhøyden i JS og la den i en CSS-variabel — hver fil med sin egen kopi av
+   samme script. Her gjør flexbox det av seg selv, uten en linje JavaScript. */
+
+/* Fast vindushøyde, ikke min-height: et verktøy skal fylle skjermen én gang,
+   og så la sidepanel og lerret scrolle hver for seg innvendig. Med min-height
+   vokste hele sida i stedet, slik at bildedepotet nederst havnet under
+   skjermkanten og måtte scrolles fram. */
+body.tool-page {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+body.tool-page > main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.tool-app {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  background: var(--surface-sunken);
+}
+
+/* ── Sidepanel ─────────────────────────────────────────────────────────── */
+
+.tool-app .sidebar {
+  width: var(--tool-sidebar-width);
+  flex-shrink: 0;
+  background: var(--surface-raised);
+  border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.tool-app .sidebar-header {
+  padding: 20px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.tool-app .sidebar-header h1 {
+  font-family: var(--font-mono);
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--ink);
+}
+
+.tool-app .sidebar-header .tool-tagline {
+  margin: 6px 0 0;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--ink-muted);
+}
+
+.tool-app .back-link {
+  display: inline-block;
+  margin-bottom: 10px;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-subtle);
+  text-decoration: none;
+}
+
+.tool-app .back-link:hover {
+  color: var(--ink);
+}
+
+.tool-app .sidebar-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.tool-app .sidebar-footer {
+  padding: 20px;
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ── Lerretet ──────────────────────────────────────────────────────────── */
+
+.tool-app .main-canvas {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  background: var(--surface-sunken);
+}
+
+/* ── Kontroller ─────────────────────────────────────────────────────────── */
+
+.tool-app .control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Etiketten står på én linje med verdien sin til høyre — «Marg (mm)» til
+   venstre, tallet mot kanten av panelet. */
+.tool-app .control-group > label,
+.tool-app .group-label,
+.tool-app label {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--ink-muted);
+}
+
+.tool-app input[type='text'],
+.tool-app input[type='number'],
+.tool-app select,
+.tool-app textarea {
+  width: 100%;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 0.9rem;
+  color: var(--ink);
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--tool-radius);
+}
+
+.tool-app input[type='text']:focus,
+.tool-app input[type='number']:focus,
+.tool-app select:focus,
+.tool-app textarea:focus {
+  outline: none;
+  border-color: var(--tool-accent);
+}
+
+.tool-app input[type='range'] {
+  width: 100%;
+  cursor: pointer;
+  accent-color: var(--tool-accent);
+}
+
+.tool-app input[type='color'] {
+  padding: 2px;
+  height: 38px;
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--tool-radius);
+  cursor: pointer;
+}
+
+/* Tallet ved siden av en glidebryter. */
+.tool-app .slider-val {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--ink);
+}
+
+/* ── Knapper ────────────────────────────────────────────────────────────── */
+
+.tool-app .btn,
+.tool-app .btn-primary,
+.tool-app .btn-secondary,
+.tool-app .btn-danger {
+  width: 100%;
+  padding: 10px 14px;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border-radius: var(--tool-radius);
+  border: 1px solid transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, opacity 0.15s ease;
+}
+
+.tool-app .btn:disabled,
+.tool-app .btn-primary:disabled,
+.tool-app .btn-secondary:disabled,
+.tool-app .btn-danger:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.tool-app .btn-primary {
+  background: var(--tool-accent);
+  color: var(--tool-accent-text);
+}
+
+.tool-app .btn-primary:not(:disabled):hover {
+  opacity: 0.85;
+}
+
+.tool-app .btn-secondary {
+  background: var(--surface-raised);
+  border-color: var(--line);
+  color: var(--ink);
+}
+
+.tool-app .btn-secondary:not(:disabled):hover {
+  border-color: var(--tool-accent);
+}
+
+.tool-app .btn-danger {
+  background: var(--surface-raised);
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.tool-app .btn-danger:not(:disabled):hover {
+  background: var(--danger);
+  color: var(--ink-inverse);
+}
+
+/* Rad med likestilte valg — papirretning, bildeformat og lignende. Det valgte
+   står fylt, ikke bare med farget omriss, så forskjellen bærer også for den
+   som ser dårlig forskjell på to lyse toner. */
+.tool-app .button-group {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tool-app .button-group button {
+  flex: 1;
+  min-width: 76px;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 500;
+  line-height: 1.3;
+  background: var(--surface-raised);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: var(--tool-radius);
+  cursor: pointer;
+}
+
+.tool-app .button-group button:hover {
+  border-color: var(--tool-accent);
+}
+
+/* «active» settes av verktøyenes egen JS — navnet er beholdt med vilje. */
+.tool-app .button-group button.active {
+  background: var(--tool-accent);
+  border-color: var(--tool-accent);
+  color: var(--tool-accent-text);
+}
+
+/* ── Småting som går igjen ──────────────────────────────────────────────── */
+
+.tool-app .tool-note {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: var(--ink-subtle);
+}
+
+/* Teksten som står der ingen bilder er lagt inn ennå. Alle tre verktøyene har
+   en slik flate; det var bare Instagram-verktøyet som lot den stå helt tom. */
+.tool-app .tool-empty {
+  margin: auto;
+  padding: 40px 20px;
+  max-width: 34ch;
+  text-align: center;
+  color: var(--ink-subtle);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.tool-app .tool-empty strong {
+  display: block;
+  margin-bottom: 6px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--ink-muted);
+}
+
+/* ── Smal skjerm ────────────────────────────────────────────────────────────
+   Sidepanelet legger seg over lerretet i stedet for ved siden av. Verktøyene
+   er laget for skjerm og mus, men skal i det minste være til å bruke — og
+   ikke se ødelagte ut — på en telefon. */
+@media (max-width: 900px) {
+  .tool-app {
+    flex-direction: column;
+  }
+
+  /* Hele panelet scroller i ett på smal skjerm, i stedet for at bunnraden med
+     eksportknapper ligger låst oppå kontrollene. Det er ikke plass til begge
+     deler på 375 px, og en knapp som dekker feltet over seg er verre enn en
+     knapp man må scrolle ned til. */
+  .tool-app .sidebar {
+    width: 100%;
+    max-height: 55vh;
+    overflow-y: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .tool-app .sidebar-content {
+    flex: 0 0 auto;
+    overflow-y: visible;
+  }
+
+  .tool-app .main-canvas {
+    min-height: 45vh;
+  }
+}

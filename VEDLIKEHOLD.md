@@ -177,6 +177,62 @@ Dette er arbeidsflyten for alt som ikke er innhold: farger, tekster, ny side, ny
 
 ---
 
+## 9b. Fotoverktøyene
+
+De tre verktøyene (Fotogrid, Instagram-maler, Kalender) lå fram til 19.08.2026 som
+løsrevne HTML-filer i `public/fotoverktoy/`, hver med sin egen kopi av toppmenyen.
+De er nå vanlige sider på nettstedet og arver meny, skrift og farger derfra.
+
+**Hvor ting ligger:**
+
+| Fil | Hva den er |
+|---|---|
+| `src/styles/verktoy.css` | Utseendet — farger, knapper, felt, sidepanel. **Felles for alle tre.** |
+| `src/layouts/VerktoyLayout.astro` | Rammen rundt: meny øverst, sidepanel til venstre, lerret til høyre |
+| `src/pages/fotoverktoy/index.astro` | Oversiktssiden med de tre kortene |
+| `src/pages/fotoverktoy/grid.astro` | Knapper og felt i Fotogrid (bare markup) |
+| `public/verktoy/grid.js` | Hva Fotogrid faktisk gjør (all logikken) |
+| `public/verktoy/jszip.min.js` m.fl. | Ferdige biblioteker, se nederst |
+
+Samme mønster for `instagram` og `kalender`.
+
+**Vil du endre utseendet på alle tre samtidig** — for eksempel gjøre knappene blå
+i stedet for svarte — er det én linje øverst i `src/styles/verktoy.css`:
+
+```css
+--tool-accent: var(--ink);   /* bytt til f.eks. #2563eb */
+```
+
+Den styrer primærknapper, valgt alternativ, fokusramme rundt felt og slipp-soner
+på én gang.
+
+**Vil du legge til et nytt verktøy:**
+
+1. Kopier `src/pages/fotoverktoy/grid.astro` til et nytt navn.
+2. Kopier `public/verktoy/grid.js` tilsvarende, og pek `<script>`-taggen i den nye
+   `.astro`-fila på den.
+3. Legg verktøyet inn i lista øverst i `src/pages/fotoverktoy/index.astro`.
+
+**⚠️ Det ene du må passe på:** `<script>`-taggene i verktøysidene har `is:inline`.
+Fjerner du det, pakker Astro fila som en modul med eget navnerom — og da slutter
+hver eneste knapp å virke, uten en eneste feilmelding noe sted. La `is:inline` stå.
+
+**Bibliotekene i `public/verktoy/`** (jszip, jspdf, heic2any) er kopier av
+npm-pakker med samme navn, lagt i repoet med vilje: da virker verktøyene uten
+internett, og de kan ikke slutte å virke fordi en fremmed CDN legger om. Skal de
+oppdateres:
+
+```bash
+npm install --save-dev jszip jspdf heic2any
+cp node_modules/jszip/dist/jszip.min.js public/verktoy/jszip.min.js
+cp node_modules/jspdf/dist/jspdf.umd.min.js public/verktoy/jspdf.umd.min.js
+cp node_modules/heic2any/dist/heic2any.min.js public/verktoy/heic2any.min.js
+```
+
+Test deretter eksport til PDF og ZIP i Fotogrid før du publiserer.
+
+---
+
 ## 10. Oppgaver som ikke gjøres i CMS eller GitHub
 
 **Slette et bilde fra R2 (Cloudflare)**
@@ -305,7 +361,7 @@ Prøv hard refresh (Cmd+Shift+R) og en annen nettleser først. Er den fortsatt r
 | Forsiden: sortering av prosjekter, bildestørrelser | `src/pages/index.astro` |
 | Prosjektsider: layout, «Tilbake»-lenke | `src/pages/prosjekter/[slug].astro` |
 | Prints-oversikten | `src/pages/prints/index.astro` |
-| Priser, størrelser og all tekst på print-sider | `src/pages/prints/[slug].astro` |
+| Tekst og oppsett på print-sider (ikke prisene) | `src/pages/prints/[slug].astro` |
 | Feed-siden | `src/pages/feed/index.astro` |
 | Fjellmaraton: tekst, skjema, knapp, banner-layout | `src/pages/fjellmaraton.astro` |
 | 404-siden | `src/pages/404.astro` |
@@ -315,7 +371,12 @@ Prøv hard refresh (Cmd+Shift+R) og en annen nettleser først. Er den fortsatt r
 | Portefølje-siden | `src/pages/portefolje.astro` |
 | Hvilke crawlere som blokkeres på nettsiden | `public/robots.txt` |
 | Hvilke crawlere som blokkeres på bildene | `scripts/robots.txt` — **må lastes opp til R2 manuelt**, se punkt 10 |
-| Fotoverktøyene | `public/fotoverktoy/*.html` |
+| Fotoverktøy: felles utseende (farger, knapper, sidepanel) | `src/styles/verktoy.css` — **én fil for alle tre** |
+| Fotoverktøy: skallet rundt hvert verktøy | `src/layouts/VerktoyLayout.astro` |
+| Fotoverktøy: oversiktssiden med de tre kortene | `src/pages/fotoverktoy/index.astro` |
+| Fotoverktøy: knapper og felt i ett verktøy | `src/pages/fotoverktoy/<verktøy>.astro` |
+| Fotoverktøy: hva et verktøy faktisk gjør | `public/verktoy/<verktøy>.js` |
+| Prints: priser og størrelser | CMS → Print-priser — ikke i kode |
 | Alt innhold og alle bilder | CMS-en på /admin — ikke i kode |
 
 ---

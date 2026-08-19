@@ -1,0 +1,59 @@
+---
+/*
+  SKALLET RUNDT HVERT FOTOVERKTØY
+  ===============================
+  Gir toppmenyen fra resten av nettstedet, sidepanelet til venstre og lerretet
+  til høyre. Verktøyet selv fyller bare inn innholdet.
+
+  Slik brukes den (se src/pages/fotoverktoy/grid.astro):
+
+    <VerktoyLayout tittel="Fotogrid" beskrivelse="Flere bilder per side">
+      <Fragment slot="sidebar">        ...kontrollene...     </Fragment>
+      <Fragment slot="sidebar-footer"> ...eksportknapp...     </Fragment>
+      ...lerretet...
+    </VerktoyLayout>
+
+  «sidebar-footer» er valgfri, og brukes til det som skal ligge fast nederst i
+  panelet mens resten scroller — typisk en last-ned-knapp.
+
+  Utseendet ligger i src/styles/verktoy.css, felles for alle verktøyene.
+*/
+import Layout from './Layout.astro';
+import '../styles/verktoy.css';
+
+interface Props {
+  /** Navnet på verktøyet. Bruk samme navn som på kortet i /fotoverktoy. */
+  tittel: string;
+  /** Én linje under tittelen om hva verktøyet gjør. */
+  beskrivelse?: string;
+}
+
+const { tittel, beskrivelse } = Astro.props;
+---
+
+<Layout title={`${tittel} — Fotoverktøy`} description={beskrivelse} bodyClass="tool-page">
+  <div class="tool-app">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <a class="back-link" href="/fotoverktoy">&larr; Alle verktøy</a>
+        <h1>{tittel}</h1>
+        {beskrivelse && <p class="tool-tagline">{beskrivelse}</p>}
+        <slot name="sidebar-header-extra" />
+      </div>
+
+      <div class="sidebar-content">
+        <slot name="sidebar" />
+      </div>
+
+      {Astro.slots.has('sidebar-footer') && (
+        <div class="sidebar-footer">
+          <slot name="sidebar-footer" />
+        </div>
+      )}
+    </aside>
+
+    <div class="main-canvas">
+      <slot />
+    </div>
+  </div>
+</Layout>

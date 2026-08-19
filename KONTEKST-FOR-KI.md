@@ -15,7 +15,7 @@ som drifter siden. Denne fila er den tekniske referansen for KI-en som hjelper t
 - Innhold ligger som **YAML-filer i repoet** (`src/content/`), redigert via **Sveltia CMS** på `/admin`.
 - Bilder ligger i **Cloudflare R2** (offentlig bøtte), ikke i repoet. Innholdsfilene inneholder bare URL-er.
 - Publisering: push til `main` → **GitHub Actions** bygger → **GitHub Pages**. (Ikke Cloudflare Pages — Cloudflare brukes kun til bildelagring.)
-- Sider: forside (prosjekter), prosjektside per prosjekt, Prints, Feed, Flaksjøen Fjellmaraton (med påmeldingsskjema), Blogg, Portefølje, 404, samt statiske HTML-verktøy under `/fotoverktoy/`.
+- Sider: forside (prosjekter), prosjektside per prosjekt, Prints, Feed, Flaksjøen Fjellmaraton (med påmeldingsskjema), Blogg, Portefølje, 404, samt tre fotoverktøy under `/fotoverktoy/` (Fotogrid, Instagram-maler, Kalender).
 - **Forsiden har fire innebygde layouter** som byttes fra CMS-en («Forside-innstillinger»), ikke i kode. Se punkt 4 og 8.
 - **Blogg og Portefølje finnes alltid** på `/blogg` og `/portefolje`, men er som standard ikke lenket fra menyen — det styres av `showInNav` i CMS-en.
 - Ingen CSS-rammeverk, ingen komponentbibliotek, ingen design tokens — all CSS er skrevet for hånd inne i hver `.astro`-fil.
@@ -86,7 +86,7 @@ foto/
 │   ├── admin/
 │   │   ├── index.html             Laster Sveltia CMS. Versjonen er pinnet med vilje.
 │   │   └── config.yml             HELE CMS-oppsettet: collections, felter, R2-nøkler.
-│   └── fotoverktoy/               Frittstående HTML-verktøy, uavhengig av Astro.
+│   └── verktoy/                   Verktøyenes JS og ferdige biblioteker (jszip, jspdf, heic2any).
 │       ├── index.html             Oversiktsside (Fotogrid / Rammer / Kalender maler).
 │       ├── grid.html              "Fotogrid Pro" (1625 linjer).
 │       ├── instagram.html         "Instagram Maler" (1016 linjer).
@@ -331,7 +331,7 @@ photos:
 **Lagring**
 - Cloudflare R2, bøtte **`foto-photos`**, konto-ID `1904e782382751217d6103b2d39a41da`.
 - Offentlig URL-rot: `https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev`
-- Ingen bilder ligger i repoet (bortsett fra `public/favicon.svg` og `public/fotoverktoy/icon.png`).
+- Ingen bilder ligger i repoet (bortsett fra `public/favicon.svg`).
 
 **Mapper (prefixes) i bøtta — bestemt av `public/admin/config.yml`**
 | Prefix | Brukes av |
@@ -390,38 +390,51 @@ Mellomlageret gjenbrukes mellom bygg (og caches i GitHub Actions), så et uendre
 ## 6. DESIGNSYSTEM
 
 **Viktig og litt kjedelig: det finnes ingen design tokens i dette prosjektet.**
-Det er ingen `:root`-variabler, ingen tokens-fil, ingen CSS-rammeverk. Hver farge er skrevet rett inn i `<style>`-blokken i hver enkelt `.astro`-fil. De to eneste custom properties i hele kodebasen er `--ratio` i `fjellmaraton.astro` og `--photo-max-h` i `FullscreenScrollHomepage.astro`, og begge er layout-utregninger, ikke tokens.
+Det er ingen CSS-rammeverk. Farger, skrift og streker ligger som variabler i `:root` i `src/layouts/Layout.astro` (se tabellen under); alt annet står i `<style>`-blokken i hver enkelt `.astro`-fil. Verktøyene har i tillegg ett felles stilark, `src/styles/verktoy.css`. To custom properties er ikke tokens, men layout-utregninger: `--ratio` i `fjellmaraton.astro` og `--photo-max-h` i `FullscreenScrollHomepage.astro`.
 
-**Farger som faktisk brukes (antall forekomster i `src/`, talt 2026-08-16)**
-| Verdi | Antall | Rolle | Filer |
-|---|---|---|---|
-| `#111` | 24 | Tekst, knapper, lenker, rammer | Header, Layout, 404, fjellmaraton, begge print-sidene, prosjektside, blogg, forsidekomponentene |
-| `#fff` | 13 | Hvit tekst/bakgrunn i knapper, lightbox og fullskjermsforsiden | Flere |
-| `#666` | 8 | «Ingen bilder ennå»-tekst | Flere |
-| `#eee` | 8 | Plassholderfarge bak bilder som ikke er lastet | GridHomepage, feed, fjellmaraton, prosjektside, blogg |
-| `#888` | 7 | Årstall / dempet tekst / datoer | Forsidekomponentene, prosjektside, blogg-sidene, portefølje |
-| `rgba(0, 0, 0, 0.92)` | 6 | Lightbox-bakgrunn | Alle seks sidene med lightbox |
-| `#555` | 3 | Undertittel, print-titler i oversikten | 404, fjellmaraton, `prints/index.astro` |
-| `#ccc` | 3 | Skjemafelt-strek | fjellmaraton |
-| `#ddd` | 2 | Skillelinje | Header, print-side |
-| `#fafafa` | 2 | Sidebakgrunn | `Layout.astro` (body), `fjellmaraton.astro` (dialogpanel) |
-| `#f2f2f2` | 2 | Grå ramme rundt print-bilder | begge print-sidene |
-| `#fdfdfd` | 1 | Bakgrunn i toppmenyen | `Header.astro` |
-| `#999` | 1 | Fotoverktøy-lenken i menyen | `Header.astro` |
-| `rgba(255, 255, 255, 0.85)` | 1 | Bla-pilene på fullskjermsforsiden | `FullscreenScrollHomepage.astro` |
-| `#444` | 1 | Dempet tekst i bloggen | `blogg/index.astro` |
-| `#f0f0f0` | 1 | Plassholder i bloggens karusell | `blogg/index.astro` |
-| `rgba(0, 0, 0, 0.55)` | 1 | Bakgrunn bak påmeldingsdialogen | fjellmaraton |
-| `#767676` | 1 | Placeholder i nedtrekksliste | fjellmaraton |
-| `#1a7a1a` | 1 | Grønn suksessmelding i skjema | fjellmaraton |
-| `#b00020` | 1 | Rød feilmelding i skjema | fjellmaraton |
+**Farger: ett sett variabler, ikke løse verdier (endret 2026-08-19)**
+
+Alle farger var tidligere skrevet ut for hånd i hver enkelt fil — `#111` alene 24
+ganger — og samme rolle hadde drevet fra hverandre: sekundærtekst fantes som
+`#444`, `#555` og `#666`, streker som `#ccc`, `#ddd`, `#e5e5e5` og `#eee`.
+De er nå definert **ett sted**, i `:root` i `src/layouts/Layout.astro`, og brukes
+som `var(--navn)` overalt ellers. Skriver du ny CSS i dette repoet: bruk
+variabelen, ikke verdien.
+
+| Variabel | Verdi | Rolle |
+|---|---|---|
+| `--ink` | `#111` | Tekst, knapper, rammer — «den mørke» |
+| `--ink-muted` | `#555` | Sekundærtekst, tomtilstander, brødtekst i sidepanel |
+| `--ink-subtle` | `#888` | Årstall, metadata, bildetekst |
+| `--ink-inverse` | `#fff` | Tekst på mørk flate |
+| `--surface` | `#fafafa` | Sidebakgrunn — også toppmenyen og fullskjermseksjonene |
+| `--surface-raised` | `#fff` | Hvite paneler, kort, dialoger |
+| `--surface-sunken` | `#f3f3f3` | Print-kort og verktøyenes lerret (matcher print-mockupenes eget felt) |
+| `--placeholder` | `#eee` | Plassholder bak bilder som ikke er lastet |
+| `--overlay` | `rgba(0,0,0,0.92)` | Lightbox-bakgrunn |
+| `--line-soft` / `--line` / `--line-strong` | `#eee` / `#ddd` / `#ccc` | Streker, fra svakest til sterkest |
+| `--success` / `--danger` | `#1a7a1a` / `#b00020` | Status i påmeldingsskjemaet |
+
+Verktøyene har i tillegg `--tool-accent` (`src/styles/verktoy.css`), som peker på
+`--ink`. Den ene linja styrer primærknapper, valgt alternativ, fokusramme og
+slipp-soner i alle tre verktøyene.
+
+To unntak står med vilje igjen som faste verdier: `rgba(255,255,255,0.85)` på
+bla-pilene (gjennomskinnelig over foto, ingen rolle å hente) og gråtonene i
+Instagram-verktøyets innleggsramme (`#dbdbdb`, `#262626`, `#8e8e8e`) — den skal
+ligne Instagram-appen, ikke nettstedet.
 
 **Skrifter**
 | Stack | Brukes til | Definert i |
 |---|---|---|
-| `-apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif` | Standard for hele siden | `Layout.astro` (`body`) |
-| `'Space Mono', monospace` | Prosjekttitler, årstall, 404-tallet, prosjektoverskrift | `index.astro` (2×), `prosjekter/[slug].astro` (2×), `404.astro` |
-| `Helvetica, 'Helvetica Neue', Arial, sans-serif` | Kun påmeldingsdialogen og knappen på fjellmaraton | `fjellmaraton.astro` |
+| `var(--font-body)` | Standard for hele siden | `:root` i `Layout.astro` |
+| `var(--font-mono)` — Space Mono | Prosjekttitler, årstall, overskrifter, verktøytitler, tall i verktøyene | `:root` i `Layout.astro` |
+| `Helvetica, 'Helvetica Neue', Arial, sans-serif` | Kun påmeldingsdialogen og knappene på fjellmaraton — bevisst unntak, ikke tokenisert | `fjellmaraton.astro` (3×) |
+
+Space Mono hentes fra **vårt eget domene**, ikke Google Fonts (endret 2026-08-19).
+Den ligger som npm-pakken `@fontsource/space-mono` og importeres i `Layout.astro`.
+Latin-subsettet dekker æ, ø og å; de to vektene veier 33 kB til sammen. Ikke legg
+tilbake en `<link>` mot `fonts.googleapis.com`.
 
 Space Mono lastes fra Google Fonts i `Layout.astro` med vekt 400 og 700.
 
@@ -530,7 +543,8 @@ Lagret som `src/pages/om.astro` blir dette `/om`. Importstien til `Layout` har e
 | `/portefolje` | `src/pages/portefolje.astro` | Kuratert bildeside i masonry + lightbox. Skjult fra menyen med mindre `showInNav` er på. |
 | `/404` | `src/pages/404.astro` | Feilside |
 | `/admin` | `public/admin/index.html` | Sveltia CMS (ikke en Astro-side) |
-| `/fotoverktoy/*` | `public/fotoverktoy/*.html` | Frittstående HTML-verktøy, helt utenfor Astro |
+| `/fotoverktoy` | `src/pages/fotoverktoy/index.astro` | Oversikt med tre kort |
+| `/fotoverktoy/grid`, `/instagram`, `/kalender` | `src/pages/fotoverktoy/*.astro` | Verktøyene. Markup i `.astro`, logikk i `public/verktoy/*.js`, felles utseende i `src/styles/verktoy.css` |
 
 **Komponenter og layout** (det er fem)
 - `src/layouts/Layout.astro` — props: `title` (str., default «Gaute Aaløkken»), `description` (str., default fotografi-teksten), `image` (str., default et R2-bilde), `bodyClass` (str., valgfri — brukes bare av fullskjermsforsiden, som må låse rullingen på `<body>`). Gir `<head>`, all SEO/Open Graph/Twitter-meta, canonical-URL, Google Fonts, global CSS og `<Header />`. Alle sider bruker den.
@@ -562,13 +576,13 @@ npm run preview    astro preview  — viser bygget resultat lokalt
 npm run sort-feed  node scripts/sort-feed.mjs — sorterer feed-YAML. Kjøres manuelt, ikke i bygg.
 ```
 
-**Målt bygg 2026-08-16 (lokalt, varm cache): 39 sider på 1,6 sekunder.** De 39 Astro bygger er 14 prosjektsider + 17 print-sider + 1 blogginnlegg + forside, /prints, /feed, /fjellmaraton, /blogg, /portefolje og /404. I tillegg kopieres /admin og de fire fotoverktøy-sidene rått fra `public/`, så `dist/` ender med 44 HTML-filer.
+**Målt bygg 2026-08-19 (lokalt, varm cache): 43 sider på 1,6 sekunder.** De 43 Astro bygger er 14 prosjektsider + 17 print-sider + 1 blogginnlegg + forside, /prints, /feed, /fjellmaraton, /blogg, /portefolje, /404 og de fire fotoverktøy-sidene. I tillegg kopieres /admin rått fra `public/`, så `dist/` ender med 44 HTML-filer.
 
 Med tom cache tar bygget vesentlig lenger — da skal over tusen bilder hentes fra R2 og skaleres på nytt.
 
 **Det finnes ingen tester, ingen linting og ingen typesjekk** — verken lokalt eller i CI. `npm run build` er den eneste kontrollen som finnes: går den gjennom, er endringen syntaktisk og innholdsmessig gyldig. Foreslå aldri at brukeren «kjører testene».
 
-**Output**: `dist/`, ca. 114 MB. Git-ignorert. Inneholder `index.html`, `404.html`, `CNAME`, `favicon.svg`, `robots.txt`, `sitemap-index.xml`, `sitemap-0.xml`, `admin/`, `fotoverktoy/`, `feed/`, `fjellmaraton/`, `prints/`, `prosjekter/`, `blogg/`, `portefolje/`, `_astro/` (1 CSS-fil) og `optimized/` (1893 filer).
+**Output**: `dist/`, ca. 116 MB. Git-ignorert. Inneholder `index.html`, `404.html`, `CNAME`, `favicon.svg`, `robots.txt`, `sitemap-index.xml`, `sitemap-0.xml`, `admin/`, `fotoverktoy/`, `verktoy/` (verktøyenes JS og biblioteker), `feed/`, `fjellmaraton/`, `prints/`, `prosjekter/`, `blogg/`, `portefolje/`, `_astro/` (4 CSS-filer + Space Mono) og `optimized/` (1894 filer).
 
 **Sitemap**: `@astrojs/sitemap` lager fila ved hvert bygg. Filteret i `astro.config.mjs` holder `/admin` og `/fotoverktoy` ute alltid, og `/blogg` og `/portefolje` ute så lenge `showInNav` er av for dem — en side som med vilje er holdt utenfor menyen skal ikke meldes inn til Google. Sidene bygges og publiseres uansett; det er bare sitemapen de holdes ute av.
 
@@ -723,7 +737,7 @@ Følgende lot seg ikke lese ut av repoet og er ikke dokumentert her. **Spørsmå
 - **Cloudflare R2-detaljer**: om bøtta har en custom domain i tillegg til `r2.dev`-URL-en, hvilke tillatelser API-nøkkelen har, og om det er satt opp levetidsregler.
 - **Google Apps Script**: hvilket Google Sheet påmeldingene skrives til, hvem som eier det, og når det sist ble redeployet.
 - **Om `wrangler` faktisk brukes til noe**, eller bare ble installert underveis. Ingen `wrangler.toml` finnes, og den kjøres ikke fra noe skript.
-- **Fotoverktøy-sidene** (`public/fotoverktoy/*.html`, ca. 3900 linjer HTML/JS til sammen) er ikke gjennomgått her. De er frittstående og påvirker ikke resten av siden.
+- **Verktøyenes logikk** (`public/verktoy/*.js`, ca. 3100 linjer til sammen) er ikke gjennomgått linje for linje her. Filene kjører i globalt navnerom med vilje — knappene i markupen kaller funksjonene direkte via `onclick`. Derfor har `<script>`-taggene `is:inline`; fjernes det, pakker Astro dem som moduler og hver knapp slutter å virke uten feilmelding.
 - **Hvorfor fire prosjekter mangler `cover`-nøkkelen helt** — sannsynligvis bare at de ble opprettet før feltet ble lagt til 2026-08-02.
 - **Om det finnes analytics, søkeordsverktøy eller andre eksterne tjenester** koblet til siden.
 - **Hva `/portefolje` skal inneholde** — sida finnes og virker, men bildelista er tom.

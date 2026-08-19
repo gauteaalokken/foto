@@ -1,0 +1,638 @@
+---
+/*
+  FOTOGRID — flere bilder per ark, satt opp til utskrift.
+
+  Denne fila er bare markup. Logikken ligger i public/verktoy/grid.js, og
+  utseendet i src/styles/verktoy.css (felles for alle verktøyene).
+
+  Knappene kaller funksjoner i grid.js direkte via onclick. Derfor lastes den
+  med `is:inline` — uten det ville Astro pakket den som en modul med eget
+  navnerom, og hver eneste knapp ville sluttet å virke uten en feilmelding.
+*/
+import VerktoyLayout from '../../layouts/VerktoyLayout.astro';
+---
+
+<VerktoyLayout tittel="Fotogrid" beskrivelse="Flere bilder per ark, satt opp til utskrift.">
+  <Fragment slot="sidebar-header-extra">
+    <div class="layout-switcher">
+      <select id="layoutSelect" onchange="onLayoutSelectChange(this.value)"></select>
+      <button type="button" id="deleteLayoutBtn" onclick="deleteCurrentLayout()" title="Slett dette lagrede designet">&times;</button>
+    </div>
+    <button type="button" class="btn-secondary btn-save-as" onclick="saveLayoutAs()">Lagre som nytt design…</button>
+  </Fragment>
+
+  <Fragment slot="sidebar">
+    <div class="control-group">
+      <button type="button" id="uploadBtn" class="btn-primary" onclick="document.getElementById('fileInput').click()">
+        + Last opp bilder
+      </button>
+      <input type="file" id="fileInput" multiple accept="image/*" style="display: none" />
+      <p class="tool-note">Antall bilder: <span id="photoCount">0</span></p>
+    </div>
+
+    <div class="control-group">
+      <label for="projectName">Prosjektnavn</label>
+      <input type="text" id="projectName" placeholder="Mitt prosjekt" onchange="saveSettings()" />
+    </div>
+
+    <div class="control-group">
+      <label for="paperSize">Papirstørrelse</label>
+      <select id="paperSize" onchange="checkPaperSize(this)">
+        <option value="A4">A4</option>
+        <option value="A3">A3</option>
+        <option value="A2">A2</option>
+        <option value="PHOTO_10X15">10×15 foto</option>
+        <option value="INSTASTORY">Instagram Story</option>
+        <option value="INSTAINLEGG">Instagram-innlegg</option>
+        <option value="CUSTOM">Spesial…</option>
+      </select>
+    </div>
+
+    <div class="control-group">
+      <span class="group-label">Orientering</span>
+      <div class="button-group">
+        <button type="button" id="portraitBtn" class="active" onclick="setOrientation('portrait')">Stående</button>
+        <button type="button" id="landscapeBtn" onclick="setOrientation('landscape')">Liggende</button>
+      </div>
+    </div>
+
+    <div class="control-group">
+      <label for="photosPerPage">Bilder per side</label>
+      <input type="range" id="photosPerPage" min="1" max="60" value="10" oninput="handleSliderChange('photosPerPage', this.value)" />
+      <input type="number" id="photosPerPageInput" value="10" min="1" max="60" aria-label="Bilder per side" onchange="handleInputChange('photosPerPage', this.value)" />
+      <span id="photosPerPageNote" class="tool-note" style="display: none"></span>
+    </div>
+
+    <div class="control-group">
+      <label for="maxPages">Maks sider</label>
+      <select id="maxPages" onchange="debouncedAutoFlow()">
+        <option value="0">Ingen grense</option>
+        <option value="1">1 side</option>
+        <option value="2">2 sider</option>
+        <option value="3">3 sider</option>
+        <option value="4">4 sider</option>
+        <option value="5">5 sider</option>
+        <option value="6">6 sider</option>
+        <option value="7">7 sider</option>
+        <option value="8">8 sider</option>
+        <option value="9">9 sider</option>
+        <option value="10">10 sider</option>
+        <option value="12">12 sider</option>
+        <option value="15">15 sider</option>
+        <option value="20">20 sider</option>
+      </select>
+    </div>
+
+    <div class="control-group">
+      <label for="pageTolerance">
+        Toleranse (+/−)
+        <span class="slider-val" id="toleranceValue">0</span>
+      </label>
+      <input type="range" id="pageTolerance" min="0" max="10" value="0" oninput="handleSliderChange('tolerance', this.value)" />
+      <input type="hidden" id="pageToleranceInput" value="0" />
+    </div>
+
+    <div class="control-group">
+      <label for="margin">
+        Marg (mm)
+        <span class="slider-val" id="marginValue">5</span>
+      </label>
+      <input type="range" id="margin" min="0" max="50" value="5" oninput="handleSliderChange('margin', this.value)" />
+      <input type="hidden" id="marginInput" value="5" />
+    </div>
+
+    <div class="control-group">
+      <label for="gap">
+        Avstand mellom bilder (mm)
+        <span class="slider-val" id="gapValue">2</span>
+      </label>
+      <input type="range" id="gap" min="0" max="20" value="2" oninput="handleSliderChange('gap', this.value)" />
+      <input type="hidden" id="gapInput" value="2" />
+    </div>
+
+    <div class="control-group">
+      <label for="bgColorText">Bakgrunn</label>
+      <div class="color-row">
+        <input
+          type="color"
+          id="bgColorPicker"
+          value="#FFFFFF"
+          aria-label="Velg bakgrunnsfarge"
+          oninput="document.getElementById('bgColorText').value=this.value; debouncedRender()"
+        />
+        <input
+          type="text"
+          id="bgColorText"
+          value="#FFFFFF"
+          onchange="document.getElementById('bgColorPicker').value=this.value; debouncedRender()"
+        />
+      </div>
+    </div>
+
+    <div class="control-group">
+      <span class="group-label">Ordne bildene</span>
+      <button type="button" class="btn-secondary" onclick="autoFlow(false)">Autoflyt (nullstill)</button>
+      <button type="button" class="btn-secondary" onclick="sortByColor()">Sorter etter farge</button>
+      <button type="button" class="btn-secondary" id="undoBtn" onclick="undo()" disabled>Angre (Ctrl+Z)</button>
+      <button type="button" class="btn-secondary" id="redoBtn" onclick="redo()" disabled>Gjør om (Ctrl+Y)</button>
+    </div>
+
+    <div class="control-group">
+      <label for="dpi">Oppløsning ved eksport</label>
+      <select id="dpi">
+        <option value="600">600 DPI</option>
+        <option value="300" selected>300 DPI</option>
+      </select>
+    </div>
+
+    <button type="button" class="btn-danger" id="clearBtn" onclick="clearAll()">Slett alt</button>
+  </Fragment>
+
+  <Fragment slot="sidebar-footer">
+    <button type="button" class="btn-primary" id="exportPdfBtn" onclick="exportPDF()">Lagre som PDF</button>
+    <button type="button" class="btn-secondary" id="exportBtn" onclick="exportGrid()">Lagre som JPG</button>
+    <button type="button" class="btn-secondary" id="downloadAllBtn" onclick="downloadAllZip()">Last ned ZIP</button>
+  </Fragment>
+
+  <div id="saveStatus" class="save-status">Lagret</div>
+
+  <div class="canvas-scroller" id="canvasWrapper"></div>
+
+  <div id="pageNav" class="page-nav">
+    <button type="button" onclick="changePage(-1)" id="prevBtn" aria-label="Forrige side">&#9664;</button>
+    <span id="pageIndicator">Side 1 av 1</span>
+    <button type="button" onclick="changePage(1)" id="nextBtn" aria-label="Neste side">&#9654;</button>
+  </div>
+
+  <div class="depot-area">
+    <div class="depot-header">
+      <span>Bildedepot <span id="depotCount" class="depot-count">0</span></span>
+      <button type="button" class="btn-xs" onclick="moveDepotToPages()" title="Flytt alle bilder fra depotet opp til sidene">
+        &#9650; Flytt alt til sider
+      </button>
+    </div>
+    <div class="depot-content" id="depotContainer" ondragover="handleDragOver(event)" ondrop="handleDrop(event, 'depot')">
+      <div class="empty-msg">Depotet er tomt</div>
+    </div>
+  </div>
+</VerktoyLayout>
+
+<div id="customSizeModal" class="modal">
+  <div class="modal-box">
+    <h2>Tilpasset størrelse</h2>
+    <div class="control-group">
+      <label for="customWidth">Bredde (mm)</label>
+      <input type="number" id="customWidth" value="200" />
+    </div>
+    <div class="control-group">
+      <label for="customHeight">Høyde (mm)</label>
+      <input type="number" id="customHeight" value="200" />
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn-secondary" onclick="closeCustomModal()">Avbryt</button>
+      <button type="button" class="btn-primary" onclick="applyCustomSize()">OK</button>
+    </div>
+  </div>
+</div>
+
+<script is:inline src="/verktoy/jszip.min.js"></script>
+<script is:inline src="/verktoy/jspdf.umd.min.js"></script>
+<script is:inline src="/verktoy/grid.js"></script>
+
+<style is:global>
+  /* Bare det som er særegent for Fotogrid. Sidepanel, knapper og felt kommer
+     fra src/styles/verktoy.css og er felles for alle verktøyene. */
+
+  .layout-switcher {
+    display: flex;
+    gap: 8px;
+    margin-top: 14px;
+  }
+
+  .layout-switcher select {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .layout-switcher button {
+    width: 36px;
+    flex-shrink: 0;
+    background: var(--surface-raised);
+    border: 1px solid var(--line);
+    border-radius: var(--tool-radius);
+    color: var(--ink-muted);
+    cursor: pointer;
+    font-size: 1rem;
+  }
+
+  .layout-switcher button:hover {
+    border-color: var(--danger);
+    color: var(--danger);
+  }
+
+  .tool-app .btn-save-as {
+    margin-top: 8px;
+    font-size: 0.8rem;
+    padding: 8px 10px;
+  }
+
+  .tool-app .group-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--ink-muted);
+  }
+
+  .color-row {
+    display: flex;
+    gap: 8px;
+  }
+
+  .color-row input[type='color'] {
+    width: 52px;
+    flex-shrink: 0;
+  }
+
+  /* Lerretet: sidene ligger på rad og scrolles sideveis. */
+  .canvas-scroller {
+    flex: 1;
+    min-height: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    display: flex;
+    align-items: center;
+    padding: 40px;
+  }
+
+  .save-status {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 100;
+    display: none;
+    padding: 6px 12px;
+    font-size: 0.75rem;
+    background: var(--surface-raised);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+  }
+
+  .page-nav {
+    position: absolute;
+    bottom: 170px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 40;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 8px 16px;
+    background: var(--surface-raised);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  }
+
+  .page-nav button {
+    border: none;
+    background: none;
+    cursor: pointer;
+    color: var(--ink);
+    font-size: 0.85rem;
+    padding: 2px 4px;
+  }
+
+  .page-nav button:hover {
+    color: var(--ink-subtle);
+  }
+
+  .page-nav #pageIndicator {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .page-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex-shrink: 0;
+    margin: 0 10px;
+    transition: transform 0.2s;
+  }
+
+  .page-container.active {
+    transform: scale(1.02);
+    z-index: 10;
+  }
+
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    margin-bottom: 8px;
+  }
+
+  .page-label-group {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    background: var(--surface-raised);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--ink-muted);
+  }
+
+  .delete-page-btn {
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--surface-raised);
+    border: 1px solid var(--danger);
+    color: var(--danger);
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 0.8rem;
+    line-height: 1;
+  }
+
+  .delete-page-btn:hover {
+    background: var(--danger);
+    color: var(--ink-inverse);
+  }
+
+  .canvas {
+    background: var(--surface-raised);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    position: relative;
+    overflow: hidden;
+    transition: box-shadow 0.2s;
+  }
+
+  .page-drop-target .canvas {
+    outline: 3px solid var(--tool-accent);
+    outline-offset: -3px;
+  }
+
+  .insert-zone {
+    width: 50px;
+    height: 80%;
+    flex-shrink: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .insert-zone:hover {
+    opacity: 1;
+  }
+
+  .btn-insert {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 50%;
+    background: var(--tool-accent);
+    color: var(--tool-accent-text);
+    font-size: 1.4rem;
+    cursor: pointer;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+  }
+
+  .photo-cell {
+    position: absolute;
+    overflow: hidden;
+    background: var(--placeholder);
+    cursor: grab;
+    transition: all 0.2s;
+  }
+
+  .photo-cell img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    pointer-events: none;
+  }
+
+  .photo-cell:hover .remove-btn,
+  .depot-item:hover .remove-btn {
+    opacity: 1;
+  }
+
+  .remove-btn {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 50%;
+    background: var(--danger);
+    color: var(--ink-inverse);
+    font-size: 0.7rem;
+    cursor: pointer;
+    opacity: 0;
+  }
+
+  /* Depotet — bildene som ikke er plassert på et ark ennå. */
+  .depot-area {
+    flex-shrink: 0;
+    height: 150px;
+    display: flex;
+    flex-direction: column;
+    z-index: 50;
+    background: var(--surface-raised);
+    border-top: 1px solid var(--line);
+  }
+
+  .depot-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 20px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--line-soft);
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+  }
+
+  .depot-count {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 2px 7px;
+    background: var(--placeholder);
+    border-radius: 999px;
+  }
+
+  .tool-app .btn-xs {
+    width: auto;
+    padding: 5px 10px;
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.05em;
+    background: var(--tool-accent);
+    color: var(--tool-accent-text);
+    border: none;
+    border-radius: var(--tool-radius);
+    cursor: pointer;
+  }
+
+  .depot-content {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 20px;
+    overflow-x: auto;
+  }
+
+  .depot-content.drag-over {
+    background: var(--tool-accent-soft);
+    outline: 2px dashed var(--tool-accent);
+    outline-offset: -6px;
+  }
+
+  .depot-item {
+    position: relative;
+    width: 90px;
+    height: 90px;
+    flex-shrink: 0;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: var(--tool-radius);
+    background: var(--surface-sunken);
+    cursor: grab;
+    transition: transform 0.1s;
+  }
+
+  .depot-item:hover {
+    transform: scale(1.05);
+  }
+
+  .depot-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    pointer-events: none;
+  }
+
+  .empty-msg {
+    width: 100%;
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--ink-subtle);
+    pointer-events: none;
+  }
+
+  /* Dialogen for tilpasset papirstørrelse. */
+  .modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.5);
+  }
+
+  .modal.open {
+    display: flex;
+  }
+
+  .modal-box {
+    width: 100%;
+    max-width: 320px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    background: var(--surface-raised);
+    border-radius: 10px;
+  }
+
+  .modal-box h2 {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 1rem;
+    font-weight: 700;
+  }
+
+  .modal-box input[type='number'] {
+    width: 100%;
+    padding: 8px 10px;
+    font: inherit;
+    font-size: 0.9rem;
+    border: 1px solid var(--line);
+    border-radius: var(--tool-radius);
+  }
+
+  .modal-box .control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .modal-box label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--ink-muted);
+  }
+
+  .modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+  }
+
+  .modal-actions button {
+    width: auto;
+    padding: 9px 18px;
+    font: inherit;
+    font-size: 0.85rem;
+    border-radius: var(--tool-radius);
+    border: 1px solid transparent;
+    cursor: pointer;
+  }
+
+  .modal-actions .btn-secondary {
+    background: var(--surface-raised);
+    border-color: var(--line);
+    color: var(--ink);
+  }
+
+  .modal-actions .btn-primary {
+    background: var(--tool-accent);
+    color: var(--tool-accent-text);
+  }
+
+  @media (max-width: 900px) {
+    .page-nav {
+      bottom: 165px;
+    }
+
+    .canvas-scroller {
+      padding: 20px;
+    }
+  }
+</style>

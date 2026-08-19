@@ -1,246 +1,12 @@
-<!DOCTYPE html>
-<html lang="no">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Instagram Maler</title>
-  <link rel="icon" type="image/png" href="icon.png">
-  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #fafafa; color: #111827; }
-    .app-container { min-height: calc(100vh - var(--fv-header-h, 74px)); display: flex; }
-    .site-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; padding: 1.25rem 2rem; background: #fdfdfd; border-bottom: 1px solid #e5e7eb; }
-    .site-header .site-title { font-size: 1.75rem; font-weight: 500; color: #111; text-decoration: none; white-space: nowrap; }
-    .site-header .site-nav { display: flex; align-items: center; flex-wrap: wrap; gap: 1.5rem; }
-    .site-header .site-nav a { color: #111; text-decoration: none; font-size: 0.95rem; }
-    .site-header .site-nav a:hover { opacity: 0.6; }
-    .site-header .icon-link { display: flex; }
-    .sidebar { width: 320px; background-color: white; border-right: 1px solid #dbdbdb; display: flex; flex-direction: column; }
-    .sidebar-header { padding: 24px; border-bottom: 1px solid #dbdbdb; }
-    .sidebar-header h1 { font-size: 24px; font-weight: 600; color: #111827; margin-bottom: 4px; }
-    .back-link { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: #8e8e8e; text-decoration: none; margin-bottom: 8px; }
-    .back-link:hover { color: #111827; }
-    .sidebar-header p { font-size: 14px; color: #8e8e8e; }
-    .sidebar-content { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 24px; }
-    .sidebar-footer { padding: 24px; border-top: 1px solid #dbdbdb; }
-    .control-group { display: flex; flex-direction: column; gap: 8px; }
-    .control-group label { font-size: 14px; font-weight: 500; color: #262626; }
-    .photo-count { font-size: 12px; color: #8e8e8e; margin-top: 8px; }
-    .btn-primary { width: 100%; padding: 12px 16px; background-color: #0095f6; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; justify-content: center; font-size: 14px; }
-    .btn-primary:hover { background-color: #1877f2; }
-    .btn-danger { width: 100%; padding: 8px 16px; color: #ed4956; background-color: white; border: 1px solid #ed4956; border-radius: 8px; cursor: pointer; font-weight: 600; }
-    .btn-danger:hover { background-color: #fef2f2; }
-    .btn-export { width: 100%; padding: 12px 16px; background-color: #262626; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; justify-content: center; }
-    .btn-export:hover { background-color: #000000; }
-    .btn-export:disabled { opacity: 0.5; cursor: not-allowed; }
-    .button-group { display: flex; gap: 8px; flex-wrap: wrap; }
-    .button-group button { flex: 1; min-width: 80px; padding: 8px 12px; background-color: white; color: #262626; border: 1px solid #dbdbdb; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 500; }
-    .button-group button:hover { border-color: #8e8e8e; }
-    .button-group button.active { background-color: #0095f6; border-color: #0095f6; color: white; }
-    select { width: 100%; padding: 8px 12px; border: 1px solid #dbdbdb; border-radius: 8px; font-size: 14px; outline: none; }
-    select:focus { border-color: #0095f6; }
-    input[type="text"], input[type="number"] { width: 100%; padding: 8px 12px; border: 1px solid #dbdbdb; border-radius: 8px; font-size: 14px; outline: none; }
-    input[type="text"]:focus, input[type="number"]:focus { border-color: #0095f6; }
-    .main-canvas { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 40px 20px; background: #fafafa; gap: 40px; }
-    .main-canvas.hidden { display: none; }
-    .instagram-frame { background: white; border: 1px solid #dbdbdb; border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.08); width: fit-content; max-width: 100%; }
-    .frame-header { padding: 12px 16px; border-bottom: 1px solid #dbdbdb; display: flex; align-items: center; gap: 12px; background: white; flex-shrink: 0; }
-    .post-avatar { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(45deg, #f09433 0%,#e6683c 25%,#dc2743 50%,#cc2366 75%,#bc1888 100%); flex-shrink: 0; }
-    .post-username { font-size: 14px; font-weight: 600; color: #262626; }
-    .frame-content { overflow: hidden; user-select: none; position: relative; flex-shrink: 0; }
-    .images-container { display: flex; height: 100%; position: absolute; left: 0; top: 0; transition: transform 0.3s ease; }
-    .post-image { flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: #fff; position: relative; }
-    .post-image img { display: block; object-fit: cover; }
-    .carousel-indicators { position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.5); color: white; padding: 4px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; z-index: 10; }
-    .post-actions { padding: 12px 16px; display: flex; gap: 16px; border-top: 1px solid #efefef; }
-    .post-action { width: 24px; height: 24px; cursor: pointer; }
-    .preview-section { width: 100%; max-width: 935px; }
-    .preview-feed { background: #fafafa; border: none; border-radius: 0; padding: 0; box-shadow: none; max-width: 935px; margin: 0 auto; }
-    .preview-grid-nav { display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #dbdbdb; background: white; }
-    .preview-grid-nav-item { flex: 1; display: flex; justify-content: center; padding: 12px 0; cursor: pointer; color: #8e8e8e; border-bottom: 2px solid transparent; transition: color 0.1s; }
-    .preview-grid-nav-item.active { color: #262626; border-bottom: 2px solid #262626; }
-    .preview-grid-nav-item svg { width: 24px; height: 24px; stroke: currentColor; }
-    .preview-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; width: 100%; padding: 4px 0; }
-    .preview-post { aspect-ratio: 4 / 5; background: #fff; position: relative; overflow: hidden; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-    .preview-post img { object-fit: cover; display: block; width: 100%; height: 100%; }
-    .preview-post.new-post { box-shadow: 0 0 0 2px #fff, 0 0 0 4px #dbdbdb; }
-    .preview-post.new-post::after { content: 'NYT'; position: absolute; top: 8px; right: 8px; background: #0095f6; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; z-index: 1; }
-    .preview-carousel-indicator { position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.5); color: white; padding: 2px 6px; border-radius: 10px; font-size: 10px; font-weight: 600; }
-    .loading { text-align: center; padding: 40px; color: #8e8e8e; }
-    .error { text-align: center; padding: 20px; color: #ed4956; }
-    .preview-feed .non-square-post { grid-column: span 3; margin-bottom: 4px; aspect-ratio: 9 / 16; }
-    .username-input-group { display: flex; gap: 8px; }
-    .btn-load { padding: 8px 16px; background-color: #0095f6; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; white-space: nowrap; }
-    .btn-load:hover { background-color: #1877f2; }
-    .btn-load:disabled { opacity: 0.5; cursor: not-allowed; }
-    .placeholder { background: #e3e3e3; }
+/*
+  Logikken for instagram-verktøyet. Markup ligger i src/pages/fotoverktoy/instagram.astro,
+  utseendet i src/styles/verktoy.css.
 
-    @media (max-width: 900px) {
-      .app-container { flex-direction: column; }
-      .sidebar { width: 100%; border-right: none; border-bottom: 1px solid #dbdbdb; }
-      .main-canvas { padding: 20px; }
-      .instagram-frame { max-width: 100%; }
-      .preview-grid { grid-template-columns: repeat(3, 1fr) !important; }
-    }
-  </style>
-</head>
-<body onload="initApp()">
-  <header class="site-header">
-    <a href="/" class="site-title">Gaute Aaløkken</a>
-    <nav class="site-nav">
-      <a href="/fjellmaraton">Flaksjøen Fjellmaraton</a>
-      <a href="/prints">Prints</a>
-      <a href="/feed">Feed</a>
-      <a href="/fotoverktoy/index.html">Fotoverktøy</a>
-      <a href="mailto:gauteaalokken@gmail.com" aria-label="Email" class="icon-link">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <rect x="3" y="5" width="18" height="14" rx="2" />
-          <path d="M3 7l9 6 9-6" />
-        </svg>
-      </a>
-      <a href="https://instagram.com/sommerferiee" target="_blank" rel="noopener" aria-label="Instagram" class="icon-link">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <rect x="3" y="3" width="18" height="18" rx="5" />
-          <circle cx="12" cy="12" r="4" />
-          <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" />
-        </svg>
-      </a>
-    </nav>
-  </header>
-  <script>
-    (function () {
-      function fvSetHeaderHeight() {
-        var h = document.querySelector('.site-header');
-        if (h) document.documentElement.style.setProperty('--fv-header-h', h.offsetHeight + 'px');
-      }
-      fvSetHeaderHeight();
-      window.addEventListener('resize', fvSetHeaderHeight);
-      window.addEventListener('load', fvSetHeaderHeight);
-    })();
-  </script>
-  <div class="app-container">
-    <div class="sidebar">
-      <div class="sidebar-header">
-        <a href="index.html" class="back-link">&larr; Tilbake</a>
-        <h1>Instagram Maler</h1>
-        <p>Lag innlegg for Instagram</p>
-      </div>
+  Fila lastes med en vanlig <script>-tagg og kjører derfor i globalt navnerom —
+  det er med vilje: knappene i markupen kaller funksjonene her direkte via
+  onclick, slik verktøyet alltid har gjort.
+*/
 
-      <div class="sidebar-content">
-        <div class="control-group">
-          <label>Bilder</label>
-          <input type="file" id="fileInput" accept="image/*" multiple style="display: none">
-          <button class="btn-primary" onclick="document.getElementById('fileInput').click()">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-              <circle cx="8.5" cy="8.5" r="1.5"></circle>
-              <polyline points="21 15 16 10 5 21"></polyline>
-            </svg>
-            Last opp bilder
-          </button>
-          <p class="photo-count"><span id="photoCount">0</span> bilder lastet opp</p>
-        </div>
-
-        <div class="control-group">
-          <label>Instagram Innlegg Format</label>
-          <div class="button-group">
-            <button onclick="setFormat('portrait')" class="active">4:5<br>Portrett</button>
-            <button onclick="setFormat('landscape')">16:9<br>Landskap</button>
-            <button onclick="setFormat('wide')">3:2<br>Bred</button>
-            <button onclick="setFormat('square')">1:1<br>Kvadrat</button>
-            <button onclick="setFormat('story')">9:16<br>Historie</button>
-          </div>
-        </div>
-
-        <div class="control-group">
-          <label>Del bilder (split i to innlegg)</label>
-          <div style="display: flex; gap: 8px;">
-            <input type="text" id="panoramaImages" placeholder="F.eks: 1, 3, 5" style="flex: 1;">
-            <button class="btn-load" onclick="updatePanoramaMode()">Oppdater</button>
-          </div>
-          <p class="photo-count" style="font-size: 11px; margin-top: 4px;">Skriv inn bildenummer som skal deles i to separate innlegg</p>
-        </div>
-
-        <div class="control-group">
-          <label>Ramme rundt bilde: <span id="frameMarginValue">0</span>mm</label>
-          <div style="display: flex; gap: 8px; align-items: center;">
-            <input type="range" id="frameMargin" min="0" max="50" value="0" oninput="updateMargin()" style="flex: 1;">
-            <input type="number" id="frameMarginInput" min="0" max="50" value="0" oninput="updateMarginFromInput()" style="width: 60px; padding: 4px 8px; border: 1px solid #dbdbdb; border-radius: 6px;">
-          </div>
-        </div>
-
-        <button id="clearBtn" class="btn-danger" onclick="clearAll()" style="display:none">Fjern alle bilder</button>
-
-        <button id="exportInstagramBtn" class="btn-export" onclick="exportInstagramPosts()" disabled>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-            <polyline points="7 10 12 15 17 10"></polyline>
-            <line x1="12" y1="15" x2="12" y2="3"></line>
-          </svg>
-          Eksporter Innlegg (ZIP)
-          
-        </button>
-      </div>
-
-     
-    </div>
-
-    <div id="mainCanvas" class="main-canvas hidden">
-      <div class="instagram-frame">
-        <div class="frame-header">
-          <div class="post-avatar"></div>
-          <span class="post-username" id="frameUsername">din_profil</span>
-        </div>
-        <div id="frameContent" class="frame-content">
-          <div id="imagesContainer" class="images-container"></div>
-        </div>
-        <div class="post-actions">
-          <svg class="post-action" viewBox="0 0 24 24" fill="none" stroke="#262626" stroke-width="2">
-            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-          </svg>
-          <svg class="post-action" viewBox="0 0 24 24" fill="none" stroke="#262626" stroke-width="2">
-            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
-          </svg>
-          <svg class="post-action" viewBox="0 0 24 24" fill="none" stroke="#262626" stroke-width="2">
-            <line x1="22" y1="2" x2="11" y2="13"></line>
-            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-          </svg>
-        </div>
-      </div>
-
-      <div id="previewSection" class="preview-section">
-        <div class="preview-feed">
-          <div class="preview-grid-nav">
-              <div class="preview-grid-nav-item active">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                      <line x1="12" y1="3" x2="12" y2="21"></line>
-                      <line x1="3" y1="12" x2="21" y2="12"></line>
-                  </svg>
-              </div>
-              <div class="preview-grid-nav-item">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <circle cx="12" cy="12" r="10"></circle>
-                      <polygon points="10 8 16 12 10 16 10 8"></polygon>
-                  </svg>
-              </div>
-              <div class="preview-grid-nav-item">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                      <polyline points="17 8 12 3 7 8"></polyline>
-                      <line x1="12" y1="3" x2="12" y2="15"></line>
-                  </svg>
-              </div>
-          </div>
-
-          <div id="previewGrid" class="preview-grid"></div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <script>
     const FORMATS = {
       square: { width: 1, height: 1 },
       portrait: { width: 4, height: 5 },
@@ -527,12 +293,12 @@
       document.getElementById('exportInstagramBtn').disabled = photos.length === 0;
       document.getElementById('clearBtn').style.display = photos.length > 0 ? 'block' : 'none';
 
-      const mainCanvas = document.getElementById('mainCanvas');
-      if (photos.length > 0) {
-        mainCanvas.classList.remove('hidden');
-      } else {
-        mainCanvas.classList.add('hidden');
-      }
+      // Uten bilder skjules forhåndsvisningen. Før sto hovedflaten da helt
+      // tom og grå, uten et ord om hva man skulle gjøre — nå bytter den
+      // plass med en kort forklaring.
+      const harBilder = photos.length > 0;
+      document.getElementById('instagramPreview').classList.toggle('hidden', !harBilder);
+      document.getElementById('instagramEmpty').classList.toggle('hidden', harBilder);
 
       renderFeed();
       renderPreview();
@@ -807,7 +573,7 @@
       const marginPxMain = (marginMm / 25.4) * 96;
 
       const mainImageDiv = document.querySelector('#imagesContainer .post-image');
-      const mainW = mainImageDiv ? mainImageDiv.clientWidth : 600;  
+      const mainW = mainImageDiv ? mainImageDiv.clientWidth : 600;
       const mainH = mainImageDiv ? mainImageDiv.clientHeight : 600;
 
       for (let i = 0; i < totalSlots; i++) {
@@ -1011,6 +777,3 @@
     }
 
     document.addEventListener('DOMContentLoaded', initApp);
-  </script>
-</body>
-</html>
