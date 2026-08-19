@@ -5,6 +5,7 @@ interface Project {
   slug: string;
   title: string;
   year: string;
+  featured?: boolean | null;
   cover: { src: string; srcset: string; aspectRatio: number } | null;
 }
 
@@ -19,7 +20,24 @@ const { projects } = Astro.props;
 // into what looks like the next real project, instead of just stopping.
 // A tiny script (see below) then silently snaps back to the real slide the
 // clone represents once scrolling settles, so the loop is seamless.
-const displayProjects = projects.length > 1 ? [projects[projects.length - 1], ...projects, projects[0]] : projects;
+//
+// `position` is the project's place in the real chronological run, carried
+// along so each section can print its own "05 / 14" without any scroll
+// tracking — a clone shows the number of the project it stands in for, which
+// is exactly what a visitor scrolling onto it should see.
+const numbered = projects.map((project, index) => ({ project, position: index + 1 }));
+const displayItems =
+  projects.length > 1 ? [numbered[numbered.length - 1], ...numbered, numbered[0]] : numbered;
+
+const pad = (value: number) => String(value).padStart(2, '0');
+
+// Landing on a random project is the point, but it shouldn't be able to open
+// on a weak one. When any project is flagged as featured, the draw is limited
+// to those; with none flagged it stays the whole run, as before.
+const featuredIndexes = projects
+  .map((project, index) => (project.featured ? index : -1))
+  .filter((index) => index >= 0);
+const landingPool = featuredIndexes.length > 0 ? featuredIndexes : projects.map((_, index) => index);
 
 // A cover is capped by the width available *and* by the height left over below
 // the header, so a standing photo is only ever as wide as its own proportions
@@ -32,8 +50,13 @@ const coverSizes = (aspectRatio: number) =>
   `min(calc(100vw - 48px), calc(78vh * ${aspectRatio.toFixed(2)}))`;
 ---
 
-<div class="scroll-homepage" id="scroll-homepage" data-real-count={projects.length}>
-  {displayProjects.map((project) => (
+<div
+  class="scroll-homepage"
+  id="scroll-homepage"
+  data-real-count={projects.length}
+  data-landing-pool={JSON.stringify(landingPool)}
+>
+  {displayItems.map(({ project, position }) => (
     <div class="scroll-section">
       <button type="button" class="nav-arrow nav-prev" aria-label="Forrige prosjekt">&#8249;</button>
 
@@ -51,7 +74,14 @@ const coverSizes = (aspectRatio: number) =>
           )}
         </a>
         <div class="scroll-caption">
-          <span class="year">({project.year})</span>
+          <div class="caption-top">
+            <span class="year">({project.year})</span>
+            {projects.length > 1 && (
+              <span class="counter" aria-label={`Prosjekt ${position} av ${projects.length}`}>
+                {pad(position)} / {pad(projects.length)}
+              </span>
+            )}
+          </div>
           <span class="title">{project.title}</span>
         </div>
       </div>
@@ -185,9 +215,14 @@ const coverSizes = (aspectRatio: number) =>
   // Lands the visitor on a random project instead of always the same one —
   // scrolling from there moves chronologically through the rest in either
   // direction, since the sections themselves stay in chronological order.
+  // The draw runs over the pool the server picked (featured projects when any
+  // are flagged, otherwise all of them), so the first impression can be
+  // steered without changing the order visitors then scroll through.
   if (realCount > 0) {
     const firstRealIndex = hasClones ? 1 : 0;
-    const randomIndex = firstRealIndex + Math.floor(Math.random() * realCount);
+    const pool: number[] = JSON.parse(container?.dataset.landingPool || '[]');
+    const candidates = pool.length ? pool : Array.from({ length: realCount }, (_, i) => i);
+    const randomIndex = firstRealIndex + candidates[Math.floor(Math.random() * candidates.length)];
     const landing = sections[randomIndex];
 
     landing?.scrollIntoView({ behavior: 'instant', inline: 'start' });
@@ -237,7 +272,7 @@ const coverSizes = (aspectRatio: number) =>
     height: 100%;
     scroll-snap-align: start;
     scroll-snap-stop: always;
-    background: #fff;
+    background: var(--surface);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -283,22 +318,42 @@ const coverSizes = (aspectRatio: number) =>
     gap: 4px;
     text-align: left;
     color: inherit;
+    /* Full bredde av rammen — altså av fotografiet — slik at telleren lander
+       nøyaktig på bildets høyrekant. */
+    align-self: stretch;
+  }
+
+  .caption-top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1.5rem;
+    width: 100%;
+  }
+
+  .scroll-caption .counter {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    letter-spacing: 0.08em;
+    color: var(--ink-subtle);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
   }
 
   .scroll-caption .year {
-    font-family: 'Space Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 0.8rem;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: #888;
+    color: var(--ink-subtle);
   }
 
   .scroll-caption .title {
-    font-family: 'Space Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 1.2rem;
     font-weight: 500;
     line-height: 1.3;
-    color: #111;
+    color: var(--ink);
   }
 
   .nav-arrow {
@@ -313,7 +368,7 @@ const coverSizes = (aspectRatio: number) =>
     border-radius: 50%;
     font-size: 1.6rem;
     line-height: 1;
-    color: #111;
+    color: var(--ink);
     cursor: pointer;
     opacity: 0;
     transition: opacity 0.2s ease;
@@ -324,13 +379,15 @@ const coverSizes = (aspectRatio: number) =>
     opacity: 1;
   }
 
-  /* Touch devices have no hover, so the arrows would otherwise never appear —
-     leaving no visible hint that there are more projects to swipe to at all.
-     Shown permanently (a little softer) rather than on tap, since the point
-     is the affordance itself. */
+  /* Touch devices have no hover, so the arrows used to be left permanently
+     visible — the only hint that there were more projects at all. That put two
+     white circles on top of the photo itself on every phone. The counter in the
+     caption ("05 / 14") now carries that information without covering anything,
+     and swiping is the natural gesture here anyway, so the arrows are dropped
+     entirely where there's no pointer to reveal them. */
   @media (hover: none) {
     .nav-arrow {
-      opacity: 0.75;
+      display: none;
     }
   }
 
@@ -344,7 +401,7 @@ const coverSizes = (aspectRatio: number) =>
 
   .empty-state {
     text-align: center;
-    color: #666;
+    color: var(--ink-muted);
     padding: 80px 20px;
   }
 </style>
