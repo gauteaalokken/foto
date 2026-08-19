@@ -1,0 +1,17 @@
+currency: "NOK"
+sizes:
+  - name: "A2"
+    dimensions: "420 × 594 mm"
+    price: 1200
+    framePrice: 2200
+    frameSize: "50 × 70 cm"
+  - name: "A3"
+    dimensions: "297 × 420 mm"
+    price: 600
+    framePrice: 1200
+    frameSize: "40 × 50 cm"
+  - name: "A4"
+    dimensions: "210 × 297 mm"
+    price: 300
+    framePrice: 800
+    frameSize: "30 × 40 cm"

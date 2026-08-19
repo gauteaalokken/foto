@@ -20,6 +20,26 @@ const prints = defineCollection({
   }),
 });
 
+// Størrelser og priser, felles for alle prints. Lå tidligere hardkodet i
+// prints/[slug].astro — og i to språkversjoner, så en prisendring måtte gjøres
+// seks steder for å ikke etterlate en av dem feil.
+const printSettings = defineCollection({
+  loader: collectionGlob('printSettings'),
+  schema: z.object({
+    currency: z.string().nullable().optional(),
+    sizes: z.array(
+      z.object({
+        name: z.string(),
+        dimensions: z.string(),
+        price: z.coerce.number(),
+        // Rammepris er valgfri: en størrelse kan selges kun som papir.
+        framePrice: z.coerce.number().nullable().optional(),
+        frameSize: z.string().nullable().optional(),
+      })
+    ),
+  }),
+});
+
 const projects = defineCollection({
   loader: collectionGlob('projects'),
   schema: z.object({
@@ -33,6 +53,10 @@ const projects = defineCollection({
     // Optional explicit homepage cover — falls back to pages[0] when unset,
     // so an editor can pick a cover without having to reorder the pages list.
     cover: z.string().nullable().optional(),
+    // Bare relevant for fullskjerm-forsiden, som åpner på et tilfeldig
+    // prosjekt: når minst ett prosjekt er merket, trekkes åpningsbildet bare
+    // blant de merkede. Rekkefølgen man scroller gjennom er uendret.
+    featured: z.boolean().nullable().optional(),
     pages: z.array(z.string()),
   }),
 });
@@ -151,6 +175,7 @@ const homepageSettings = defineCollection({
 export const collections = {
   feed,
   prints,
+  printSettings,
   projects,
   fjellmaraton,
   portfolio,

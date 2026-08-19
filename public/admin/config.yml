@@ -41,6 +41,7 @@ collections:
       - { label: "Title", name: "title", widget: "string", hint: "e.g. My Book Title" }
       - { label: "Year", name: "year", widget: "string", hint: "e.g. 2024 — shown under the cover on the homepage" }
       - { label: "Order", name: "order", widget: "number", required: false, hint: "Optional. Lower numbers show first on the homepage, overriding the year sort. Leave blank to just sort by year." }
+      - { label: "Åpningsbilde", name: "featured", widget: "boolean", required: false, default: false, hint: "Bare for fullskjerm-forsiden, som åpner på et tilfeldig prosjekt. Merk av på de sterkeste prosjektene, så trekkes åpningsbildet bare blant dem. Er ingen merket, kan forsiden åpne på hva som helst." }
       - label: "Cover"
         name: "cover"
         widget: "image"
@@ -294,6 +295,25 @@ collections:
                     public_url: https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev
                     access_key_id: a74d879decb219fc298c10edd12ecda5
                     prefix: "blog/"
+
+  - name: "printSettings"
+    label: "Print-priser"
+    files:
+      - name: "main"
+        label: "Print-priser"
+        file: "src/content/printSettings/index.yml"
+        fields:
+          - { label: "Valuta", name: "currency", widget: "string", required: false, default: "NOK", hint: "Vises i den engelske versjonen på printsiden." }
+          - label: "Størrelser"
+            name: "sizes"
+            widget: "list"
+            hint: "Gjelder alle prints. Én rad per størrelse — vises som pristabell på hver printside."
+            fields:
+              - { label: "Navn", name: "name", widget: "string", hint: "f.eks. A2" }
+              - { label: "Mål", name: "dimensions", widget: "string", hint: "f.eks. 420 × 594 mm" }
+              - { label: "Pris uten ramme", name: "price", widget: "number", value_type: "int" }
+              - { label: "Pris med ramme", name: "framePrice", widget: "number", value_type: "int", required: false, hint: "La stå tom hvis størrelsen bare selges som papir." }
+              - { label: "Rammestørrelse", name: "frameSize", widget: "string", required: false, hint: "f.eks. 50 × 70 cm" }
 
   - name: "prints"
     label: "Prints"
