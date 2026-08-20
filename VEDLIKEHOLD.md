@@ -3,7 +3,7 @@
 Praktisk steg-for-steg for å drifte gauteaalokken.com uten kodebakgrunn.
 Teknisk referanse ligger i [KONTEKST-FOR-KI.md](KONTEKST-FOR-KI.md) — den er til KI-modeller, denne er til deg.
 
-Sist oppdatert: 2026-08-16.
+Sist oppdatert: 2026-08-20.
 
 **Faste adresser**
 | Hva | Hvor |
@@ -105,7 +105,9 @@ Feeden har 936 bilder i dag. Lista i CMS-en er lang — nye bilder legges neders
 3. **Photo** — bildet av den innrammede printen.
 4. Publish.
 
-**Priser og all tekst på print-sidene ligger i koden, ikke i CMS-en**, og er felles for alle prints. Skal en pris endres, se punkt 9 — det er en kodeendring, og den slår ut på alle prints samtidig.
+**Priser og størrelser endrer du i CMS-en**: CMS → **Print-priser**. De er felles for alle prints, så en endring der slår ut på alle print-sidene samtidig — og på både den norske og den engelske delen av siden. Legg til, fjern eller endre en størrelse i lista; «Rammepris» kan stå tom hvis størrelsen bare selges som papir.
+
+Resten av teksten på print-sidene — om papir, innramming og betaling — ligger fortsatt i koden, i `src/pages/prints/[slug].astro`. Den står i én norsk og én engelsk blokk, og begge må endres. Se punkt 9.
 
 ---
 
@@ -117,6 +119,12 @@ Feeden har 936 bilder i dag. Lista i CMS-en er lang — nye bilder legges neders
 - 2–4 bilder passer best.
 
 **Bytte bildene i rutenettet under**: samme sted, feltet «Photos».
+
+**Adresse-knappen** (CMS → Flaksjøen Fjellmaraton → «Adresse-knapp»):
+Knappen over nedlastingene som åpner kartet. Del stedet i Google Maps, kopier lenka, og lim den inn i «Lenke til kart». «Tekst på knappen» er det som står på den. Vil du skjule knappen: slå av «enabled» — du trenger ikke slette lenka.
+
+**Filer til nedlasting** (CMS → Flaksjøen Fjellmaraton → «Filer til nedlasting»):
+Vises under påmeldingsknappen. GPX-løypene ligger her i dag, men det kan være hva som helst — PDF, bilder, en startliste. «Fil» er selve fila (last den opp der), «Navn» er teksten folk ser. Dra radene for å endre rekkefølgen. Filene havner i mappa `gpx/` i R2 uansett filtype; det er bare et mappenavn, og det gjør ingen skade.
 
 **Se påmeldingene**: de skrives til et Google Sheet, ikke til nettsiden. CMS-en viser dem ikke.
 
@@ -473,3 +481,18 @@ Fyll ut ved å redigere denne fila på github.com (blyantikonet → skriv → **
 **Hvis du blir borte en stund**
 - Hvem kan overta / kontaktes:
 - Hva som må skje minst én gang i året for at siden skal leve videre:
+
+---
+
+## 18. Én gang i året
+
+Fire ting holder siden i live når ingen jobber med den. Sett gjerne en påminnelse i kalenderen.
+
+| Hva | Hvorfor | Hvor |
+|---|---|---|
+| **Fornye domenet** | Den klart vanligste måten en fungerende nettside dør på. Sjekk at automatisk fornyelse er på, og at varselet går til en e-post du faktisk leser. | Hos registraren — se punkt 17 |
+| **Oppdatere GitHub Actions** | GitHub pensjonerer gamle actions ved å slutte å kjøre dem, og da stopper publiseringen selv om ingenting i koden er galt. Ser du «Node.js NN is deprecated» i byggeloggen, er det tid. | `.github/workflows/deploy.yml` — be en KI-modell om nyeste versjonsnumre |
+| **Se over lista i `public/robots.txt`** | Nye KI-crawlere dukker opp jevnlig. Be om en oppdatert liste, lim inn, commit. Husk at `scripts/robots.txt` skal holdes i takt og lastes opp til R2 på nytt — se punkt 10. | `public/robots.txt` |
+| **Sjekke at Cloudflare-kontoen er i orden** | Ryker betalingen eller passordet, forsvinner alle bildene på siden samtidig. | Cloudflare-dashbordet |
+
+Og én ting til, som ikke haster, men som er verdt å gjøre mens du husker det: åpne noen filer fra den lokale sikkerhetskopien av bildene og se at de faktisk lar seg åpne. En kopi ingen har verifisert er en antakelse, ikke en sikkerhetskopi.

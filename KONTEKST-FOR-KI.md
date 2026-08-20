@@ -127,7 +127,8 @@ foto/
 │   │   ├── printSettings/index.yml Én fil. Størrelser og priser, felles for alle prints.
 │   │   ├── blog/*.yml             1 blogginnlegg. Én fil per innlegg. Skrives av CMS.
 │   │   ├── feed/index.yml         Én fil, 936 bilde-URL-er. Skrives av CMS eller sort-feed.mjs.
-│   │   ├── fjellmaraton/index.yml Én fil, 3 toppbilder + 46 galleribilder.
+│   │   ├── fjellmaraton/index.yml Én fil: 3 toppbilder, 46 galleribilder, adresse-knapp og
+│   │   │                          filer til nedlasting (GPX).
 │   │   ├── homepageSettings/index.yml  Én fil, ett felt: hvilken av de fire forsidene som vises.
 │   │   ├── blogSettings/index.yml Én fil. Tittel, intro, layout og nav-synlighet for /blogg.
 │   │   └── portfolio/index.yml    Én fil. Bildeliste + nav-synlighet for /portefolje. Tom i dag.
@@ -363,9 +364,18 @@ photos:
 | Felt | Type | Påkrevd | Styrer |
 |---|---|---|---|
 | `topPhotos` | liste med bilde-URL-er | Nei (`null` når tom) | Bånd øverst på siden, over påmeldingsknappen, i full bredde. **Første bilde er banneret og havner i midten**, resten fordeles jevnt på hver side. Under 900 px skjermbredde vises bare banneret. 2–4 bilder passer best. |
+| `address` | objekt: `enabled`, `label`, `url` | Nei (`null` når tomt) | Knapp over nedlastingene som åpner et kart. `enabled` slår den av og på, `label` er teksten på knappen, `url` er lenka (delt fra Google Maps). CMS-felt: «Adresse-knapp». |
+| `downloads` | liste med `{ name, file }` | Nei (`null` når tom) | Filer til nedlasting under påmeldingsknappen — GPX-løyper i dag, men kan være hva som helst. `name` er teksten, `file` er URL-en. Filtypen leses ut av selve fila. Rekkefølgen i lista er rekkefølgen på siden. CMS-felt: «Filer til nedlasting». |
 | `photos` | liste med bilde-URL-er | Ja | Rutenettet under påmeldingsknappen. 46 stk i dag. |
 
 ```yaml
+address:
+  enabled: true
+  label: Adresse
+  url: https://maps.app.goo.gl/…
+downloads:
+  - name: Korte runden 12k
+    file: https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/gpx/…gpx
 topPhotos:
   - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/44.jpg
   - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/FFM 26 4_1.jpg
@@ -390,6 +400,7 @@ photos:
 | `prints/` | Prints' `photo` |
 | `feed/` | Feed-siden |
 | `fjellmaraton/` | Fjellmaraton-sidens `topPhotos` og `photos` |
+| `gpx/` | Fjellmaraton-sidens `downloads` — GPX-filer, ikke bilder. Går ikke gjennom bildepipelinen; lenkes rått. |
 | `blog/` | Blogginnleggenes `cover` og alle bilder i blokkene |
 | `portfolio/` | Portefølje-sidens `photos` |
 
@@ -399,7 +410,7 @@ Full absolutt URL, alltid:
 Koden sjekker på `^https?://` for å avgjøre om et bilde skal hentes fra R2 eller fra `public/`.
 
 **Hva som skjer med bildene under bygg — én pipeline for alt**
-`src/lib/resolveImage.ts` laster ned originalen, skalerer med sharp og lagrer som **WebP** med filnavn = SHA1 av `URL:bredde:kvalitet`, i `node_modules/.image-staging/`. Etter bygget kopieres de til `dist/optimized/`. 1893 filer der i dag.
+`src/lib/resolveImage.ts` laster ned originalen, skalerer med sharp og lagrer som **WebP** med filnavn = SHA1 av `URL:bredde:kvalitet`, i `node_modules/.image-staging/`. Etter bygget kopieres de til `dist/optimized/`. 1894 filer der i dag.
 Mellomlageret gjenbrukes mellom bygg (og caches i GitHub Actions), så et uendret bilde skaleres aldri på nytt.
 
 **Astros egen `getImage()` brukes ikke lenger noe sted.** Print-sidene gjorde det tidligere, og lastet derfor ned og skalerte 6–23 MB-originaler på nytt ved hvert eneste bygg. De bruker nå samme pipeline som resten, og `dist/_astro/` inneholder bare én CSS-fil.
@@ -511,7 +522,7 @@ tilbake en `<link>` mot `fonts.googleapis.com`.
 
 I tillegg finnes JS-baserte breakpoints i rutenettene (ikke CSS): feed bruker 480/768/1200/1440 px til å velge 5/7/9/14/20 kolonner; prosjektsider og fjellmaraton bruker 640/1024 px til 2/3/4 kolonner.
 
-**Radius**: brukes ett eneste sted, `border-radius: 4px` på bestillingsknappen i `prints/[slug].astro`. Alt annet har skarpe hjørner — det er med vilje.
+**Radius**: selve fotosidene har skarpe hjørner med vilje — eneste unntak er `4px` på bestillingsknappen i `prints/[slug].astro` og runde bla-piler (`50%`) på fullskjermsforsiden og i bloggen. **Verktøyene er en egen verden**: der er `--tool-radius` (`6px`) gjennomgående, kortene på `/fotoverktoy` har `10px`, og Instagram-verktøyet bruker i tillegg `12px` og `999px` for å etterligne Instagrams eget utseende. Legg ikke runde hjørner på fotosidene fordi verktøyene har dem.
 
 **Slik endrer du en farge riktig**
 Endre variabelen i `:root` i `src/layouts/Layout.astro` — ikke forekomstene rundt om i filene.
@@ -594,7 +605,7 @@ Lagret som `src/pages/om.astro` blir dette `/om`. Importstien til `Layout` har e
 | `/404` | `src/pages/404.astro` | Feilside |
 | `/admin` | `public/admin/index.html` | Sveltia CMS (ikke en Astro-side) |
 | `/fotoverktoy` | `src/pages/fotoverktoy/index.astro` | Oversikt med tre kort |
-| `/fotoverktoy/grid`, `/instagram`, `/kalender` | `src/pages/fotoverktoy/*.astro` | Verktøyene. Markup i `.astro`, logikk i `public/verktoy/*.js`, felles utseende i `src/styles/verktoy.css` |
+| `/fotoverktoy/grid`, `/fotoverktoy/instagram`, `/fotoverktoy/kalender` | `src/pages/fotoverktoy/grid.astro`, `.../instagram.astro`, `.../kalender.astro` | Verktøyene. Markup i `.astro`, logikk i `public/verktoy/<navn>.js`, felles utseende i `src/styles/verktoy.css` |
 
 **Fotoverktøyene** (flyttet inn i Astro 2026-08-19)
 
@@ -631,12 +642,13 @@ hentet samme JSZip fra to ulike CDN-er uten SRI. `heic2any` (1,3 MB) lastes
 først når noen faktisk drar inn en HEIC-fil; adressen sendes inn via
 `data-heic-src` på script-taggen.
 
-**Komponenter og layout** (det er fem)
+**Komponenter og layout** (det er seks)
 - `src/layouts/Layout.astro` — props: `title` (str., default «Gaute Aaløkken»), `description` (str., default fotografi-teksten), `image` (str., default et R2-bilde), `bodyClass` (str., valgfri — brukes av fullskjermsforsiden, som må låse rullingen på `<body>`, og av verktøysidene, som setter `tool-page`). Gir `<head>`, all SEO/Open Graph/Twitter-meta, canonical-URL, **designvariablene i `:root`**, selvhostet Space Mono, global CSS og `<Header />`. Alle sider bruker den.
 - `src/components/Header.astro` — ingen props. Navnelenke til forsiden, meny (Flaksjøen Fjellmaraton, Prints, Feed, Fotoverktøy), e-post-ikon og Instagram-ikon. Leser i tillegg `portfolio` og `blogSettings` fra innholdet, og skyter inn «Portefølje» og «Blogg» på plass 1 i menyen når `showInNav` er satt. Under 640 px bredde ligger hele menyen bak én knapp; panelet lukker seg ved trykk på en lenke, trykk utenfor og Escape.
 - `src/components/homepage/GridHomepage.astro` — props: `projects`, `tight`. Rutenettforsiden. `tight` slår av de tilfeldige tomme rutene.
 - `src/components/homepage/FullscreenScrollHomepage.astro` — props: `projects`. Ett prosjekt om gangen, sideveis rulling med uendelig løkke (klonet første/siste), tilfeldig startprosjekt, piltaster og bla-piler.
 - `src/components/homepage/PortfolioGridHomepage.astro` — props: `photos`. Den gamle forsiden: masonry + lightbox.
+- `src/layouts/VerktoyLayout.astro` — props: `tittel`, `beskrivelse`, `lagring`, `flyktig`. Skallet rundt hvert fotoverktøy: toppmeny fra `Layout.astro`, sidepanel til venstre, lerret til høyre. Slots: `sidebar`, `sidebar-footer`, `sidebar-header-extra` og default-sloten. Beskrevet i detalj rett over.
 
 Forsidekomponentene tar imot ferdig oppløste bilder fra `index.astro` og gjør ingen bildebehandling selv.
 
@@ -646,6 +658,8 @@ Forsidekomponentene tar imot ferdig oppløste bilder fra `index.astro` og gjør 
 - `src/lib/fetchBuffer.ts` — `fetchWithRetry(url)`, 15 s timeout, 3 forsøk.
 - `src/lib/concurrency.ts` — `mapWithConcurrency(liste, maksSamtidig, fn)`.
 - `src/lib/markdown.ts` — `markdownToHtml(markdown)`. Brukes kun av bloggens `text`-blokker.
+- `src/lib/site.ts` — `SITE_EMAIL`, `INSTAGRAM_HANDLE`, `INSTAGRAM_URL`, `mailtoWithSubject(emne)`. Kontaktopplysningene ett sted; de lå før skrevet ut i både `Header.astro` og `prints/[slug].astro` og hadde rukket å drive fra hverandre (én med punktum i adressen, én uten).
+- `src/lib/verktoyUrl.ts` — `verktoyUrl('grid.js')` → `/verktoy/grid.js?v=<avtrykk>`. Kjører kun ved bygging. Se punkt 8.
 
 **Alle sider bruker `lib/`-pipelinen.** `resolveImageSrcSet` brukes der ett bilde trengs i flere størrelser (forsideomslag, fjellmaraton-banner), `resolveImageWithAspectRatio` der rutenettet må vite sideforholdet før bildet er lastet, og `resolveImage` ellers. `prints/index.astro` har fortsatt sin egen lokale kopi av `withBase` — den gjør det samme som den i `lib/`.
 
@@ -701,7 +715,7 @@ Domenet `gauteaalokken.com` kommer fra `public/CNAME`, som kopieres til `dist/CN
 - CMS-en lager filnavnet automatisk fra tittelen når du oppretter noe nytt.
 - **Årstall**: alltid streng i enkeltfnutter, `year: '2024'`. Uten fnutter tolkes det som tall og valideringen brekker.
 - **Bilde-URL-er**: alltid full absolutt R2-URL.
-- **Språk**: siden er norsk (`<html lang="no">`). All synlig tekst og alle `aria-label`-er er norske. Unntakene er skjemaets feltnavn på fjellmaraton («First Name», «Email») og print-sidene, som med vilje har norsk og engelsk tekst under hverandre. Ingen flerspråklig oppsett.
+- **Språk**: siden er norsk (`<html lang="no">`). All synlig tekst og alle `aria-label`-er er norske — også påmeldingsskjemaet, som tidligere hadde engelske feltnavn («First Name», «Email»). Eneste unntak er print-sidene, som med vilje har norsk og engelsk tekst under hverandre. Ingen flerspråklig oppsett. **Merk:** feltnavnene skjemaet *sender* til Google Apps Script (`firstName`, `lastName`, `runde` …) er noe annet enn etikettene som vises, og de skal ikke oversettes — endres de, må Apps Script endres og redeployes i samme slengen.
 - **Commit-meldinger**: én linje, engelsk, imperativ («Add a CMS field for…»). CMS-genererte commits heter `Create Projects "x"` / `Update Projects "x"`.
 - **CSS**: skrives i `<style>` nederst i hver `.astro`-fil. Farger og skrift som `var(--navn)`, aldri som verdi. `is:global` brukes bare der JS bygger elementer dynamisk (forside, feed, verktøysidene) eller stilene skal gjelde hele dokumentet (`Layout.astro`).
 - **Kommentarer i koden er lange og forklarer hvorfor.** Behold dem — de dokumenterer feil som allerede er rettet.
@@ -723,7 +737,7 @@ Domenet `gauteaalokken.com` kommer fra `public/CNAME`, som kopieres til `dist/CN
 | `astro.config.mjs` — `flush-staged-images`-integrasjonen | Uten den havner ingen skalerte bilder i `dist/optimized/`, og alle bilder på forside/feed/prosjekter/fjellmaraton blir døde. |
 | `astro.config.mjs` — `setGlobalDispatcher(new Agent({...}))` | Uten timeouts kan én treg R2-forbindelse henge byggejobben i det uendelige. |
 | `astro.config.mjs` — `site: 'https://gauteaalokken.com'` | Styrer canonical-URL og delingslenker. |
-| `src/lib/resolveImage.ts`, `imageOutputQueue.ts`, `fetchBuffer.ts`, `concurrency.ts` | Bildepipelinen. Endres hash-formelen eller mellomlagerstien, må alle 1893 bilder lastes ned og skaleres på nytt. |
+| `src/lib/resolveImage.ts`, `imageOutputQueue.ts`, `fetchBuffer.ts`, `concurrency.ts` | Bildepipelinen. Endres hash-formelen eller mellomlagerstien, må alle 1894 bilder lastes ned og skaleres på nytt. |
 | URL-kodingen i `src/lib/fetchBuffer.ts` (`normalizeUrl`) | Filnavn med mellomrom (f.eks. «FFM 26 4_1.jpg») får en ukodet space i URL-en fra CMS-en. Uten denne funksjonen henger `fetch()` til timeouten slår inn — på hvert forsøk — i stedet for å feile raskt. |
 | `showInNav`-logikken i `src/components/Header.astro` | Styrer om Blogg og Portefølje er lenket fra menyen. Sidene finnes uansett — fjernes logikken, blir de enten alltid synlige eller umulige å nå fra menyen. |
 | Filnavn i `src/content/projects/` og `src/content/prints/` | Filnavnet **er** URL-en. |

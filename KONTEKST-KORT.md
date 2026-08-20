@@ -8,7 +8,7 @@ begrenset kvote — den lange fila er ti ganger så stor og spiser opp gratispla
 **Bruk den lange til:** ny funksjon, bilder som oppfører seg rart, endringer i flere
 filer samtidig, eller når modellen sier den mangler noe.
 
-Sist oppdatert: 2026-08-19. Alle verdier er lest ut av repoet.
+Sist oppdatert: 2026-08-20. Alle verdier er lest ut av repoet.
 
 ---
 
@@ -46,8 +46,9 @@ Sist oppdatert: 2026-08-19. Alle verdier er lest ut av repoet.
 7. **Brukeren har ikke kodebakgrunn.** Forklar kort hva endringen gjør og hvor den
    lagres, uten sjargong.
 8. **Er dette egentlig innhold?** Bilder, titler, årstall, rekkefølge på forsiden,
-   print-priser og valg av forsidelayout endres i **CMS-en på `/admin`**, ikke i kode.
-   Si det i stedet for å skrive om en fil.
+   print-priser, valg av forsidelayout, og adresse-knappen og filene til nedlasting på
+   fjellmaraton-siden endres i **CMS-en på `/admin`**, ikke i kode. Si det i stedet for
+   å skrive om en fil.
 9. **Én fil om gangen.** Skal to filer endres, si det tydelig og ta dem i tur.
 
 ---
@@ -136,8 +137,10 @@ domene** via npm-pakken `@fontsource/space-mono`, importert øverst i `Layout.as
 Verktøyene har i tillegg `--tool-accent` i `src/styles/verktoy.css`, som peker på `--ink`
 og styrer primærknapper, valgt alternativ, fokusramme og slipp-soner i alle tre verktøy.
 
-**Radius brukes ett eneste sted** (`4px` på bestillingsknappen). Alt annet har skarpe
-hjørner med vilje.
+**Skarpe hjørner på fotosidene, runde i verktøyene.** På selve nettstedet er `4px` på
+bestillingsknappen og runde bla-piler unntakene; ellers ingen radius, med vilje.
+Verktøyene er en egen verden med `--tool-radius` (`6px`) og kort på `10px`. Ikke ta med
+runde hjørner fra verktøyene over på fotosidene.
 
 ---
 
