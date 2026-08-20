@@ -183,6 +183,7 @@ hjørner med vilje.
 | Honeypot-feltet `name="website"` i skjemaet | Spamfelle. Gjøres det synlig, kastes ekte påmeldinger. |
 | `is:global` i `Layout.astro`, `feed/index.astro`, de tre forsidekomponentene og de tre verktøysidene | Elementene lages av JS — uten den er de ustilte. |
 | `is:inline` på `<script>` i verktøysidene | Uten den slutter hver knapp å virke, uten feilmelding. |
+| `verktoyUrl(...)` rundt JS-adressene i verktøysidene | Legger et innholdsavtrykk på adressen. Uten det kan nettleseren servere en gammel kopi av verktøyet etter en endring. |
 | Gruppa `User-agent: *` i `public/robots.txt` | Skal ha `Allow: /`. `Disallow: /` fjerner hele siden fra Google. |
 | `package-lock.json`, `dist/`, `node_modules/` | Genereres automatisk. |
 | `.env.local` | Inneholder R2-hemmeligheten. Skal aldri limes inn i en chat. |

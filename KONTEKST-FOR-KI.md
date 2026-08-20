@@ -147,8 +147,10 @@ foto/
 │   │   ├── fetchBuffer.ts         Nedlasting med timeout, 3 forsøk og URL-koding.
 │   │   ├── markdown.ts            Markdown → HTML. Brukes kun av bloggens tekstblokker.
 │   │   ├── concurrency.ts         Kjører maks N nedlastinger samtidig.
-│   │   └── site.ts                E-postadresse og Instagram-lenke. Ett sted, brukt av både
-│   │                              Header.astro og prints/[slug].astro.
+│   │   ├── site.ts                E-postadresse og Instagram-lenke. Ett sted, brukt av både
+│   │   │                          Header.astro og prints/[slug].astro.
+│   │   └── verktoyUrl.ts          Adressen til en JS-fil i public/verktoy/, med innholdsavtrykk
+│   │                              (?v=3f9a1c02) så nettleseren ikke serverer en gammel kopi.
 │   ├── pages/                     Én fil = én URL.
 │   │   ├── index.astro            /                    (forside, prosjektrutenett)
 │   │   ├── 404.astro              /404
