@@ -217,6 +217,35 @@ på én gang.
 Fjerner du det, pakker Astro fila som en modul med eget navnerom — og da slutter
 hver eneste knapp å virke, uten en eneste feilmelding noe sted. La `is:inline` stå.
 
+**Gruppene i sidepanelet** er vanlige `<details class="control-section">`. Skriv
+`open` på den som skal stå åpen når sida lastes, og la det stå tomt på den som
+skal starte lukket:
+
+```html
+<details class="control-section" open>
+  <summary>Ark</summary>
+  <div class="control-section-innhold">
+    ...kontrollene...
+  </div>
+</details>
+```
+
+Kontrollene finnes i DOM-en også når gruppa er lukket, så verktøyets JS treffer
+dem som før. Bare Fotogrid er gruppert i dag; de to andre har få nok kontroller
+til at det ikke trengs.
+
+**Linja om hvor arbeidet blir av** settes som `lagring="..."` på
+`<VerktoyLayout>`. Legg til `flyktig` hvis verktøyet *ikke* lagrer noe — da vises
+den som en advarsel med rød strek i stedet for en nøytral opplysning. Fotogrid og
+Kalender lagrer i nettleseren (IndexedDB); Instagram-verktøyet lagrer ingenting.
+
+**Adressene til JS-filene får et avtrykk av innholdet automatisk**
+(`/verktoy/grid.js?v=3d9b7bae`), via `src/lib/verktoyUrl.ts`. Uten det kunne
+nettleseren servere en gammel kopi etter at du hadde endret verktøyet — filnavnet
+var jo det samme — og endringen så ut til ikke å ha skjedd. Du skal aldri måtte
+oppdatere et versjonsnummer for hånd; avtrykket regnes ut ved hvert bygg. Bruk
+`verktoyUrl('filnavn.js')` i `src`-attributtet, ikke en fast streng.
+
 **Bibliotekene i `public/verktoy/`** (jszip, jspdf, heic2any) er kopier av
 npm-pakker med samme navn, lagt i repoet med vilje: da virker verktøyene uten
 internett, og de kan ikke slutte å virke fordi en fremmed CDN legger om. Skal de

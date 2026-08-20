@@ -234,6 +234,10 @@
     }
 
     function clearAll() {
+      // Verktøyet lagrer ingenting, så et feiltrykk her kan ikke angres og
+      // kan heller ikke hentes tilbake ved omlasting.
+      if (!confirm('Fjerne alle ' + photos.length + ' bildene? Det kan ikke angres.')) return;
+
       photos = [];
       instagramFeed = [];
       document.getElementById('panoramaImages').value = '';

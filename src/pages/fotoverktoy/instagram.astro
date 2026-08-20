@@ -10,11 +10,14 @@
   navnerom, og hver eneste knapp ville sluttet å virke uten en feilmelding.
 */
 import VerktoyLayout from '../../layouts/VerktoyLayout.astro';
+import { verktoyUrl } from '../../lib/verktoyUrl';
 ---
 
 <VerktoyLayout
   tittel="Instagram-maler"
   beskrivelse="Sett opp innlegg og se hvordan de tar seg ut i profilrutenettet."
+  lagring="Dette verktøyet lagrer ingenting. Laster du siden på nytt, må bildene legges inn igjen — eksporter før du forlater den."
+  flyktig
 >
   <Fragment slot="sidebar">
     <div class="control-group">
@@ -146,8 +149,8 @@ import VerktoyLayout from '../../layouts/VerktoyLayout.astro';
   </div>
 </VerktoyLayout>
 
-<script is:inline src="/verktoy/jszip.min.js"></script>
-<script is:inline src="/verktoy/instagram.js"></script>
+<script is:inline src={verktoyUrl('jszip.min.js')}></script>
+<script is:inline src={verktoyUrl('instagram.js')}></script>
 
 <style is:global>
   /* Bare det som er særegent for Instagram-verktøyet. Sidepanel, knapper og

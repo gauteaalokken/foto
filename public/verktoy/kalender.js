@@ -20,7 +20,10 @@ function lastHeicKonverterer() {
 
   heicKonverterer = new Promise(function (resolve, reject) {
     var tagg = document.createElement('script');
-    tagg.src = '/verktoy/heic2any.min.js';
+    // Adressen står på <script>-taggen som lastet denne fila, slik at den får
+    // med seg samme versjonsavtrykk som resten (se src/lib/verktoyUrl.ts).
+    var taggMedAdresse = document.querySelector('script[data-heic-src]');
+    tagg.src = (taggMedAdresse && taggMedAdresse.dataset.heicSrc) || '/verktoy/heic2any.min.js';
     tagg.onload = function () { resolve(window.heic2any); };
     tagg.onerror = function () {
       // Neste HEIC-fil skal få prøve på nytt framfor å arve en feilet lasting.
@@ -627,7 +630,7 @@ function lastHeicKonverterer() {
     }
 
     async function clearAll() {
-        if(!confirm("Slett alt innhold?")) return;
+        if (!confirm(`Slette alle ${photoLibrary.length} bilder og all tekst i kalenderen? Det kan ikke angres — lagre en kopi til fil først hvis du er i tvil.`)) return;
         const tx = db.transaction(['photos', 'state'], 'readwrite');
         tx.objectStore('photos').clear();
         tx.objectStore('state').clear();

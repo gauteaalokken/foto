@@ -10,9 +10,14 @@
   navnerom, og hver eneste knapp ville sluttet å virke uten en feilmelding.
 */
 import VerktoyLayout from '../../layouts/VerktoyLayout.astro';
+import { verktoyUrl } from '../../lib/verktoyUrl';
 ---
 
-<VerktoyLayout tittel="Fotogrid" beskrivelse="Flere bilder per ark, satt opp til utskrift.">
+<VerktoyLayout
+  tittel="Fotogrid"
+  beskrivelse="Flere bilder per ark, satt opp til utskrift."
+  lagring="Arbeidet lagres i denne nettleseren, ikke på nett. Tømmer du nettleserdata, eller bytter maskin, er det borte."
+>
   <Fragment slot="sidebar-header-extra">
     <div class="layout-switcher">
       <select id="layoutSelect" onchange="onLayoutSelectChange(this.value)"></select>
@@ -22,121 +27,147 @@ import VerktoyLayout from '../../layouts/VerktoyLayout.astro';
   </Fragment>
 
   <Fragment slot="sidebar">
-    <div class="control-group">
-      <button type="button" id="uploadBtn" class="btn-primary" onclick="document.getElementById('fileInput').click()">
-        + Last opp bilder
-      </button>
-      <input type="file" id="fileInput" multiple accept="image/*" style="display: none" />
-      <p class="tool-note">Antall bilder: <span id="photoCount">0</span></p>
-    </div>
-
-    <div class="control-group">
-      <label for="projectName">Prosjektnavn</label>
-      <input type="text" id="projectName" placeholder="Mitt prosjekt" onchange="saveSettings()" />
-    </div>
-
-    <div class="control-group">
-      <label for="paperSize">Papirstørrelse</label>
-      <select id="paperSize" onchange="checkPaperSize(this)">
-        <option value="A4">A4</option>
-        <option value="A3">A3</option>
-        <option value="A2">A2</option>
-        <option value="PHOTO_10X15">10×15 foto</option>
-        <option value="INSTASTORY">Instagram Story</option>
-        <option value="INSTAINLEGG">Instagram-innlegg</option>
-        <option value="CUSTOM">Spesial…</option>
-      </select>
-    </div>
-
-    <div class="control-group">
-      <span class="group-label">Orientering</span>
-      <div class="button-group">
-        <button type="button" id="portraitBtn" class="active" onclick="setOrientation('portrait')">Stående</button>
-        <button type="button" id="landscapeBtn" onclick="setOrientation('landscape')">Liggende</button>
+    {/* Fjorten kontroller på rad gjorde det like tidkrevende å finne «Marg»
+        som «Sorter etter farge». De tre gruppene man er innom hver gang står
+        åpne; det man sjelden rører er slått sammen og lukket. */}
+    <details class="control-section" open>
+      <summary>Bilder</summary>
+      <div class="control-section-innhold">
+        <div class="control-group">
+          <button type="button" id="uploadBtn" class="btn-primary" onclick="document.getElementById('fileInput').click()">
+            + Last opp bilder
+          </button>
+          <input type="file" id="fileInput" multiple accept="image/*" style="display: none" />
+          <p class="tool-note">Antall bilder: <span id="photoCount">0</span></p>
+        </div>
       </div>
-    </div>
+    </details>
 
-    <div class="control-group">
-      <label for="photosPerPage">Bilder per side</label>
-      <input type="range" id="photosPerPage" min="1" max="60" value="10" oninput="handleSliderChange('photosPerPage', this.value)" />
-      <input type="number" id="photosPerPageInput" value="10" min="1" max="60" aria-label="Bilder per side" onchange="handleInputChange('photosPerPage', this.value)" />
-      <span id="photosPerPageNote" class="tool-note" style="display: none"></span>
-    </div>
+    <details class="control-section" open>
+      <summary>Ark</summary>
+      <div class="control-section-innhold">
+        <div class="control-group">
+          <label for="projectName">Prosjektnavn</label>
+          <input type="text" id="projectName" placeholder="Mitt prosjekt" onchange="saveSettings()" />
+        </div>
 
-    <div class="control-group">
-      <label for="maxPages">Maks sider</label>
-      <select id="maxPages" onchange="debouncedAutoFlow()">
-        <option value="0">Ingen grense</option>
-        <option value="1">1 side</option>
-        <option value="2">2 sider</option>
-        <option value="3">3 sider</option>
-        <option value="4">4 sider</option>
-        <option value="5">5 sider</option>
-        <option value="6">6 sider</option>
-        <option value="7">7 sider</option>
-        <option value="8">8 sider</option>
-        <option value="9">9 sider</option>
-        <option value="10">10 sider</option>
-        <option value="12">12 sider</option>
-        <option value="15">15 sider</option>
-        <option value="20">20 sider</option>
-      </select>
-    </div>
+        <div class="control-group">
+          <label for="paperSize">Papirstørrelse</label>
+          <select id="paperSize" onchange="checkPaperSize(this)">
+            <option value="A4">A4</option>
+            <option value="A3">A3</option>
+            <option value="A2">A2</option>
+            <option value="PHOTO_10X15">10×15 foto</option>
+            <option value="INSTASTORY">Instagram Story</option>
+            <option value="INSTAINLEGG">Instagram-innlegg</option>
+            <option value="CUSTOM">Spesial…</option>
+          </select>
+        </div>
 
-    <div class="control-group">
-      <label for="pageTolerance">
-        Toleranse (+/−)
-        <span class="slider-val" id="toleranceValue">0</span>
-      </label>
-      <input type="range" id="pageTolerance" min="0" max="10" value="0" oninput="handleSliderChange('tolerance', this.value)" />
-      <input type="hidden" id="pageToleranceInput" value="0" />
-    </div>
+        <div class="control-group">
+          <span class="group-label">Orientering</span>
+          <div class="button-group">
+            <button type="button" id="portraitBtn" class="active" onclick="setOrientation('portrait')">Stående</button>
+            <button type="button" id="landscapeBtn" onclick="setOrientation('landscape')">Liggende</button>
+          </div>
+        </div>
 
-    <div class="control-group">
-      <label for="margin">
-        Marg (mm)
-        <span class="slider-val" id="marginValue">5</span>
-      </label>
-      <input type="range" id="margin" min="0" max="50" value="5" oninput="handleSliderChange('margin', this.value)" />
-      <input type="hidden" id="marginInput" value="5" />
-    </div>
-
-    <div class="control-group">
-      <label for="gap">
-        Avstand mellom bilder (mm)
-        <span class="slider-val" id="gapValue">2</span>
-      </label>
-      <input type="range" id="gap" min="0" max="20" value="2" oninput="handleSliderChange('gap', this.value)" />
-      <input type="hidden" id="gapInput" value="2" />
-    </div>
-
-    <div class="control-group">
-      <label for="bgColorText">Bakgrunn</label>
-      <div class="color-row">
-        <input
-          type="color"
-          id="bgColorPicker"
-          value="#FFFFFF"
-          aria-label="Velg bakgrunnsfarge"
-          oninput="document.getElementById('bgColorText').value=this.value; debouncedRender()"
-        />
-        <input
-          type="text"
-          id="bgColorText"
-          value="#FFFFFF"
-          onchange="document.getElementById('bgColorPicker').value=this.value; debouncedRender()"
-        />
+        <div class="control-group">
+          <label for="bgColorText">Bakgrunn</label>
+          <div class="color-row">
+            <input
+              type="color"
+              id="bgColorPicker"
+              value="#FFFFFF"
+              aria-label="Velg bakgrunnsfarge"
+              oninput="document.getElementById('bgColorText').value=this.value; debouncedRender()"
+            />
+            <input
+              type="text"
+              id="bgColorText"
+              value="#FFFFFF"
+              onchange="document.getElementById('bgColorPicker').value=this.value; debouncedRender()"
+            />
+          </div>
+        </div>
       </div>
-    </div>
+    </details>
 
-    <div class="control-group">
-      <span class="group-label">Ordne bildene</span>
-      <button type="button" class="btn-secondary" onclick="autoFlow(false)">Autoflyt (nullstill)</button>
-      <button type="button" class="btn-secondary" onclick="sortByColor()">Sorter etter farge</button>
-      <button type="button" class="btn-secondary" id="undoBtn" onclick="undo()" disabled>Angre (Ctrl+Z)</button>
-      <button type="button" class="btn-secondary" id="redoBtn" onclick="redo()" disabled>Gjør om (Ctrl+Y)</button>
-    </div>
+    <details class="control-section" open>
+      <summary>Oppsett</summary>
+      <div class="control-section-innhold">
+        <div class="control-group">
+          <label for="photosPerPage">Bilder per side</label>
+          <input type="range" id="photosPerPage" min="1" max="60" value="10" oninput="handleSliderChange('photosPerPage', this.value)" />
+          <input type="number" id="photosPerPageInput" value="10" min="1" max="60" aria-label="Bilder per side" onchange="handleInputChange('photosPerPage', this.value)" />
+          <span id="photosPerPageNote" class="tool-note" style="display: none"></span>
+        </div>
 
+        <div class="control-group">
+          <label for="margin">
+            Marg (mm)
+            <span class="slider-val" id="marginValue">5</span>
+          </label>
+          <input type="range" id="margin" min="0" max="50" value="5" oninput="handleSliderChange('margin', this.value)" />
+          <input type="hidden" id="marginInput" value="5" />
+        </div>
+
+        <div class="control-group">
+          <label for="gap">
+            Avstand mellom bilder (mm)
+            <span class="slider-val" id="gapValue">2</span>
+          </label>
+          <input type="range" id="gap" min="0" max="20" value="2" oninput="handleSliderChange('gap', this.value)" />
+          <input type="hidden" id="gapInput" value="2" />
+        </div>
+
+        <div class="control-group">
+          <label for="maxPages">Maks sider</label>
+          <select id="maxPages" onchange="debouncedAutoFlow()">
+            <option value="0">Ingen grense</option>
+            <option value="1">1 side</option>
+            <option value="2">2 sider</option>
+            <option value="3">3 sider</option>
+            <option value="4">4 sider</option>
+            <option value="5">5 sider</option>
+            <option value="6">6 sider</option>
+            <option value="7">7 sider</option>
+            <option value="8">8 sider</option>
+            <option value="9">9 sider</option>
+            <option value="10">10 sider</option>
+            <option value="12">12 sider</option>
+            <option value="15">15 sider</option>
+            <option value="20">20 sider</option>
+          </select>
+        </div>
+
+        <div class="control-group">
+          <label for="pageTolerance">
+            Toleranse (+/−)
+            <span class="slider-val" id="toleranceValue">0</span>
+          </label>
+          <input type="range" id="pageTolerance" min="0" max="10" value="0" oninput="handleSliderChange('tolerance', this.value)" />
+          <input type="hidden" id="pageToleranceInput" value="0" />
+          <p class="tool-note">Hvor mange bilder en side får avvike fra tallet over, når det gir et penere oppsett.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="control-section">
+      <summary>Ordne bildene</summary>
+      <div class="control-section-innhold">
+        <button type="button" class="btn-secondary" onclick="autoFlow(false)">Autoflyt (nullstill)</button>
+        <button type="button" class="btn-secondary" onclick="sortByColor()">Sorter etter farge</button>
+        <button type="button" class="btn-secondary" id="undoBtn" onclick="undo()" disabled>Angre (Ctrl+Z)</button>
+        <button type="button" class="btn-secondary" id="redoBtn" onclick="redo()" disabled>Gjør om (Ctrl+Y)</button>
+        <button type="button" class="btn-danger" id="clearBtn" onclick="clearAll()">Slett alt</button>
+      </div>
+    </details>
+  </Fragment>
+
+  <Fragment slot="sidebar-footer">
+    {/* Oppløsningen hører sammen med eksporten, ikke med oppsettet — den
+        gjelder bare filene som lages, ikke det man ser på skjermen. */}
     <div class="control-group">
       <label for="dpi">Oppløsning ved eksport</label>
       <select id="dpi">
@@ -144,11 +175,6 @@ import VerktoyLayout from '../../layouts/VerktoyLayout.astro';
         <option value="300" selected>300 DPI</option>
       </select>
     </div>
-
-    <button type="button" class="btn-danger" id="clearBtn" onclick="clearAll()">Slett alt</button>
-  </Fragment>
-
-  <Fragment slot="sidebar-footer">
     <button type="button" class="btn-primary" id="exportPdfBtn" onclick="exportPDF()">Lagre som PDF</button>
     <button type="button" class="btn-secondary" id="exportBtn" onclick="exportGrid()">Lagre som JPG</button>
     <button type="button" class="btn-secondary" id="downloadAllBtn" onclick="downloadAllZip()">Last ned ZIP</button>
@@ -195,9 +221,9 @@ import VerktoyLayout from '../../layouts/VerktoyLayout.astro';
   </div>
 </div>
 
-<script is:inline src="/verktoy/jszip.min.js"></script>
-<script is:inline src="/verktoy/jspdf.umd.min.js"></script>
-<script is:inline src="/verktoy/grid.js"></script>
+<script is:inline src={verktoyUrl('jszip.min.js')}></script>
+<script is:inline src={verktoyUrl('jspdf.umd.min.js')}></script>
+<script is:inline src={verktoyUrl('grid.js')}></script>
 
 <style is:global>
   /* Bare det som er særegent for Fotogrid. Sidepanel, knapper og felt kommer

@@ -7,7 +7,11 @@
 
   Slik brukes den (se src/pages/fotoverktoy/grid.astro):
 
-    <VerktoyLayout tittel="Fotogrid" beskrivelse="Flere bilder per side">
+    <VerktoyLayout
+      tittel="Fotogrid"
+      beskrivelse="Flere bilder per ark"
+      lagring="Arbeidet lagres i denne nettleseren."
+    >
       <Fragment slot="sidebar">        ...kontrollene...     </Fragment>
       <Fragment slot="sidebar-footer"> ...eksportknapp...     </Fragment>
       ...lerretet...
@@ -26,9 +30,18 @@ interface Props {
   tittel: string;
   /** Én linje under tittelen om hva verktøyet gjør. */
   beskrivelse?: string;
+  /**
+   * Hvor arbeidet blir av. Vises nederst i sidepanelet. Sett `flyktig` når
+   * verktøyet ikke lagrer noe og alt forsvinner ved omlasting — da vises
+   * notisen som en advarsel i stedet for en opplysning.
+   */
+  lagring?: string;
+  flyktig?: boolean;
 }
 
-const { tittel, beskrivelse } = Astro.props;
+const { tittel, beskrivelse, lagring, flyktig = false } = Astro.props;
+
+const harBunn = Astro.slots.has('sidebar-footer') || Boolean(lagring);
 ---
 
 <Layout title={`${tittel} — Fotoverktøy`} description={beskrivelse} bodyClass="tool-page">
@@ -45,9 +58,10 @@ const { tittel, beskrivelse } = Astro.props;
         <slot name="sidebar" />
       </div>
 
-      {Astro.slots.has('sidebar-footer') && (
+      {harBunn && (
         <div class="sidebar-footer">
           <slot name="sidebar-footer" />
+          {lagring && <p class:list={['tool-storage', flyktig && 'flyktig']}>{lagring}</p>}
         </div>
       )}
     </aside>

@@ -1304,7 +1304,7 @@
     }
 
     async function clearAll() {
-      if(!confirm("Er du sikker på at du vil fjerne ALLE bilder og sider?")) return;
+      if (!confirm(`Slette alle ${photos.length} bilder og alle sider i dette designet? Det kan ikke angres.`)) return;
       photos.forEach(p => { URL.revokeObjectURL(p.originalSrc); URL.revokeObjectURL(p.previewSrc); });
       photos = []; pages = [[]]; depotPhotos = [];
       await clearDBForLayout();

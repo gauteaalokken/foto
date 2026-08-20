@@ -546,8 +546,43 @@ Lagret som `src/pages/om.astro` blir dette `/om`. Importstien til `Layout` har e
 | `/fotoverktoy` | `src/pages/fotoverktoy/index.astro` | Oversikt med tre kort |
 | `/fotoverktoy/grid`, `/instagram`, `/kalender` | `src/pages/fotoverktoy/*.astro` | Verktøyene. Markup i `.astro`, logikk i `public/verktoy/*.js`, felles utseende i `src/styles/verktoy.css` |
 
+**Fotoverktøyene** (flyttet inn i Astro 2026-08-19)
+
+Tre verktøy — Fotogrid, Instagram-maler, Kalender — som fram til da lå som
+løsrevne HTML-filer i `public/fotoverktoy/`, hver med sin egen kopi av
+toppmenyen. Arbeidsdelingen nå:
+
+- `src/layouts/VerktoyLayout.astro` — skallet. Props: `tittel`, `beskrivelse`,
+  `lagring` (linje om hvor arbeidet blir av) og `flyktig` (bool — sett den når
+  verktøyet ikke lagrer noe, da vises notisen som advarsel). Slots: `sidebar`,
+  `sidebar-footer`, `sidebar-header-extra`, og default-slot for lerretet.
+- `src/styles/verktoy.css` — alt felles utseende, scopet under `.tool-app`.
+  `--tool-accent` styrer primærknapper, valgt alternativ, fokusramme og
+  slipp-soner på én gang.
+- `src/pages/fotoverktoy/<navn>.astro` — bare markup.
+- `public/verktoy/<navn>.js` — all logikk, i globalt navnerom.
+
+**Tre ting som lett brekker her:**
+
+1. `<script>`-taggene har `is:inline`. Fjernes det, pakker Astro fila som en
+   modul med eget navnerom, og alle `onclick`-knappene slutter å virke uten en
+   eneste feilmelding.
+2. JS-adressene bygges med `verktoyUrl('grid.js')` fra `src/lib/verktoyUrl.ts`,
+   som henger på et innholdsavtrykk (`?v=3d9b7bae`). Ikke skriv faste strenger.
+3. Det finnes **ingen omdirigering** fra de gamle `.html`-adressene, og det er
+   med vilje: Astro lager en slik omdirigering som mappa `grid.html/`, og både
+   GitHub Pages og `astro preview` prøver `grid.html` *før* `grid/index.html`.
+   Da fanget omdirigeringen selve verktøysida og sendte den til seg selv i en
+   evig løkke. Ikke legg dem tilbake.
+
+Bibliotekene (`jszip`, `jspdf`, `heic2any`) ligger som filer i
+`public/verktoy/`, ikke på CDN — verktøyene virket tidligere bare med nett, og
+hentet samme JSZip fra to ulike CDN-er uten SRI. `heic2any` (1,3 MB) lastes
+først når noen faktisk drar inn en HEIC-fil; adressen sendes inn via
+`data-heic-src` på script-taggen.
+
 **Komponenter og layout** (det er fem)
-- `src/layouts/Layout.astro` — props: `title` (str., default «Gaute Aaløkken»), `description` (str., default fotografi-teksten), `image` (str., default et R2-bilde), `bodyClass` (str., valgfri — brukes bare av fullskjermsforsiden, som må låse rullingen på `<body>`). Gir `<head>`, all SEO/Open Graph/Twitter-meta, canonical-URL, Google Fonts, global CSS og `<Header />`. Alle sider bruker den.
+- `src/layouts/Layout.astro` — props: `title` (str., default «Gaute Aaløkken»), `description` (str., default fotografi-teksten), `image` (str., default et R2-bilde), `bodyClass` (str., valgfri — brukes av fullskjermsforsiden, som må låse rullingen på `<body>`, og av verktøysidene, som setter `tool-page`). Gir `<head>`, all SEO/Open Graph/Twitter-meta, canonical-URL, **designvariablene i `:root`**, selvhostet Space Mono, global CSS og `<Header />`. Alle sider bruker den.
 - `src/components/Header.astro` — ingen props. Navnelenke til forsiden, meny (Flaksjøen Fjellmaraton, Prints, Feed, Fotoverktøy), e-post-ikon og Instagram-ikon. Leser i tillegg `portfolio` og `blogSettings` fra innholdet, og skyter inn «Portefølje» og «Blogg» på plass 1 i menyen når `showInNav` er satt. Under 640 px bredde ligger hele menyen bak én knapp; panelet lukker seg ved trykk på en lenke, trykk utenfor og Escape.
 - `src/components/homepage/GridHomepage.astro` — props: `projects`, `tight`. Rutenettforsiden. `tight` slår av de tilfeldige tomme rutene.
 - `src/components/homepage/FullscreenScrollHomepage.astro` — props: `projects`. Ett prosjekt om gangen, sideveis rulling med uendelig løkke (klonet første/siste), tilfeldig startprosjekt, piltaster og bla-piler.

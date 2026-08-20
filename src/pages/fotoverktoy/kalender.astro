@@ -13,9 +13,14 @@
   først hvis noen faktisk drar inn en HEIC-fil.
 */
 import VerktoyLayout from '../../layouts/VerktoyLayout.astro';
+import { verktoyUrl } from '../../lib/verktoyUrl';
 ---
 
-<VerktoyLayout tittel="Kalender" beskrivelse="Månedsark med bilder over og kalenderrutenett under.">
+<VerktoyLayout
+  tittel="Kalender"
+  beskrivelse="Månedsark med bilder over og kalenderrutenett under."
+  lagring="Arbeidet lagres i denne nettleseren, ikke på nett. Skal du fortsette på en annen maskin, lagre en kopi til fil først."
+>
   <Fragment slot="sidebar">
     <div class="control-group">
       <label for="projectName">Prosjektnavn</label>
@@ -52,7 +57,6 @@ import VerktoyLayout from '../../layouts/VerktoyLayout.astro';
         Hent kopi fra fil
       </button>
       <input type="file" id="backupInput" accept=".json" style="display: none" onchange="loadBackup(this)" />
-      <p class="tool-note">Arbeidet ligger i denne nettleseren. Skal du fortsette på en annen maskin, lagre en kopi først.</p>
     </div>
 
     <button type="button" class="btn btn-danger" onclick="clearAll()">Tøm alt innhold</button>
@@ -78,8 +82,10 @@ import VerktoyLayout from '../../layouts/VerktoyLayout.astro';
   <div id="calendarScroll" class="calendar-scroll-area"></div>
 </VerktoyLayout>
 
-<script is:inline src="/verktoy/jszip.min.js"></script>
-<script is:inline src="/verktoy/kalender.js"></script>
+<script is:inline src={verktoyUrl('jszip.min.js')}></script>
+{/* HEIC-konvertereren lastes først når noen faktisk drar inn en HEIC-fil.
+    Adressen sendes med hit fordi kalender.js ikke kan regne ut avtrykket selv. */}
+<script is:inline src={verktoyUrl('kalender.js')} data-heic-src={verktoyUrl('heic2any.min.js')}></script>
 
 <style is:global>
   /* Bare det som er særegent for kalenderen. Sidepanel, knapper og felt kommer
