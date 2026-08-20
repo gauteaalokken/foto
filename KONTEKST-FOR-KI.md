@@ -1,10 +1,15 @@
 # KONTEKST-FOR-KI
 
 Startpakke for KI-modeller uten tilgang til repoet. Lim inn hele fila øverst i chatten.
-Sist oppdatert: 2026-08-16. Alle verdier er lest ut av repoet, ikke gjettet.
+Sist oppdatert: 2026-08-20. Alle verdier er lest ut av repoet, ikke gjettet.
 
 Søsterfila [VEDLIKEHOLD.md](VEDLIKEHOLD.md) er den praktiske steg-for-steg-guiden for mennesket
 som drifter siden. Denne fila er den tekniske referansen for KI-en som hjelper til.
+
+Er modellen på en gratisplan med stram meldingskvote, finnes en nedkokt utgave i
+[KONTEKST-KORT.md](KONTEKST-KORT.md) (11 KB mot 58). Den holder til små endringer — farge,
+tekst, menylenke, ny enkel side. Denne fila er den som gjelder ved større endringer, og ved
+uenighet er det denne som er riktig.
 
 ---
 
@@ -18,7 +23,7 @@ som drifter siden. Denne fila er den tekniske referansen for KI-en som hjelper t
 - Sider: forside (prosjekter), prosjektside per prosjekt, Prints, Feed, Flaksjøen Fjellmaraton (med påmeldingsskjema), Blogg, Portefølje, 404, samt tre fotoverktøy under `/fotoverktoy/` (Fotogrid, Instagram-maler, Kalender).
 - **Forsiden har fire innebygde layouter** som byttes fra CMS-en («Forside-innstillinger»), ikke i kode. Se punkt 4 og 8.
 - **Blogg og Portefølje finnes alltid** på `/blogg` og `/portefolje`, men er som standard ikke lenket fra menyen — det styres av `showInNav` i CMS-en.
-- Ingen CSS-rammeverk, ingen komponentbibliotek, ingen design tokens — all CSS er skrevet for hånd inne i hver `.astro`-fil.
+- Ingen CSS-rammeverk og ingen komponentbibliotek. All CSS er skrevet for hånd i `<style>` nederst i hver `.astro`-fil — men **farger og skrifter er samlet som variabler** i `:root` i `Layout.astro`. Skriv `var(--navn)`, ikke fargeverdier. Se punkt 6.
 
 ---
 
@@ -35,6 +40,7 @@ som drifter siden. Denne fila er den tekniske referansen for KI-en som hjelper t
 |---|---|---|---|
 | `astro` | `^7.2.2` | **7.2.2** | Selve rammeverket. Bygger statiske HTML-sider, håndterer content collections og ruting. |
 | `@astrojs/sitemap` | `^3.7.3` | 3.7.3 | Lager `sitemap-index.xml` + `sitemap-0.xml` ved bygg. Konfigureres i `astro.config.mjs`. |
+| `@fontsource/space-mono` | `^5.3.0` | 5.3.0 | Space Mono som lokale filer, så skrifta serveres fra vårt eget domene i stedet for Google Fonts. Latin-subsettet, vekt 400 og 700, drøyt 30 kB til sammen. |
 | `unified` | `^11.0.5` | 11.0.5 | Motoren som kjører markdown-konverteringen i `src/lib/markdown.ts`. |
 | `remark-parse` | `^11.0.0` | 11.0.0 | Leser markdown. |
 | `remark-gfm` | `^4.0.1` | 4.0.1 | GitHub-dialekt (tabeller, gjennomstreking). |
@@ -45,6 +51,9 @@ som drifter siden. Denne fila er den tekniske referansen for KI-en som hjelper t
 | Pakke | Versjon | Faktisk | Hva den gjør |
 |---|---|---|---|
 | `@aws-sdk/client-s3` | `^3.1093.0` | 3.1093.0 | Brukes kun av `scripts/sort-feed.mjs` til å liste/laste ned bilder fra R2 (R2 snakker S3-protokoll). |
+| `jszip` | `^3.10.1` | 3.10.1 | Kilde for `public/verktoy/jszip.min.js`. Pakken brukes ikke i bygget — den ligger her så kopien i `public/` kan oppdateres. Se punkt 9b i VEDLIKEHOLD.md. |
+| `jspdf` | `^2.5.1` | 2.5.1 | Kilde for `public/verktoy/jspdf.umd.min.js`. Samme mønster. |
+| `heic2any` | `^0.0.4` | 0.0.4 | Kilde for `public/verktoy/heic2any.min.js`. Samme mønster. |
 | `undici` | `^6.28.0` | 6.28.0 | Setter global timeout på alle utgående HTTP-kall i `astro.config.mjs`, så en treg R2-forbindelse ikke henger bygget for alltid. |
 | `wrangler` | `^4.113.0` | 4.113.0 | Cloudflares CLI. Installert for manuell R2-administrasjon. Ingen `wrangler.toml` i repoet, og den kjører ikke i bygg eller deploy. |
 
@@ -59,7 +68,7 @@ De fem markdown-pakkene (`unified` og de fire remark/rehype-pakkene) fulgte tidl
 - Én egendefinert integrasjon, `flush-staged-images`, definert direkte i `astro.config.mjs`. Se punkt 9.
 - Ingen markdown-plugins — alt innhold er YAML/data, ingen `.md`-filer med innhold.
 - CMS: **Sveltia CMS 0.178.0**, lastet fra unpkg i `public/admin/index.html`. Ikke en npm-pakke.
-- Skrifttype: **Space Mono** (400 + 700) fra Google Fonts, lastet i `<head>` i `Layout.astro`.
+- Skrifttype: **Space Mono** (400 + 700), servert fra **vårt eget domene** via npm-pakken `@fontsource/space-mono`, importert i frontmatteren i `Layout.astro`. Ikke Google Fonts — se punkt 6.
 
 ---
 
@@ -86,12 +95,15 @@ foto/
 │   ├── admin/
 │   │   ├── index.html             Laster Sveltia CMS. Versjonen er pinnet med vilje.
 │   │   └── config.yml             HELE CMS-oppsettet: collections, felter, R2-nøkler.
-│   └── verktoy/                   Verktøyenes JS og ferdige biblioteker (jszip, jspdf, heic2any).
-│       ├── index.html             Oversiktsside (Fotogrid / Rammer / Kalender maler).
-│       ├── grid.html              "Fotogrid Pro" (1625 linjer).
-│       ├── instagram.html         "Instagram Maler" (1016 linjer).
-│       ├── Kalender.html          "Fotogrid Kalender" (1071 linjer).
-│       └── icon.png
+│   └── verktoy/                   Verktøyenes logikk + ferdige biblioteker. Ingen HTML her —
+│       │                          selve sidene er .astro-filer under src/pages/fotoverktoy/.
+│       ├── grid.js                Fotogrid: all logikk. Globalt navnerom med vilje (onclick i markupen).
+│       ├── instagram.js           Instagram-maler: all logikk.
+│       ├── kalender.js            Kalender: all logikk.
+│       ├── jszip.min.js           Kopi av npm-pakken, i repoet med vilje: virker uten nett, og
+│       │                          kan ikke ryke fordi en fremmed CDN legger om.
+│       ├── jspdf.umd.min.js       Kopi av npm-pakken.
+│       └── heic2any.min.js        Kopi av npm-pakken.
 │
 ├── scripts/
 │   ├── robots.txt                 Kopi av robots.txt som må lastes opp MANUELT til R2-bøtta.
@@ -107,30 +119,36 @@ foto/
 │                                  Tar imot påmeldinger og skriver dem til et Google Sheet.
 │
 ├── src/
-│   ├── content.config.ts          Definerer og validerer de åtte collections. Kode, ikke innhold.
+│   ├── content.config.ts          Definerer og validerer de ni collections. Kode, ikke innhold.
 │   │                              NB: ligger i src/, ikke inne i src/content/.
 │   ├── content/
 │   │   ├── projects/*.yml         14 prosjekter. Én fil per prosjekt. Skrives av CMS.
 │   │   ├── prints/*.yml           17 prints. Én fil per print. Skrives av CMS.
+│   │   ├── printSettings/index.yml Én fil. Størrelser og priser, felles for alle prints.
 │   │   ├── blog/*.yml             1 blogginnlegg. Én fil per innlegg. Skrives av CMS.
 │   │   ├── feed/index.yml         Én fil, 936 bilde-URL-er. Skrives av CMS eller sort-feed.mjs.
 │   │   ├── fjellmaraton/index.yml Én fil, 3 toppbilder + 46 galleribilder.
 │   │   ├── homepageSettings/index.yml  Én fil, ett felt: hvilken av de fire forsidene som vises.
 │   │   ├── blogSettings/index.yml Én fil. Tittel, intro, layout og nav-synlighet for /blogg.
 │   │   └── portfolio/index.yml    Én fil. Bildeliste + nav-synlighet for /portefolje. Tom i dag.
-│   ├── layouts/Layout.astro       Felles HTML-skall: <head>, meta/SEO, global CSS, header.
+│   ├── layouts/
+│   │   ├── Layout.astro           Felles HTML-skall: <head>, meta/SEO, fargevariabler, global CSS, header.
+│   │   └── VerktoyLayout.astro    Skallet rundt de tre fotoverktøyene: meny, sidepanel, lerret.
+│   ├── styles/verktoy.css         Felles utseende for alle tre fotoverktøyene. Eneste løse CSS-fil.
 │   ├── components/
 │   │   ├── Header.astro           Toppmeny.
 │   │   └── homepage/              Én komponent per forsidelayout — index.astro velger mellom dem.
 │   │       ├── GridHomepage.astro            «grid» og «gridTight»
 │   │       ├── FullscreenScrollHomepage.astro «fullscreenScroll» (aktiv i dag)
 │   │       └── PortfolioGridHomepage.astro   «portfolioGrid»
-│   ├── lib/                       Hjelpekode for bildehåndtering. Rør bare hvis du vet hva du gjør.
+│   ├── lib/                       Hjelpekode. Bildepipelinen: rør bare hvis du vet hva du gjør.
 │   │   ├── resolveImage.ts        Skalerer et R2-bilde med sharp, returnerer lokal /optimized/-sti.
 │   │   ├── imageOutputQueue.ts    Mellomlagring av skalerte bilder på disk mellom bygg.
 │   │   ├── fetchBuffer.ts         Nedlasting med timeout, 3 forsøk og URL-koding.
 │   │   ├── markdown.ts            Markdown → HTML. Brukes kun av bloggens tekstblokker.
-│   │   └── concurrency.ts         Kjører maks N nedlastinger samtidig.
+│   │   ├── concurrency.ts         Kjører maks N nedlastinger samtidig.
+│   │   └── site.ts                E-postadresse og Instagram-lenke. Ett sted, brukt av både
+│   │                              Header.astro og prints/[slug].astro.
 │   ├── pages/                     Én fil = én URL.
 │   │   ├── index.astro            /                    (forside, prosjektrutenett)
 │   │   ├── 404.astro              /404
@@ -141,7 +159,9 @@ foto/
 │   │   ├── prosjekter/[slug].astro /prosjekter/<slug>  (én side per prosjekt-fil)
 │   │   ├── portefolje.astro       /portefolje          (skjult med mindre showInNav er på)
 │   │   ├── blogg/index.astro      /blogg               (skjult med mindre showInNav er på)
-│   │   └── blogg/[slug].astro     /blogg/<slug>        (én side per blogginnlegg)
+│   │   ├── blogg/[slug].astro     /blogg/<slug>        (én side per blogginnlegg)
+│   │   ├── fotoverktoy/index.astro /fotoverktoy         (oversikt med tre kort)
+│   │   └── fotoverktoy/*.astro    /fotoverktoy/<navn>  (grid, instagram, kalender)
 │   └── env.d.ts                   Typedefinisjoner. Rør ikke.
 │
 ├── dist/                          GENERERT av bygget. Git-ignorert. Rør aldri.
@@ -153,7 +173,7 @@ foto/
 
 ## 4. INNHOLDSMODELL
 
-Åtte collections, definert to steder som må stemme overens:
+Ni collections, definert to steder som må stemme overens:
 `src/content.config.ts` (validering ved bygg) og `public/admin/config.yml` (redigeringsskjema i CMS).
 **Legger du til et felt ett sted må du legge det til begge stedene.**
 
@@ -169,6 +189,7 @@ CMS-en committer **rett til `main`** — det er ikke satt opp noen kladde- eller
 | `year` | tekst (i fnutter) | Ja | Vises som «(2023)» på forside og prosjektside. Brukes også til sortering — første tallgruppe i strengen, høyest år først. |
 | `order` | tall | Nei (`null` når tomt) | Manuell rekkefølge på forsiden. Lavest tall først. Prosjekter med tall kommer alltid før prosjekter uten. Alle 13 filer som har feltet har i dag `order: null`. |
 | `cover` | bilde-URL | Nei (`null` når tomt) | Forsidebildet i rutenettet. Er den tom, brukes `pages[0]`. |
+| `featured` | ja/nei | Nei (`null`/`false` når tomt) | Heter «Åpningsbilde» i CMS-en. Gjelder **kun** fullskjermsforsiden, som åpner på et tilfeldig prosjekt: er ett eller flere prosjekter merket, trekkes åpningsprosjektet bare blant dem. Er ingen merket, kan forsiden åpne på hva som helst. Leses i `index.astro` og sendes til `FullscreenScrollHomepage.astro`. |
 | `pages` | liste med bilde-URL-er | Ja | Alle bildene i prosjektet, i rekkefølge. Vises i rutenettet på prosjektsiden. |
 
 Ekte eksempel — `src/content/projects/koster.yml` (forkortet, den har 43 sider):
@@ -292,7 +313,34 @@ Ekte eksempel — hele `src/content/prints/unstad.yml`:
 title: Unstad
 photo: https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/prints/Prints til salg_16.jpg
 ```
-Priser, størrelser og all tekst på print-sidene er **hardkodet i `src/pages/prints/[slug].astro`**, ikke i innholdsfilene. Endrer du en pris, endres den for alle prints samtidig.
+Størrelser og priser ligger **ikke** her, men i `printSettings` under. Resten av teksten på print-sidene (papir, innramming, frakt) er fortsatt hardkodet i `src/pages/prints/[slug].astro`, i én norsk og én engelsk blokk som begge må oppdateres.
+
+### `printSettings` — enkeltfil
+- Fil: `src/content/printSettings/index.yml`
+- Felles for alle prints. Leses av `src/pages/prints/[slug].astro` med `getEntry('printSettings', 'index')`.
+
+| Felt | Type | Påkrevd | Styrer |
+|---|---|---|---|
+| `currency` | tekst | Nei | Valuta, `NOK` i dag. |
+| `sizes` | liste | Ja | Én rad per størrelse i pristabellen, i den rekkefølgen de står. |
+| `sizes[].name` | tekst | Ja | Navnet på størrelsen, f.eks. `A2`. |
+| `sizes[].dimensions` | tekst | Ja | Målene, f.eks. `420 × 594 mm`. |
+| `sizes[].price` | tall | Ja | Pris for print uten ramme. |
+| `sizes[].framePrice` | tall | Nei | Pris med ramme. Står den tom, selges størrelsen kun som papir. |
+| `sizes[].frameSize` | tekst | Nei | Rammens ytre mål, f.eks. `50 × 70 cm`. |
+
+Hele fila i dag (forkortet):
+```yaml
+currency: "NOK"
+sizes:
+  - name: "A2"
+    dimensions: "420 × 594 mm"
+    price: 1200
+    framePrice: 2200
+    frameSize: "50 × 70 cm"
+```
+
+Prisene lå tidligere hardkodet i `prints/[slug].astro`, i to språkversjoner — en prisendring måtte gjøres seks steder for ikke å etterlate én av dem feil. Ikke flytt dem tilbake.
 
 ### `feed` — enkeltfil
 - Fil: `src/content/feed/index.yml`
@@ -389,8 +437,9 @@ Mellomlageret gjenbrukes mellom bygg (og caches i GitHub Actions), så et uendre
 
 ## 6. DESIGNSYSTEM
 
-**Viktig og litt kjedelig: det finnes ingen design tokens i dette prosjektet.**
-Det er ingen CSS-rammeverk. Farger, skrift og streker ligger som variabler i `:root` i `src/layouts/Layout.astro` (se tabellen under); alt annet står i `<style>`-blokken i hver enkelt `.astro`-fil. Verktøyene har i tillegg ett felles stilark, `src/styles/verktoy.css`. To custom properties er ikke tokens, men layout-utregninger: `--ratio` i `fjellmaraton.astro` og `--photo-max-h` i `FullscreenScrollHomepage.astro`.
+Farger og skrift er variabler i `:root` i `src/layouts/Layout.astro` (tabellene under). Alt annet — spacing, størrelser, breakpoints — står i `<style>`-blokken i hver enkelt `.astro`-fil, uten skala og uten rammeverk. Verktøyene har i tillegg ett felles stilark, `src/styles/verktoy.css`.
+
+To custom properties er ikke farger, men layout-utregninger: `--ratio` i `fjellmaraton.astro` og `--photo-max-h` i `FullscreenScrollHomepage.astro`.
 
 **Farger: ett sett variabler, ikke løse verdier (endret 2026-08-19)**
 
@@ -436,8 +485,6 @@ Den ligger som npm-pakken `@fontsource/space-mono` og importeres i `Layout.astro
 Latin-subsettet dekker æ, ø og å; de to vektene veier 33 kB til sammen. Ikke legg
 tilbake en `<link>` mot `fonts.googleapis.com`.
 
-Space Mono lastes fra Google Fonts i `Layout.astro` med vekt 400 og 700.
-
 **Fontstørrelser som er i bruk**
 `0.8rem`, `0.85rem`, `0.9rem`, `0.95rem` (×2), `1rem` (×2), `1.1rem` (×2), `1.2rem`, `1.25rem`, `1.5rem`, `1.75rem`, `2rem`, `2.5rem` (×4), `4rem`, og `clamp(2rem, 5vw, 3.25rem)` på prosjektoverskriften.
 
@@ -465,8 +512,9 @@ I tillegg finnes JS-baserte breakpoints i rutenettene (ikke CSS): feed bruker 48
 **Radius**: brukes ett eneste sted, `border-radius: 4px` på bestillingsknappen i `prints/[slug].astro`. Alt annet har skarpe hjørner — det er med vilje.
 
 **Slik endrer du en farge riktig**
-Siden det ikke finnes tokens, er «riktig» måte å **endre alle forekomstene av verdien i alle filene som bruker den til samme formål**. Be KI-en om å liste hvilke filer den endrer. Eksempel: bytter du tekstfargen `#111`, må Header, Layout, 404, fjellmaraton, begge print-sidene og prosjektsiden endres — men `#111` brukes også som knappebakgrunn, så sjekk formål før du bytter.
-Ikke innfør en tokens-fil på egen hånd med mindre du bestemmer deg for det bevisst; det er en ny struktur, ikke en opprydding.
+Endre variabelen i `:root` i `src/layouts/Layout.astro` — ikke forekomstene rundt om i filene.
+
+Pass på at én variabel har flere roller: `--ink` er både tekstfarge og knappebakgrunn, og `--line-soft` og `--placeholder` har samme verdi, men ulikt formål. Si hvilke deler av siden endringen slår ut på **før** du gjør den, og del heller en variabel i to enn å hardkode én verdi ett sted.
 
 ---
 
@@ -482,7 +530,7 @@ Les dette før du endrer en `.astro`-fil. Astro ligner på React/Next på overfl
 
 **Regler som er lette å bomme på:**
 
-- **`<style>` er scoped til sin egen fil.** En klasse du skriver i én fil treffer ikke elementer i en annen. Derfor står `is:global` på stilene i de tre forsidekomponentene, i `feed/index.astro` og i `Layout.astro` — der lages elementene enten av JavaScript etter at siden er lastet, eller stilene skal gjelde hele dokumentet. **Fjern aldri `is:global` fra disse fem filene.**
+- **`<style>` er scoped til sin egen fil.** En klasse du skriver i én fil treffer ikke elementer i en annen. Derfor står `is:global` på stilene i **åtte** filer: `Layout.astro` (stilene skal gjelde hele dokumentet), og `feed/index.astro`, de tre forsidekomponentene og de tre verktøysidene under `src/pages/fotoverktoy/` (der lages elementene av JavaScript etter at siden er lastet, så scoped CSS treffer dem ikke). **Fjern aldri `is:global` fra disse åtte filene.**
 - **`<script>` kjører i nettleseren**, ikke under bygget. Den ser ikke variabler fra frontmatteren. To måter å sende data inn på, begge i bruk her:
   - `define:vars={{ gap: GAP }}` — sender enkle verdier inn (brukes i `feed/index.astro`).
   - `<script type="application/json" id="…" set:html={JSON.stringify(data)} />` og så `JSON.parse` i nettleseren (brukes i feed, fjellmaraton og prosjektsider til lightbox-listene).
@@ -624,10 +672,12 @@ Med tom cache tar bygget vesentlig lenger — da skal over tusen bilder hentes f
 **Publisering — dette er GitHub Pages, ikke Cloudflare Pages.**
 `.github/workflows/deploy.yml`:
 1. Utløses av push til `main`, eller manuelt (`workflow_dispatch`).
-2. `actions/checkout@v4` → `actions/setup-node@v4` med Node 22 og `cache: npm` (mellomlagrer nedlastede pakker) → `npm install`.
-3. `actions/cache@v4` gjenoppretter `node_modules/.astro` og `node_modules/.image-staging` (nøkkel `image-cache-<run_id>`, restore-key `image-cache-`). Dette er grunnen til at bygg nummer to går fort — allerede skalerte bilder gjenbrukes. **Rekkefølgen er ikke tilfeldig:** installasjonen kan skrive om `node_modules`, så bildecachen må gjenopprettes *etter* den, ikke før.
+2. `actions/checkout@v7` → `actions/setup-node@v7` med Node 22 og `cache: npm` (mellomlagrer nedlastede pakker) → `npm install`.
+3. `actions/cache@v6` gjenoppretter `node_modules/.astro` og `node_modules/.image-staging` (nøkkel `image-cache-<run_id>`, restore-key `image-cache-`). Dette er grunnen til at bygg nummer to går fort — allerede skalerte bilder gjenbrukes. **Rekkefølgen er ikke tilfeldig:** installasjonen kan skrive om `node_modules`, så bildecachen må gjenopprettes *etter* den, ikke før.
 4. `npm run build`.
-5. `actions/upload-pages-artifact@v3` med `dist/` → `actions/deploy-pages@v4`.
+5. `actions/upload-pages-artifact@v5` med `dist/` → `actions/deploy-pages@v5`.
+
+**Versjonsnumrene over må holdes noenlunde ferske.** GitHub pensjonerer gamle actions ved å slutte å kjøre dem, og da stopper publiseringen uten at noe i selve nettsiden er galt. Sist oppdatert 2026-08-16. Ser du «Node.js NN is deprecated» i byggeloggen, er det `deploy.yml` som skal oppdateres, ikke koden.
 
 Domenet `gauteaalokken.com` kommer fra `public/CNAME`, som kopieres til `dist/CNAME`.
 
@@ -651,7 +701,7 @@ Domenet `gauteaalokken.com` kommer fra `public/CNAME`, som kopieres til `dist/CN
 - **Bilde-URL-er**: alltid full absolutt R2-URL.
 - **Språk**: siden er norsk (`<html lang="no">`). All synlig tekst og alle `aria-label`-er er norske. Unntakene er skjemaets feltnavn på fjellmaraton («First Name», «Email») og print-sidene, som med vilje har norsk og engelsk tekst under hverandre. Ingen flerspråklig oppsett.
 - **Commit-meldinger**: én linje, engelsk, imperativ («Add a CMS field for…»). CMS-genererte commits heter `Create Projects "x"` / `Update Projects "x"`.
-- **CSS**: skrives i `<style>` nederst i hver `.astro`-fil. `is:global` brukes bare der JS bygger elementer dynamisk (forside, feed).
+- **CSS**: skrives i `<style>` nederst i hver `.astro`-fil. Farger og skrift som `var(--navn)`, aldri som verdi. `is:global` brukes bare der JS bygger elementer dynamisk (forside, feed, verktøysidene) eller stilene skal gjelde hele dokumentet (`Layout.astro`).
 - **Kommentarer i koden er lange og forklarer hvorfor.** Behold dem — de dokumenterer feil som allerede er rettet.
 
 ---
@@ -695,15 +745,15 @@ Domenet `gauteaalokken.com` kommer fra `public/CNAME`, som kopieres til `dist/CN
 
 3. **Bytte omslagsbilde på et prosjekt** → sett `cover`-feltet i CMS-en. Ikke flytt om på `pages`-listen for å oppnå det.
 
-4. **Endre menyen** → `src/components/Header.astro`, listen `navLinks` (linje 5–10). Hvert element er `{ label, href }`. Legg til/fjern/endre rekkefølge der. Ikke skriv `<a>`-taggene manuelt i HTML-en under.
+4. **Endre menyen** → `src/components/Header.astro`, listen `navLinks` (ca. linje 8–13). Hvert element er `{ label, href }`. Legg til/fjern/endre rekkefølge der. Ikke skriv `<a>`-taggene manuelt i HTML-en under.
 
 5. **Bytte en farge** → se punkt 6. Finn verdien i den aktuelle `<style>`-blokken. Gjelder endringen hele siden (f.eks. sidebakgrunn), start i `src/layouts/Layout.astro`. Be alltid om en liste over hvilke filer som ble endret.
 
 6. **Legge til en ny side** → ny fil i `src/pages/`, f.eks. `src/pages/om.astro` → blir `/om`. Start med `import Layout from '../layouts/Layout.astro';`, pakk innholdet i `<Layout title="… — Gaute Aaløkken" description="…">`, og legg CSS-en i en `<style>`-blokk nederst i samme fil. Legg lenken inn i `navLinks` i Header hvis den skal i menyen.
 
-7. **Endre SEO-tittel eller delingstekst** → for én side: `title`- og `description`-propene der `<Layout ...>` brukes i den sidens fil. For hele siden / forsiden: `DEFAULT_DESCRIPTION` og `DEFAULT_OG_IMAGE` øverst i `src/layouts/Layout.astro` (linje 10–17), samt default-verdien `'Gaute Aaløkken'` for `title`.
+7. **Endre SEO-tittel eller delingstekst** → for én side: `title`- og `description`-propene der `<Layout ...>` brukes i den sidens fil. For hele siden / forsiden: `DEFAULT_DESCRIPTION` og `DEFAULT_OG_IMAGE` øverst i `src/layouts/Layout.astro` (ca. linje 18–25), samt default-verdien `'Gaute Aaløkken'` for `title`.
 
-8. **Endre priser eller teksten på print-sidene** → `src/pages/prints/[slug].astro`, linje ~49–95. Teksten er hardkodet og felles for alle prints — det finnes ingen prisfelt i innholdsmodellen. Både den norske og den engelske blokken må oppdateres.
+8. **Endre priser på prints** → CMS → **Print-priser**, ikke i kode. Størrelser, priser og rammepriser ligger i `src/content/printSettings/index.yml` og er felles for alle prints. **Endre teksten** på print-sidene (papir, innramming, frakt) → `src/pages/prints/[slug].astro`. Den er hardkodet i én norsk og én engelsk blokk, og begge må oppdateres.
 
 9. **Endre teksten på fjellmaraton-siden** → overskriftene «Flaksjøen Fjellmaraton» / «Påmelding 26» og knappen «Meld deg på» ligger i `.intro`-blokken i `src/pages/fjellmaraton.astro`. Skjemafeltene ligger i `#signup-modal` lenger nede. **Legger du til et nytt felt i skjemaet, må kolonnen også legges til i `scripts/google-apps-script-paamelding.gs`, og skriptet må redeployes i Google Apps Script** — ellers havner svaret ingen steder.
 

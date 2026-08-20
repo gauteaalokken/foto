@@ -68,9 +68,11 @@ Tre deler, i denne rekkefølgen:
 
 Regler som er lette å bomme på:
 
-- **`<style>` gjelder bare sin egen fil.** Derfor står `is:global` på stilene i
-  `Layout.astro`, `feed/index.astro` og de tre forsidekomponentene — der lages elementene
-  av JavaScript etter at siden er lastet. **Fjern aldri `is:global` fra disse fem filene.**
+- **`<style>` gjelder bare sin egen fil.** Derfor står `is:global` på stilene i åtte filer:
+  `Layout.astro` (skal gjelde hele dokumentet), samt `feed/index.astro`, de tre
+  forsidekomponentene og de tre sidene under `src/pages/fotoverktoy/` — der lages
+  elementene av JavaScript etter at siden er lastet, så scoped CSS treffer dem ikke.
+  **Fjern aldri `is:global` fra disse åtte filene.**
 - **`<script>` kjører i nettleseren** og ser ikke variabler fra frontmatteren. Data sendes
   inn med `define:vars={{ ... }}` eller via en `<script type="application/json">`-tagg
   som leses med `JSON.parse`.
@@ -179,7 +181,7 @@ hjørner med vilje.
 | `astro.config.mjs` og alt i `src/lib/` | Bildepipelinen. Én endring der gjør alle bilder på siden døde. |
 | `GAS_URL` i `src/pages/fjellmaraton.astro` | Påmeldinger forsvinner uten varsel. |
 | Honeypot-feltet `name="website"` i skjemaet | Spamfelle. Gjøres det synlig, kastes ekte påmeldinger. |
-| `is:global` i `Layout.astro`, `feed/index.astro` og de tre forsidekomponentene | Elementene lages av JS — uten den er de ustilte. |
+| `is:global` i `Layout.astro`, `feed/index.astro`, de tre forsidekomponentene og de tre verktøysidene | Elementene lages av JS — uten den er de ustilte. |
 | `is:inline` på `<script>` i verktøysidene | Uten den slutter hver knapp å virke, uten feilmelding. |
 | Gruppa `User-agent: *` i `public/robots.txt` | Skal ha `Allow: /`. `Disallow: /` fjerner hele siden fra Google. |
 | `package-lock.json`, `dist/`, `node_modules/` | Genereres automatisk. |
