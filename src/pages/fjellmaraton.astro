@@ -122,16 +122,18 @@ const shareImage = shareSource ? await resolveOgImage(shareSource) : undefined;
     <h1>Flaksjøen Fjellmaraton</h1>
     <h2>Påmelding 26</h2>
 
-    <button type="button" id="open-signup" class="signup-button">Meld deg på</button>
+    <div class="actions">
+      <button type="button" id="open-signup" class="signup-button">Meld deg på</button>
 
-    {/* Statisk .ics-fil i public/-mappa, byttes ut for hånd hvert år. */}
-    <a class="calendar-button" href="/flaksjoen-fjellmaraton-2027.ics" download>Legg til i kalenderen</a>
+      {/* Statisk .ics-fil i public/-mappa, byttes ut for hånd hvert år. */}
+      <a class="calendar-button" href="/flaksjoen-fjellmaraton-2027.ics" download>Legg til i kalenderen</a>
 
-    {showAddress && (
-      <a class="address-button" href={safeUrl(address!.url!)} target="_blank" rel="noopener">
-        {address!.label || 'Adresse'}
-      </a>
-    )}
+      {showAddress && (
+        <a class="address-button" href={safeUrl(address!.url!)} target="_blank" rel="noopener">
+          {address!.label || 'Adresse'}
+        </a>
+      )}
+    </div>
 
     {downloads.length > 0 && (
       <div class="routes">
@@ -555,6 +557,17 @@ const shareImage = shareSource ? await resolveOgImage(shareSource) : undefined;
     padding: 0 20px;
   }
 
+  /* Holder «Meld deg på», kalenderlenka og adresseknappen på rad, med jevn
+     avstand. flex-wrap gjør at de bryter samlet til ny linje på smale
+     skjermer, i stedet for at én knapp havner skjevt under de andre. */
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+  }
+
   .signup-button {
     font-family: Helvetica, 'Helvetica Neue', Arial, sans-serif;
     font-size: 1rem;
@@ -563,7 +576,6 @@ const shareImage = shareSource ? await resolveOgImage(shareSource) : undefined;
     color: #fff;
     border: 1.5px solid #111;
     padding: 0.9rem 2.75rem;
-    margin-top: 1.5rem;
     cursor: pointer;
   }
 
@@ -575,9 +587,6 @@ const shareImage = shareSource ? await resolveOgImage(shareSource) : undefined;
   /* Sekundær i forhold til «Meld deg på»: samme form, men bare omriss, så den
      ikke konkurrerer med hovedhandlingen på siden. */
   .address-button {
-    display: inline-block;
-    /* Venstremargen skiller den fra «Meld deg på», som står rett før. */
-    margin: 1rem 0 0 0.75rem;
     font-family: Helvetica, 'Helvetica Neue', Arial, sans-serif;
     font-size: 1rem;
     letter-spacing: 0.02em;
@@ -596,8 +605,6 @@ const shareImage = shareSource ? await resolveOgImage(shareSource) : undefined;
   /* Samme sekundærstil som adresseknappen, for kalenderlenka ved siden av
      «Meld deg på». */
   .calendar-button {
-    display: inline-block;
-    margin: 1rem 0 0 0.75rem;
     font-family: Helvetica, 'Helvetica Neue', Arial, sans-serif;
     font-size: 1rem;
     letter-spacing: 0.02em;
