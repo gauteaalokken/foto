@@ -1,0 +1,17 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Flaksjøen Fjellmaraton//gauteaalokken.com//NO
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+BEGIN:VEVENT
+UID:flaksjoen-fjellmaraton-2027@gauteaalokken.com
+DTSTAMP:20260918T120000Z
+DTSTART:20270827T130000Z
+DTEND:20270829T130000Z
+SUMMARY:Flaksjøen Fjellmaraton 2027
+LOCATION:Flaksjøen
+DESCRIPTION:Flaksjøen Fjellmaraton – se https://gauteaalokken.com/fjellmaraton for påmelding og detaljer.
+URL:https://gauteaalokken.com/fjellmaraton
+STATUS:CONFIRMED
+END:VEVENT
+END:VCALENDAR
