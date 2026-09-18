@@ -124,6 +124,9 @@ const shareImage = shareSource ? await resolveOgImage(shareSource) : undefined;
 
     <button type="button" id="open-signup" class="signup-button">Meld deg på</button>
 
+    {/* Statisk .ics-fil i public/-mappa, byttes ut for hånd hvert år. */}
+    <a class="calendar-button" href="/flaksjoen-fjellmaraton-2027.ics" download>Legg til i kalenderen</a>
+
     {showAddress && (
       <a class="address-button" href={safeUrl(address!.url!)} target="_blank" rel="noopener">
         {address!.label || 'Adresse'}
@@ -162,23 +165,23 @@ const shareImage = shareSource ? await resolveOgImage(shareSource) : undefined;
         <span class="group-label">Navn</span>
         <div class="row">
           <label>
-            Fornavn
+            First Name
             <input type="text" name="firstName" required />
           </label>
           <label>
-            Etternavn
+            Last Name
             <input type="text" name="lastName" required />
           </label>
         </div>
       </div>
 
       <label class="field">
-        E-post
+        Email
         <input type="email" name="email" required />
       </label>
 
       <label class="field">
-        Telefon
+        Phone
         <input type="tel" name="phone" />
       </label>
 
@@ -191,7 +194,7 @@ const shareImage = shareSource ? await resolveOgImage(shareSource) : undefined;
       </label>
 
       <label class="field">
-        Hvordan tenker du å sove?
+        Hvordan tenker du å sove
         <select name="overnatting">
           <option value="" selected disabled>Sengeplasser i hytta blir fordelt etter ansiennitet</option>
           <option value="Hytta">Hytta</option>
@@ -451,7 +454,7 @@ const shareImage = shareSource ? await resolveOgImage(shareSource) : undefined;
   //
   // Full framgangsmåte: scripts/LES-MEG-paamelding.md
   // Koden som kjører der: scripts/google-apps-script-paamelding.gs
-  const GAS_URL = 'https://script.google.com/macros/s/AKfycbwFp6qwhb72J4qkg3a82rSNTviuDEcRw6WcgE21cS-0y3Y-BGpBc3jYY35hiIMR8vV1/exec';
+  const GAS_URL = 'https://script.google.com/macros/s/AKfycby-Hz4Rdv6K1AF7QXBVKmxn-AtJfBPTvCwkHFoOEX7PqfSaXOqs5m9cA7iQaklz8oMJ/exec';
 
   const form = document.getElementById('paamelding-form') as HTMLFormElement;
 
@@ -530,7 +533,10 @@ const shareImage = shareSource ? await resolveOgImage(shareSource) : undefined;
       if (result.status !== 'ok') throw new Error(result.message || 'Ukjent feil');
 
       form.reset();
-      status.textContent = 'Takk for din påmelding!';
+      // Lenke til kalenderfila i tillegg til takkemeldingen — samme .ics som
+      // knappen øverst på siden. Bytt filnavnet her når dato for neste år er klar.
+      status.innerHTML =
+        'Takk for din påmelding! <a href="/flaksjoen-fjellmaraton-2027.ics" download>Legg til i kalenderen</a>';
       status.className = 'success';
     } catch (err) {
       status.textContent =
@@ -553,17 +559,17 @@ const shareImage = shareSource ? await resolveOgImage(shareSource) : undefined;
     font-family: Helvetica, 'Helvetica Neue', Arial, sans-serif;
     font-size: 1rem;
     letter-spacing: 0.02em;
-    background: var(--ink);
-    color: var(--ink-inverse);
-    border: 1.5px solid var(--ink);
+    background: #111;
+    color: #fff;
+    border: 1.5px solid #111;
     padding: 0.9rem 2.75rem;
     margin-top: 1.5rem;
     cursor: pointer;
   }
 
   .signup-button:hover {
-    background: var(--surface-raised);
-    color: var(--ink);
+    background: #fff;
+    color: #111;
   }
 
   /* Sekundær i forhold til «Meld deg på»: samme form, men bare omriss, så den
@@ -576,15 +582,35 @@ const shareImage = shareSource ? await resolveOgImage(shareSource) : undefined;
     font-size: 1rem;
     letter-spacing: 0.02em;
     background: transparent;
-    color: var(--ink);
-    border: 1.5px solid var(--ink);
+    color: #111;
+    border: 1.5px solid #111;
     padding: 0.9rem 2.75rem;
     text-decoration: none;
   }
 
   .address-button:hover {
-    background: var(--ink);
-    color: var(--ink-inverse);
+    background: #111;
+    color: #fff;
+  }
+
+  /* Samme sekundærstil som adresseknappen, for kalenderlenka ved siden av
+     «Meld deg på». */
+  .calendar-button {
+    display: inline-block;
+    margin: 1rem 0 0 0.75rem;
+    font-family: Helvetica, 'Helvetica Neue', Arial, sans-serif;
+    font-size: 1rem;
+    letter-spacing: 0.02em;
+    background: transparent;
+    color: #111;
+    border: 1.5px solid #111;
+    padding: 0.9rem 2.75rem;
+    text-decoration: none;
+  }
+
+  .calendar-button:hover {
+    background: #111;
+    color: #fff;
   }
 
   .routes {
@@ -596,7 +622,7 @@ const shareImage = shareSource ? await resolveOgImage(shareSource) : undefined;
     font-weight: 500;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: var(--ink-subtle);
+    color: #888;
     margin: 0 0 0.75rem;
   }
 
@@ -607,7 +633,7 @@ const shareImage = shareSource ? await resolveOgImage(shareSource) : undefined;
   }
 
   .routes li + li {
-    border-top: 1px solid var(--line);
+    border-top: 1px solid #e5e5e5;
   }
 
   .routes a {
@@ -616,7 +642,7 @@ const shareImage = shareSource ? await resolveOgImage(shareSource) : undefined;
     justify-content: space-between;
     gap: 1rem;
     padding: 0.85rem 0;
-    color: var(--ink);
+    color: #111;
     text-decoration: none;
     font-size: 1.05rem;
   }
@@ -628,8 +654,8 @@ const shareImage = shareSource ? await resolveOgImage(shareSource) : undefined;
   .routes-format {
     font-size: 0.75rem;
     letter-spacing: 0.08em;
-    color: var(--ink-subtle);
-    border: 1px solid var(--line);
+    color: #888;
+    border: 1px solid #ddd;
     padding: 0.2rem 0.5rem;
   }
 
@@ -654,7 +680,7 @@ const shareImage = shareSource ? await resolveOgImage(shareSource) : undefined;
     position: relative;
     width: 100%;
     max-width: 560px;
-    background: var(--surface);
+    background: #fafafa;
     padding: 2.5rem 2rem;
     /* Helvetica for the form itself, rather than the system stack the rest of
        the page inherits. The inputs already use `font: inherit`, so they pick
@@ -666,7 +692,7 @@ const shareImage = shareSource ? await resolveOgImage(shareSource) : undefined;
     font-family: inherit;
     font-size: 1.5rem;
     font-weight: 500;
-    color: var(--ink);
+    color: #111;
     margin: 0 0 2rem;
   }
 
@@ -678,7 +704,7 @@ const shareImage = shareSource ? await resolveOgImage(shareSource) : undefined;
     border: none;
     font-size: 2rem;
     line-height: 1;
-    color: var(--ink);
+    color: #111;
     cursor: pointer;
     padding: 0.25rem 0.5rem;
   }
@@ -722,7 +748,7 @@ const shareImage = shareSource ? await resolveOgImage(shareSource) : undefined;
     height: auto;
     min-width: 0;
     overflow: hidden;
-    background: var(--placeholder);
+    background: #eee;
   }
 
   .top-photos .top-cell img {
@@ -776,7 +802,7 @@ const shareImage = shareSource ? await resolveOgImage(shareSource) : undefined;
     width: 300px;
     aspect-ratio: 1;
     overflow: hidden;
-    background: var(--placeholder);
+    background: #eee;
   }
 
   .photo-button {
@@ -799,7 +825,7 @@ const shareImage = shareSource ? await resolveOgImage(shareSource) : undefined;
   .lightbox {
     position: fixed;
     inset: 0;
-    background: var(--overlay);
+    background: rgba(0, 0, 0, 0.92);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -821,7 +847,7 @@ const shareImage = shareSource ? await resolveOgImage(shareSource) : undefined;
     position: absolute;
     background: none;
     border: none;
-    color: var(--ink-inverse);
+    color: #fff;
     font-size: 2.5rem;
     line-height: 1;
     cursor: pointer;
@@ -853,7 +879,7 @@ const shareImage = shareSource ? await resolveOgImage(shareSource) : undefined;
   h2 {
     font-weight: 400;
     font-size: 1.25rem;
-    color: var(--ink-muted);
+    color: #555;
     margin-top: 0;
     margin-bottom: 2.5rem;
   }
@@ -914,10 +940,10 @@ const shareImage = shareSource ? await resolveOgImage(shareSource) : undefined;
   input,
   select {
     font: inherit;
-    color: var(--ink);
+    color: #111;
     background: transparent;
     border: none;
-    border-bottom: 1px solid var(--line-strong);
+    border-bottom: 1px solid #ccc;
     padding: 0.5rem 0;
     appearance: none;
     -webkit-appearance: none;
@@ -932,14 +958,14 @@ const shareImage = shareSource ? await resolveOgImage(shareSource) : undefined;
   }
 
   select:invalid {
-    color: var(--ink-muted);
+    color: #767676;
   }
 
   textarea {
     font: inherit;
-    color: var(--ink);
+    color: #111;
     background: transparent;
-    border: 1px solid var(--line-strong);
+    border: 1px solid #ccc;
     padding: 0.75rem;
     resize: vertical;
   }
@@ -948,29 +974,29 @@ const shareImage = shareSource ? await resolveOgImage(shareSource) : undefined;
   select:focus,
   textarea:focus {
     outline: none;
-    border-color: var(--ink);
+    border-color: #111;
   }
 
   button {
     align-self: flex-start;
     font: inherit;
-    background: var(--surface-raised);
-    color: var(--ink);
-    border: 1.5px solid var(--ink);
+    background: #fff;
+    color: #111;
+    border: 1.5px solid #111;
     padding: 0.9rem 2.5rem;
     cursor: pointer;
   }
 
   button:hover {
-    background: var(--ink);
-    color: var(--ink-inverse);
+    background: #111;
+    color: #fff;
   }
 
   button:disabled {
     opacity: 0.5;
     cursor: default;
-    background: var(--surface-raised);
-    color: var(--ink);
+    background: #fff;
+    color: #111;
   }
 
   #form-status {
@@ -979,10 +1005,16 @@ const shareImage = shareSource ? await resolveOgImage(shareSource) : undefined;
   }
 
   #form-status.success {
-    color: var(--success);
+    color: #1a7a1a;
   }
 
   #form-status.error {
-    color: var(--danger);
+    color: #b00020;
+  }
+
+  #form-status a {
+    color: inherit;
+    font-weight: 600;
+    text-decoration: underline;
   }
 </style>
