@@ -224,6 +224,18 @@ const shareImage = shareSource ? await resolveOgImage(shareSource) : undefined;
     </div>
   </div>
 
+  {/* Dukker opp rett etter en vellykket påmelding, i stedet for
+      påmeldingsvinduet — se skriptet lenger nede. */}
+  <div id="calendar-modal" class="modal" hidden>
+    <div class="modal-panel calendar-panel" role="dialog" aria-modal="true" aria-labelledby="calendar-heading">
+      <button type="button" id="close-calendar" class="modal-close" aria-label="Lukk">&times;</button>
+
+      <h2 id="calendar-heading">Takk for din påmelding!</h2>
+      <p class="calendar-text">Vil du legge løpet til i kalenderen din?</p>
+      <a class="calendar-button" href="/flaksjoen-fjellmaraton-2027.ics" download>Legg til i kalenderen</a>
+    </div>
+  </div>
+
   {resolvedRacePhotos.length > 0 && (
     <div class="grid-wrap">
       <div class="grid" id="race-grid">
@@ -487,9 +499,34 @@ const shareImage = shareSource ? await resolveOgImage(shareSource) : undefined;
     if (event.target === modal) closeModal();
   });
 
-  document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && !modal.hidden) closeModal();
+  // Dukker opp i stedet for påmeldingsvinduet rett etter en vellykket
+  // påmelding, med forslag om å laste ned kalenderfila.
+  const calendarModal = document.getElementById('calendar-modal') as HTMLDivElement;
+
+  const openCalendarModal = () => {
+    calendarModal.hidden = false;
+    document.body.style.overflow = 'hidden';
+    (calendarModal.querySelector('.calendar-button') as HTMLElement | null)?.focus();
+  };
+
+  const closeCalendarModal = () => {
+    calendarModal.hidden = true;
+    document.body.style.overflow = '';
+    openButton.focus();
+  };
+
+  document.getElementById('close-calendar')?.addEventListener('click', closeCalendarModal);
+
+  calendarModal.addEventListener('click', (event) => {
+    if (event.target === calendarModal) closeCalendarModal();
   });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    if (!modal.hidden) closeModal();
+    if (!calendarModal.hidden) closeCalendarModal();
+  });
+
   const status = document.getElementById('form-status') as HTMLParagraphElement;
 
   form.addEventListener('submit', async (e) => {
@@ -504,6 +541,8 @@ const shareImage = shareSource ? await resolveOgImage(shareSource) : undefined;
       form.reset();
       status.textContent = 'Takk for din påmelding!';
       status.className = 'success';
+      closeModal();
+      openCalendarModal();
       return;
     }
 
@@ -535,11 +574,12 @@ const shareImage = shareSource ? await resolveOgImage(shareSource) : undefined;
       if (result.status !== 'ok') throw new Error(result.message || 'Ukjent feil');
 
       form.reset();
-      // Lenke til kalenderfila i tillegg til takkemeldingen — samme .ics som
-      // knappen øverst på siden. Bytt filnavnet her når dato for neste år er klar.
-      status.innerHTML =
-        'Takk for din påmelding! <a href="/flaksjoen-fjellmaraton-2027.ics" download>Legg til i kalenderen</a>';
+      status.textContent = 'Takk for din påmelding!';
       status.className = 'success';
+
+      // Bytt ut påmeldingsvinduet med kalenderforslaget.
+      closeModal();
+      openCalendarModal();
     } catch (err) {
       status.textContent =
         'Noe gikk galt — påmeldingen ble ikke registrert. Prøv igjen, eller send en e-post.';
@@ -557,15 +597,23 @@ const shareImage = shareSource ? await resolveOgImage(shareSource) : undefined;
     padding: 0 20px;
   }
 
-  /* Holder «Meld deg på», kalenderlenka og adresseknappen på rad, med jevn
-     avstand. flex-wrap gjør at de bryter samlet til ny linje på smale
-     skjermer, i stedet for at én knapp havner skjevt under de andre. */
+  /* Holder «Meld deg på», kalenderlenka og adresseknappen på rad. Raden
+     brekker aldri om til ny linje (flex-wrap: nowrap) — er det ikke plass
+     til alle tre, sklir raden sidelengs (overflow-x) i stedet for at én
+     knapp havner under de andre. flex-shrink: 0 på hver knapp hindrer at
+     teksten inni dem klemmes sammen mens det skjer. */
   .actions {
     display: flex;
-    flex-wrap: wrap;
     align-items: center;
-    gap: 0.75rem;
+    gap: 0.6rem;
     margin-top: 1.5rem;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+
+  .actions > * {
+    flex-shrink: 0;
   }
 
   .signup-button {
@@ -584,8 +632,8 @@ const shareImage = shareSource ? await resolveOgImage(shareSource) : undefined;
     color: #111;
   }
 
-  /* Sekundær i forhold til «Meld deg på»: samme form, men bare omriss, så den
-     ikke konkurrerer med hovedhandlingen på siden. */
+  /* Sekundær i forhold til «Meld deg på»: samme form, men bare omriss, og
+     smalere padding enn hovedknappen så alle tre lettere får plass på rad. */
   .address-button {
     font-family: Helvetica, 'Helvetica Neue', Arial, sans-serif;
     font-size: 1rem;
@@ -593,7 +641,7 @@ const shareImage = shareSource ? await resolveOgImage(shareSource) : undefined;
     background: transparent;
     color: #111;
     border: 1.5px solid #111;
-    padding: 0.9rem 2.75rem;
+    padding: 0.9rem 1.75rem;
     text-decoration: none;
   }
 
@@ -603,7 +651,7 @@ const shareImage = shareSource ? await resolveOgImage(shareSource) : undefined;
   }
 
   /* Samme sekundærstil som adresseknappen, for kalenderlenka ved siden av
-     «Meld deg på». */
+     «Meld deg på», og for lenka i kalender-popupen lenger nede. */
   .calendar-button {
     font-family: Helvetica, 'Helvetica Neue', Arial, sans-serif;
     font-size: 1rem;
@@ -611,7 +659,7 @@ const shareImage = shareSource ? await resolveOgImage(shareSource) : undefined;
     background: transparent;
     color: #111;
     border: 1.5px solid #111;
-    padding: 0.9rem 2.75rem;
+    padding: 0.9rem 1.75rem;
     text-decoration: none;
   }
 
@@ -701,6 +749,26 @@ const shareImage = shareSource ? await resolveOgImage(shareSource) : undefined;
     font-weight: 500;
     color: #111;
     margin: 0 0 2rem;
+  }
+
+  /* Kalender-popupen er kortere enn påmeldingsvinduet, uten eget skjema, så
+     den trenger mindre bunnmarg på overskriften og sentrert innhold. */
+  .calendar-panel {
+    text-align: center;
+  }
+
+  .calendar-panel h2 {
+    margin-bottom: 0.75rem;
+  }
+
+  .calendar-panel .calendar-text {
+    font-size: 1.05rem;
+    color: #555;
+    margin: 0 0 1.5rem;
+  }
+
+  .calendar-panel .calendar-button {
+    display: inline-block;
   }
 
   .modal-close {
