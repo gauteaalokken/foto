@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 /**
- * Leser eksisterende bildelenker fra src/content/fjellmaraton/index.yml,
- * henter fotograferingsdato/sist endret fra R2 for kun disse bildene,
- * og lagrer dem sortert tilbake i samme fil.
+ * Leser kun faktiske bildelenker (.jpg, .png, osv) fra index.yml,
+ * sorterer dem etter dato i R2, og oppdaterer "photos:" uten å ødelegge resten av filen.
  */
 
 import { readFile, writeFile } from 'node:fs/promises';
@@ -30,24 +29,27 @@ const s3 = new S3Client({
 
 async function main() {
   const filePath = path.join('src', 'content', 'fjellmaraton', 'index.yml');
-  console.log(`Leser bildelisten fra ${filePath}...`);
+  console.log(`Leser ${filePath}...`);
 
   const content = await readFile(filePath, 'utf-8');
-  const urls = content.match(/https?:\/\/[^\s"']+/g) || [];
 
-  if (urls.length === 0) {
-    console.log('Fant ingen bilder i filen.');
+  // Finn KUN bildelenker (.jpg, .png, .jpeg, .webp)
+  const imageRegex = /https?:\/\/[^\s"']+\.(?:jpg|jpeg|png|webp)/gi;
+  const imageUrls = Array.from(new Set(content.match(imageRegex) || []));
+
+  if (imageUrls.length === 0) {
+    console.log('Fant ingen bildelenker (.jpg/.png) i filen.');
     return;
   }
 
-  console.log(`Fant ${urls.length} bilde(r) i Fjellmaraton-filen. Henter datoer...`);
+  console.log(`Fant ${imageUrls.length} unike bilde(r). Henter datoer fra R2...`);
 
   const items = [];
-  for (let i = 0; i < urls.length; i++) {
-    const url = urls[i];
+  for (let i = 0; i < imageUrls.length; i++) {
+    const url = imageUrls[i];
     const key = url.replace(`${PUBLIC_URL}/`, '');
 
-    process.stdout.write(`\rSjekker bilde ${i + 1} av ${urls.length}...`);
+    process.stdout.write(`\rSjekker bilde ${i + 1} av ${imageUrls.length}...`);
 
     try {
       const head = await s3.send(new HeadObjectCommand({ Bucket: BUCKET, Key: key }));
@@ -60,12 +62,19 @@ async function main() {
   console.log('\nSorterer bildene etter dato (nyeste først)...');
   items.sort((a, b) => b.date - a.date);
 
-  const sortedUrls = items.map((item) => item.url);
-  const newYaml = `photos:\n${sortedUrls.map((url) => `  - "${url}"`).join('\n')}\n`;
+  const sortedUrlsList = items.map((item) => `  - "${item.url}"`).join('\n');
 
-  await writeFile(filePath, newYaml);
+  // Erstatt KUN "photos:"-blokken og ta vare på tittel, GPX-lenker og kart!
+  let newContent;
+  if (/photos:\s*/.test(content)) {
+    newContent = content.replace(/photos:\s*(?:\n\s*-\s*"[^"]+")+/g, `photos:\n${sortedUrlsList}`);
+  } else {
+    newContent = `${content.trim()}\n\nphotos:\n${sortedUrlsList}\n`;
+  }
 
-  console.log(`\nSuksess! Sorterte ${sortedUrls.length} bilder i ${filePath}.`);
+  await writeFile(filePath, newContent);
+
+  console.log(`\nSuksess! Sorterte ${items.length} bilder uten å røre kart eller GPX-lenker.`);
 }
 
 main().catch((error) => {
