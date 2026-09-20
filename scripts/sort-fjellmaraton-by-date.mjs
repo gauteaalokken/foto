@@ -1,169 +1,71 @@
 #!/usr/bin/env node
 /**
- * Private tool — reorders the photos already listed under `photos:` in
- * src/content/fjellmaraton/index.yml by when each one was actually taken
- * (EXIF capture date), newest first. Only touches that one list — topPhotos,
- * address and downloads are left exactly as they are. Runs locally; nothing
- * here is published.
- *
- * Usage:
- *   node scripts/sort-fjellmaraton-by-date.mjs
- *
- * No secrets needed — the photos are already public URLs, so this just
- * downloads the first part of each one over plain HTTP.
+ * Leser eksisterende bildelenker fra src/content/fjellmaraton/index.yml,
+ * henter fotograferingsdato/sist endret fra R2 for kun disse bildene,
+ * og lagrer dem sortert tilbake i samme fil.
  */
 
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { S3Client, HeadObjectCommand } from '@aws-sdk/client-s3';
 
-const OUT_PATH = path.join('src', 'content', 'fjellmaraton', 'index.yml');
+process.loadEnvFile?.('.env.local');
 
-/** Download just the first part of a photo — plenty to reach any EXIF data,
- *  which by the JPEG spec sits right after the start of the file and is at
- *  most 64 KB, without pulling down the full (often several MB) original. */
-async function downloadHeader(url) {
-  const res = await fetch(url, { headers: { Range: 'bytes=0-131071' } });
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-  return Buffer.from(await res.arrayBuffer());
+const ACCOUNT_ID = process.env.R2_ACCOUNT_ID ?? '1904e782382751217d6103b2d39a41da';
+const BUCKET = process.env.R2_BUCKET ?? 'foto-photos';
+const ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID ?? 'a74d879decb219fc298c10edd12ecda5';
+const SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY;
+const PUBLIC_URL = process.env.R2_PUBLIC_URL ?? 'https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev';
+
+if (!SECRET_ACCESS_KEY) {
+  console.error('Mangler R2_SECRET_ACCESS_KEY i .env.local');
+  process.exit(1);
 }
 
-/**
- * Reads a JPEG's embedded capture date (EXIF DateTimeOriginal, tag 0x9003),
- * falling back to DateTimeDigitized (0x9004) or the file's own DateTime
- * (0x0132). Returns null if there's no EXIF block, or none of those tags —
- * some editors strip this on export.
- */
-function readExifCaptureDate(buffer) {
-  if (buffer.length < 4 || buffer.readUInt16BE(0) !== 0xffd8) return null;
-
-  let offset = 2;
-  while (offset + 4 <= buffer.length) {
-    if (buffer[offset] !== 0xff) break;
-    const marker = buffer[offset + 1];
-
-    if (marker === 0xd8 || marker === 0xd9 || (marker >= 0xd0 && marker <= 0xd7)) {
-      offset += 2;
-      continue;
-    }
-
-    const length = buffer.readUInt16BE(offset + 2);
-
-    if (marker === 0xe1) {
-      const segmentStart = offset + 4;
-      if (buffer.toString('ascii', segmentStart, segmentStart + 4) === 'Exif') {
-        const date = parseTiffForDate(buffer, segmentStart + 6);
-        if (date) return date;
-      }
-    }
-
-    if (marker === 0xda) break; // Start of Scan — bildedata følger, ingen mer metadata
-
-    offset += 2 + length;
-  }
-
-  return null;
-}
-
-function parseTiffForDate(buffer, tiffStart) {
-  const little = buffer.toString('ascii', tiffStart, tiffStart + 2) === 'II';
-  const readU16 = (o) => (little ? buffer.readUInt16LE(o) : buffer.readUInt16BE(o));
-  const readU32 = (o) => (little ? buffer.readUInt32LE(o) : buffer.readUInt32BE(o));
-
-  const readIfd = (ifdOffset) => {
-    const count = readU16(ifdOffset);
-    const entries = [];
-    for (let i = 0; i < count; i++) {
-      const start = ifdOffset + 2 + i * 12;
-      entries.push({ tag: readU16(start), count: readU32(start + 4), valueOffset: start + 8 });
-    }
-    return entries;
-  };
-
-  const readAscii = (entry) => {
-    const dataStart = entry.count <= 4 ? entry.valueOffset : tiffStart + readU32(entry.valueOffset);
-    return buffer.toString('ascii', dataStart, dataStart + entry.count).replace(/\0.*$/, '');
-  };
-
-  // EXIF-datoer ser slik ut: "2026:08:27 15:03:12".
-  const toDate = (str) => {
-    const m = /^(\d{4}):(\d{2}):(\d{2}) (\d{2}):(\d{2}):(\d{2})/.exec(str);
-    return m ? new Date(`${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}`) : null;
-  };
-
-  try {
-    const ifd0 = readIfd(readU32(tiffStart + 4));
-    const exifPointer = ifd0.find((e) => e.tag === 0x8769);
-
-    if (exifPointer) {
-      const exifIfd = readIfd(tiffStart + readU32(exifPointer.valueOffset));
-      for (const tag of [0x9003, 0x9004]) {
-        const entry = exifIfd.find((e) => e.tag === tag);
-        const date = entry && toDate(readAscii(entry));
-        if (date) return date;
-      }
-    }
-
-    const fileDate = ifd0.find((e) => e.tag === 0x0132);
-    return fileDate ? toDate(readAscii(fileDate)) : null;
-  } catch {
-    return null; // Uventet EXIF-struktur — hopp over i stedet for å krasje.
-  }
-}
-
-/** Plukker ut photos:-listen fra YAML-fila, uten å røre resten av innholdet. */
-function extractPhotoUrls(yamlText) {
-  const match = /^photos:\n((?:[ \t]+-.*\n?)*)/m.exec(yamlText);
-  if (!match) return null;
-
-  return match[1]
-    .split('\n')
-    .filter((line) => line.trim().startsWith('-'))
-    .map((line) => line.trim().replace(/^-\s*/, '').replace(/^"(.*)"$/, '$1'));
-}
+const s3 = new S3Client({
+  region: 'auto',
+  endpoint: `https://${ACCOUNT_ID}.r2.cloudflarestorage.com`,
+  credentials: { accessKeyId: ACCESS_KEY_ID, secretAccessKey: SECRET_ACCESS_KEY },
+});
 
 async function main() {
-  const current = await readFile(OUT_PATH, 'utf-8');
-  const urls = extractPhotoUrls(current);
+  const filePath = path.join('src', 'content', 'fjellmaraton', 'index.yml');
+  console.log(`Leser bildelisten fra ${filePath}...`);
 
-  if (!urls) {
-    console.error(`Fant ingen "photos:"-liste i ${OUT_PATH} — avbryter uten å skrive noe.`);
-    process.exit(1);
+  const content = await readFile(filePath, 'utf-8');
+  const urls = content.match(/https?:\/\/[^\s"']+/g) || [];
+
+  if (urls.length === 0) {
+    console.log('Fant ingen bilder i filen.');
+    return;
   }
 
-  console.log(`Leser opptaksdato for ${urls.length} bilde(r)...`);
+  console.log(`Fant ${urls.length} bilde(r) i Fjellmaraton-filen. Henter datoer...`);
 
-  const withDates = [];
+  const items = [];
   for (let i = 0; i < urls.length; i++) {
-    process.stdout.write(`\rLeser... ${i + 1}/${urls.length}`);
-    const header = await downloadHeader(urls[i]);
-    withDates.push({ url: urls[i], date: readExifCaptureDate(header) });
+    const url = urls[i];
+    const key = url.replace(`${PUBLIC_URL}/`, '');
+
+    process.stdout.write(`\rSjekker bilde ${i + 1} av ${urls.length}...`);
+
+    try {
+      const head = await s3.send(new HeadObjectCommand({ Bucket: BUCKET, Key: key }));
+      items.push({ url, date: new Date(head.LastModified) });
+    } catch {
+      items.push({ url, date: new Date(0) });
+    }
   }
-  console.log('');
 
-  const missing = withDates.filter((p) => !p.date).length;
-  if (missing > 0) {
-    console.log(
-      `${missing} bilde(r) manglet opptaksdato i bildeinformasjonen og havner nederst, i sin nåværende innbyrdes rekkefølge.`
-    );
-  }
+  console.log('\nSorterer bildene etter dato (nyeste først)...');
+  items.sort((a, b) => b.date - a.date);
 
-  // Nyeste tatte bilde først. Bilder uten dato beholder sin opprinnelige
-  // rekkefølge seg imellom, i stedet for å spres tilfeldig utover lista.
-  const sorted = withDates
-    .map((p, i) => ({ ...p, originalIndex: i }))
-    .sort((a, b) => {
-      if (a.date && b.date) return b.date - a.date;
-      if (a.date) return -1;
-      if (b.date) return 1;
-      return a.originalIndex - b.originalIndex;
-    });
+  const sortedUrls = items.map((item) => item.url);
+  const newYaml = `photos:\n${sortedUrls.map((url) => `  - "${url}"`).join('\n')}\n`;
 
-  const newBlock = `photos:\n${sorted.map((p) => `  - ${p.url}`).join('\n')}\n`;
-  const updated = current.replace(/^photos:\n(?:[ \t]+-.*\n?)*/m, newBlock);
+  await writeFile(filePath, newYaml);
 
-  await writeFile(OUT_PATH, updated);
-  console.log(`Skrev ${sorted.length} bilde(r) i ny rekkefølge til ${OUT_PATH}`);
-  console.log('Se over endringen, og commit + push den selv når du er fornøyd.');
+  console.log(`\nSuksess! Sorterte ${sortedUrls.length} bilder i ${filePath}.`);
 }
 
 main().catch((error) => {
