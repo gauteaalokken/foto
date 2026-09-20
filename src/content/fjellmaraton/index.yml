@@ -1,11 +1,11 @@
-address:
-  enabled: true
-  label: Adresse
-  url: https://maps.app.goo.gl/a3pqe7Trdr3ZoraY6
 topPhotos:
   - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/44.jpg
   - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/FFM 26 4_1.jpg
   - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/FFM 26 4_2.jpg
+address:
+  enabled: true
+  label: Adresse
+  url: https://maps.app.goo.gl/a3pqe7Trdr3ZoraY6
 downloads:
   - name: Korte runden 12k
     file: https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/gpx/Lunch_Trail_Run_Flaksjøen_Fjelllmaraton_stuttløypa_.gpx
@@ -14,82 +14,74 @@ downloads:
   - name: Lange runden 46k
     file: https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/gpx/Flaksjøen Fjellmaraton - den lange.gpx
 photos:
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/DSCF0042.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/DSCF0024.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/DSCF0053.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/DSCF0054.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/DSCF0072.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/DSCF0066.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/DSCF0084.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/DSCF0086.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/DSCF0102.jpg
   - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAAB3870.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAAB3878.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAAB3895.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAAB3910.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAAB3916.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAAB3924.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAAB3929.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAAB3940.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAAB3949.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAAB3951.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAAB3954.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAAB3955.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAAB3956.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAAB3959.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAAB3967.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAAB3975.jpg
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAAB4110.jpg
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAAB4108.jpg
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAAB4080.jpg
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAAB4089.jpg
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAAB4037.jpg
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAAB4070.jpg
   - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAAB4017.jpg
   - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAAB4019.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAAB4070.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAAB4037.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAAB4089.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAAB4080.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAAB4108.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAAB4110.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAUT8831.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAUT8849.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAUT8753.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAUT8757.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAUT8742.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAUT8724.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAUT8713.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAUT8691.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAUT8658.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAUT8648.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAUT8645.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAUT8644.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAUT8642.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAUT8640.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAUT8639.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAUT8637.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAUT8636.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAUT8633.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAUT8631.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAUT8630.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAUT8629.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAUT8628.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAUT8627.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAUT8626.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAUT8622.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAUT8615.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAUT8599.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAUT8595.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/DSCF0595.jpg
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAAB3967.jpg
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAAB3975.jpg
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAAB3959.jpg
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAAB3956.jpg
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAAB3955.jpg
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAAB3954.jpg
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAAB3951.jpg
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAAB3949.jpg
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAAB3940.jpg
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAAB3929.jpg
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAAB3924.jpg
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAAB3916.jpg
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAAB3910.jpg
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAAB3895.jpg
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAAB3878.jpg
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/DSCF0102.jpg
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/DSCF0086.jpg
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/DSCF0084.jpg
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/DSCF0072.jpg
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/DSCF0066.jpg
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/DSCF0054.jpg
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/DSCF0053.jpg
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/DSCF0042.jpg
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/DSCF0024.jpg
   - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/DSCF0578.jpg
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/DSCF0595.jpg
   - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/DSCF0574.jpg
   - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/DSCF0568.jpg
   - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/DSCF0533.jpg
   - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/DSCF0518.jpg
   - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/DSCF0501.jpg
   - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/DSCF0430.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/DSCF0403.jpg
   - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/DSCF0300.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/DSCF0267.jpg
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/DSCF0403.jpg
   - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/DSCF0239.jpg
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/DSCF0267.jpg
   - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/DSCF0169.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/DSCF0075.jpg
   - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/DSCF0139.jpg
-  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/DSCF0032.jpg
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/DSCF0075.jpg
   - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/DSCF0049.jpg
   - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/DSCF0018.jpg
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/DSCF0032.jpg
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAUT4980.jpg
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAUT8831.jpg
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAUT8757.jpg
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAUT8753.jpg
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAUT8738.jpg
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAUT8724.jpg
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAUT8713.jpg
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAUT8691.jpg
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAUT8679.jpg
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/PXL_20240622_093844094.RAW-02.ORIGINAL.jpg
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/PXL_20240622_090520112.RAW-02.ORIGINAL.jpg
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/PXL_20240622_090515549.RAW-02.ORIGINAL.jpg
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAUT8661.jpg
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/PXL_20240622_090514376.RAW-02.ORIGINAL.jpg
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAUT8645.jpg
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAUT8659.jpg
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAUT8622.jpg
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAUT8615.jpg
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAUT8595.jpg
+  - https://pub-3870a4bde8aa48ebb61d76487f736f57.r2.dev/fjellmaraton/GAUT8599.jpg
