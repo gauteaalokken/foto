@@ -7,6 +7,10 @@
   det samme som skal stå som `tittel` i verktøyet selv — de sto tidligere med
   hvert sitt navn, så kortet sa «Rammer» mens siden det gikk til het
   «Instagram Maler».
+
+  Filmlook er en guide og ikke et verktøy, men ligger i denne mappa likevel
+  (src/pages/fotoverktoy/filmlook.astro). Husk at hele /fotoverktoy holdes ute
+  av sitemapen, så Filmlook meldes ikke inn til Google.
 */
 import Layout from '../../layouts/Layout.astro';
 
@@ -29,12 +33,18 @@ const verktoy = [
     beskrivelse: 'Månedsark med bilder over og kalenderrutenett under.',
     ikon: 'kalender',
   },
+  {
+    href: '/fotoverktoy/filmlook',
+    navn: 'Filmlook',
+    beskrivelse: 'Hva som kjennetegner populære 35mm-filmer, med paletter og Lightroom-presets.',
+    ikon: 'film',
+  },
 ];
 ---
 
 <Layout
   title="Fotoverktøy — Gaute Aaløkken"
-  description="Egne verktøy for å sette opp bilder til utskrift, Instagram og kalender."
+  description="Egne verktøy for å sette opp bilder til utskrift, Instagram og kalender, og en guide til looken i 35mm-filmer."
 >
   <div class="verktoy-landing">
     <header class="topp">
@@ -67,6 +77,23 @@ const verktoy = [
                 <line x1="16" y1="2" x2="16" y2="6" />
                 <line x1="8" y1="2" x2="8" y2="6" />
                 <line x1="3" y1="10" x2="21" y2="10" />
+              </svg>
+            )}
+            {v.ikon === 'film' && (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <rect x="5" y="2" width="14" height="20" />
+                <rect x="8.5" y="5" width="7" height="5.5" />
+                <rect x="8.5" y="13.5" width="7" height="5.5" />
+                <g fill="currentColor" stroke="none">
+                  <rect x="6.2" y="4" width="1" height="1.6" />
+                  <rect x="6.2" y="8" width="1" height="1.6" />
+                  <rect x="6.2" y="12" width="1" height="1.6" />
+                  <rect x="6.2" y="16" width="1" height="1.6" />
+                  <rect x="16.8" y="4" width="1" height="1.6" />
+                  <rect x="16.8" y="8" width="1" height="1.6" />
+                  <rect x="16.8" y="12" width="1" height="1.6" />
+                  <rect x="16.8" y="16" width="1" height="1.6" />
+                </g>
               </svg>
             )}
           </span>
@@ -103,9 +130,11 @@ const verktoy = [
     font-size: 1rem;
   }
 
+  /* 220px i stedet for 260px, så fire kort får plass på én rad på en vanlig skjerm
+     i stedet for tre og ett som står alene på neste rad. */
   .kort-rad {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: 20px;
   }
 
