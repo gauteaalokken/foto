@@ -1,0 +1,8 @@
+CREATE TABLE IF NOT EXISTS quotes (
+  id     INTEGER PRIMARY KEY AUTOINCREMENT,
+  title  TEXT NOT NULL,
+  author TEXT NOT NULL DEFAULT '',
+  text   TEXT NOT NULL,
+  page   TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS quotes_title ON quotes (title);

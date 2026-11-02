@@ -1,0 +1,15 @@
+# Cloudflare Worker for markeringer-siden. Se GUIDE-WORKER.md.
+name = "markeringer"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+
+[vars]
+# Hvilke nettsteder som får lov å snakke med Workeren (kommaseparert).
+# localhost:4321 er bare for lokal testing med `npm run dev`.
+ALLOWED_ORIGINS = "https://gauteaalokken.com,http://localhost:4321"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "markeringer"
+# Lim inn id-en du får fra `npx wrangler d1 create markeringer`:
+database_id = "LIM-INN-DATABASE-ID-HER"
