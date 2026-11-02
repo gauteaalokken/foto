@@ -8,7 +8,7 @@ import Layout from '../layouts/Layout.astro';
 
 // Adressen til Workeren din. Fås når du kjører `npx wrangler deploy`
 // (ser ut som https://markeringer.NAVN.workers.dev). Ingen skråstrek til slutt.
-const API_URL = 'https://markeringer.gaute-aalokken.workers.dev';
+const API_URL = 'https://markeringer.DITT-NAVN.workers.dev';
 ---
 
 <Layout
@@ -25,11 +25,13 @@ const API_URL = 'https://markeringer.gaute-aalokken.workers.dev';
       <input type="search" id="mk-q" placeholder="Søk i alle sitater" aria-label="Søk i alle sitater" />
       <button type="button" class="mk-btn mk-primary mk-admin" id="mk-add">Nytt sitat</button>
       <button type="button" class="mk-btn mk-admin" id="mk-up">Last opp notatfil</button>
+      <button type="button" class="mk-btn mk-admin" id="mk-imp">Importer sikkerhetskopi</button>
       <button type="button" class="mk-btn" id="mk-epub">Last ned EPUB</button>
       <button type="button" class="mk-btn" id="mk-exp">Last ned sikkerhetskopi</button>
       <button type="button" class="mk-btn" id="mk-login">Logg inn</button>
     </div>
     <input type="file" id="mk-f1" accept=".txt" hidden />
+    <input type="file" id="mk-f2" accept=".json" hidden />
 
     <div class="mk-grid">
       <nav class="mk-nav" id="mk-nav" aria-label="Bøker"></nav>
@@ -114,6 +116,12 @@ const API_URL = 'https://markeringer.gaute-aalokken.workers.dev';
         });
       }
       function maxId() { var m = 0; D.forEach(function (b) { b.quotes.forEach(function (q) { if (q.id > m) m = q.id; }); }); return m; }
+      // Sender sitater i biter à 500, så ingen enkeltforespørsel blir for stor for Workeren.
+      function sendItems(items) {
+        var p = Promise.resolve();
+        for (var i = 0; i < items.length; i += 500) (function (chunk) { p = p.then(function () { return api('/api/import', { method: 'POST', body: { items: chunk } }); }); })(items.slice(i, i + 500));
+        return p;
+      }
       function fail(e) { toast(e.message || 'Noe gikk galt'); }
 
       // ---------- visning ----------
@@ -231,10 +239,35 @@ const API_URL = 'https://markeringer.gaute-aalokken.workers.dev';
           if (!items.length) { toast('Ingen nye sitater (' + dup + ' fantes fra før)'); return; }
           var before = maxId(), newB = 0, newT = {};
           items.forEach(function (i) { if (!titles[i.title] && !newT[i.title]) { newT[i.title] = 1; newB++; } });
-          api('/api/import', { method: 'POST', body: { items: items } })
+          sendItems(items)
             .then(function () { qs = ''; $('mk-q').value = ''; return loadAll(before); })
             .then(function () { toast(items.length + ' nye sitater (' + newB + ' nye bøker), ' + dup + ' fantes fra før'); })
             .catch(fail);
+        });
+      });
+
+      // ---------- importer sikkerhetskopi (JSON fra «Last ned sikkerhetskopi») ----------
+      $('mk-imp').addEventListener('click', function () { $('mk-f2').click(); });
+      $('mk-f2').addEventListener('change', function (e) {
+        var f = e.target.files[0]; e.target.value = ''; if (!f) return;
+        f.text().then(function (txt) {
+          var j; try { j = JSON.parse(txt); } catch (x) { toast('Ugyldig fil'); return; }
+          if (!Array.isArray(j)) { toast('Ugyldig fil'); return; }
+          var seen = {}; D.forEach(function (b) { b.quotes.forEach(function (q) { seen[norm(q.t)] = 1; }); });
+          var items = [], dup = 0;
+          j.forEach(function (b) {
+            if (!b || !b.title || !Array.isArray(b.quotes)) return;
+            b.quotes.forEach(function (q) {
+              var n = norm(q.t || ''); if (!n) return;
+              if (seen[n]) { dup++; return; }
+              seen[n] = 1; items.push({ title: b.title, author: b.author || '', text: q.t, page: q.p || '' });
+            });
+          });
+          if (!items.length) { toast('Ingen nye sitater (' + dup + ' fantes fra før)'); return; }
+          toast('Importerer ' + items.length + ' sitater …');
+          var before = maxId();
+          sendItems(items).then(function () { return loadAll(before); })
+            .then(function () { toast(items.length + ' sitater importert, ' + dup + ' fantes fra før'); }).catch(fail);
         });
       });
 
