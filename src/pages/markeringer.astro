@@ -1,0 +1,356 @@
+---
+// /markeringer — sitater fra bøker, med mulighet til å legge til nye,
+// laste opp en revidert Kindle-notatfil og laste ned alt som EPUB.
+//
+// Sitatene ligger i en Cloudflare-database og hentes via en liten Worker
+// (se markeringer-worker/). Alle kan lese; bare du, med passord, kan endre.
+import Layout from '../layouts/Layout.astro';
+
+// Adressen til Workeren din. Fås når du kjører `npx wrangler deploy`
+// (ser ut som https://markeringer.NAVN.workers.dev). Ingen skråstrek til slutt.
+const API_URL = 'https://markeringer.DITT-NAVN.workers.dev';
+---
+
+<Layout
+  title="Markeringer — Gaute Aaløkken"
+  description="Utdrag og markeringer fra bøker jeg har lest."
+>
+  <div class="mk">
+    <header class="mk-head">
+      <h1>Markeringer</h1>
+      <p class="mk-sub" id="mk-stats"></p>
+    </header>
+
+    <div class="mk-bar" id="mk-bar" data-api={API_URL}>
+      <input type="search" id="mk-q" placeholder="Søk i alle sitater" aria-label="Søk i alle sitater" />
+      <button type="button" class="mk-btn mk-primary mk-admin" id="mk-add">Nytt sitat</button>
+      <button type="button" class="mk-btn mk-admin" id="mk-up">Last opp notatfil</button>
+      <button type="button" class="mk-btn" id="mk-epub">Last ned EPUB</button>
+      <button type="button" class="mk-btn" id="mk-exp">Last ned sikkerhetskopi</button>
+      <button type="button" class="mk-btn" id="mk-login">Logg inn</button>
+    </div>
+    <input type="file" id="mk-f1" accept=".txt" hidden />
+
+    <div class="mk-grid">
+      <nav class="mk-nav" id="mk-nav" aria-label="Bøker"></nav>
+      <main class="mk-main" id="mk-main"></main>
+    </div>
+  </div>
+
+  <dialog id="mk-dlg" class="mk-dlg">
+    <form method="dialog" id="mk-form">
+      <h2>Nytt sitat</h2>
+      <label for="mk-bk">Bok</label>
+      <select id="mk-bk"></select>
+      <div id="mk-nb" hidden>
+        <label for="mk-nt">Tittel</label>
+        <input type="text" id="mk-nt" />
+        <label for="mk-na">Forfatter</label>
+        <input type="text" id="mk-na" />
+      </div>
+      <label for="mk-tx">Sitat</label>
+      <textarea id="mk-tx" required></textarea>
+      <label for="mk-pg">Side (valgfritt)</label>
+      <input type="number" id="mk-pg" min="0" />
+      <div class="mk-right">
+        <button type="submit" class="mk-btn" value="x" formnovalidate>Avbryt</button>
+        <button type="submit" class="mk-btn mk-primary" value="ok">Lagre</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="mk-toast" id="mk-toast" role="status"></div>
+
+  <!-- is:inline: koden bruker globale variabler og skal ikke pakkes som modul. -->
+  <script is:inline>
+    (function () {
+      function $(id) { return document.getElementById(id); }
+      var API = $('mk-bar').dataset.api;
+      var KEY = 'markeringer-passord';
+      var D = [], cur = 0, qs = '', token = '';
+      try { token = localStorage.getItem(KEY) || ''; } catch (e) {}
+
+      // ---------- små hjelpere ----------
+      function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+      function norm(s) { return s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim(); }
+      function sortKey(t) { return t.replace(/^the /i, '').toLowerCase(); }
+      function toast(m) {
+        var t = $('mk-toast'); t.textContent = m; t.style.display = 'block';
+        clearTimeout(t._h); t._h = setTimeout(function () { t.style.display = 'none'; }, 4000);
+      }
+
+      // ---------- server ----------
+      // Alle kall til Workeren. Skriving sender passordet; 401 = feil/utløpt passord.
+      function api(path, opt) {
+        opt = opt || {};
+        var h = { 'content-type': 'application/json' };
+        if (token) h.Authorization = 'Bearer ' + token;
+        return fetch(API + path, { method: opt.method || 'GET', headers: h, body: opt.body ? JSON.stringify(opt.body) : undefined }).then(function (r) {
+          if (r.status === 401) { setToken(''); throw new Error('Feil passord. Logg inn på nytt.'); }
+          if (!r.ok) throw new Error('Serverfeil (' + r.status + ')');
+          return r.json();
+        });
+      }
+      function setToken(t) {
+        token = t;
+        try { if (t) localStorage.setItem(KEY, t); else localStorage.removeItem(KEY); } catch (e) {}
+        document.body.classList.toggle('mk-in', !!t);
+        $('mk-login').textContent = t ? 'Logg ut' : 'Logg inn';
+        if (D.length) render();
+      }
+      // Hent alle sitater og grupper dem per bok. Rader med id over «sistId» merkes som nye.
+      function loadAll(sistId) {
+        return api('/api/quotes').then(function (rows) {
+          var by = {}, books = [];
+          rows.forEach(function (r) {
+            var b = by[r.title];
+            if (!b) { b = by[r.title] = { title: r.title, author: r.author, quotes: [] }; books.push(b); }
+            b.quotes.push({ id: r.id, t: r.text, p: r.page, n: sistId && r.id > sistId ? 1 : 0 });
+          });
+          var c = D[cur] && D[cur].title;
+          books.sort(function (a, b) { return sortKey(a.title).localeCompare(sortKey(b.title), 'nb'); });
+          D = books; cur = Math.max(0, D.findIndex(function (b) { return b.title === c; }));
+          render();
+        });
+      }
+      function maxId() { var m = 0; D.forEach(function (b) { b.quotes.forEach(function (q) { if (q.id > m) m = q.id; }); }); return m; }
+      function fail(e) { toast(e.message || 'Noe gikk galt'); }
+
+      // ---------- visning ----------
+      function card(q, bi, qi, t) {
+        var h = esc(q.t);
+        if (qs) h = h.replace(new RegExp('(' + esc(qs).replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi'), '<mark>$1</mark>');
+        return '<blockquote class="' + (q.n ? 'mk-new' : '') + '">' + h +
+          '<div class="mk-meta"><span>' + (t ? esc(t) + (q.p ? ' · ' : '') : '') + (q.p ? 's. ' + esc(q.p) : '') + '</span>' +
+          '<button type="button" class="mk-x mk-admin" data-id="' + q.id + '">slett</button></div></blockquote>';
+      }
+      function render() {
+        var total = D.reduce(function (a, b) { return a + b.quotes.length; }, 0);
+        $('mk-stats').textContent = D.length + ' bøker · ' + total + ' sitater';
+        $('mk-nav').innerHTML = D.map(function (b, i) {
+          return '<a href="#" data-i="' + i + '" class="' + (i === cur && !qs ? 'on' : '') + '"><span>' + esc(b.title) + '</span><small>' + b.quotes.length + '</small></a>';
+        }).join('');
+        var m = $('mk-main');
+        if (qs) {
+          var n = norm(qs), out = '', c = 0;
+          D.forEach(function (b, bi) { b.quotes.forEach(function (q, qi) { if (norm(q.t).indexOf(n) >= 0) { c++; if (c <= 200) out += card(q, bi, qi, b.title); } }); });
+          m.innerHTML = '<h2>' + c + ' treff</h2><p class="mk-au">«' + esc(qs) + '»' + (c > 200 ? ' (viser de 200 første)' : '') + '</p>' + out;
+          return;
+        }
+        var b = D[cur];
+        if (!b) { m.innerHTML = '<p class="mk-au">Ingen sitater ennå.</p>'; return; }
+        m.innerHTML = '<h2>' + esc(b.title) + '</h2><p class="mk-au">' + esc(b.author) + '</p>' + b.quotes.map(function (q, qi) { return card(q, cur, qi); }).join('');
+      }
+
+      $('mk-nav').addEventListener('click', function (e) {
+        var a = e.target.closest('a'); if (!a) return; e.preventDefault();
+        cur = +a.dataset.i; qs = ''; $('mk-q').value = ''; render(); window.scrollTo(0, 0);
+      });
+      $('mk-q').addEventListener('input', function (e) { qs = e.target.value.trim(); render(); });
+      $('mk-main').addEventListener('click', function (e) {
+        var x = e.target.closest('.mk-x'); if (!x) return;
+        if (!confirm('Slette dette sitatet?')) return;
+        api('/api/quotes/' + x.dataset.id, { method: 'DELETE' }).then(function () { return loadAll(); }).then(function () { toast('Slettet'); }).catch(fail);
+      });
+      $('mk-login').addEventListener('click', function () {
+        if (token) { setToken(''); toast('Logget ut'); return; }
+        var p = prompt('Passord:'); if (!p) return;
+        token = p;
+        api('/api/check').then(function () { setToken(p); toast('Innlogget'); }).catch(function () { token = ''; toast('Feil passord'); });
+      });
+
+      // ---------- nytt sitat ----------
+      function fillSel() {
+        $('mk-bk').innerHTML = D.map(function (b, i) { return '<option value="' + i + '">' + esc(b.title) + '</option>'; }).join('') + '<option value="new">+ Ny bok …</option>';
+        $('mk-bk').value = D[cur] ? String(cur) : 'new';
+        $('mk-nb').hidden = $('mk-bk').value !== 'new';
+      }
+      $('mk-bk').addEventListener('change', function () { $('mk-nb').hidden = $('mk-bk').value !== 'new'; });
+      $('mk-add').addEventListener('click', function () { fillSel(); $('mk-tx').value = ''; $('mk-pg').value = ''; $('mk-dlg').showModal(); });
+      $('mk-form').addEventListener('submit', function (e) {
+        if (!e.submitter || e.submitter.value !== 'ok') return;
+        var t = $('mk-tx').value.trim(); if (!t) return;
+        var title, author;
+        if ($('mk-bk').value === 'new') {
+          title = $('mk-nt').value.trim(); author = $('mk-na').value.trim();
+          if (!title) { e.preventDefault(); toast('Skriv inn tittel'); return; }
+        } else { var b = D[+$('mk-bk').value]; title = b.title; author = b.author; }
+        var before = maxId();
+        api('/api/quotes', { method: 'POST', body: { title: title, author: author, text: t, page: $('mk-pg').value.trim() } })
+          .then(function () { cur = 0; qs = ''; $('mk-q').value = ''; return loadAll(before); })
+          .then(function () { cur = Math.max(0, D.findIndex(function (b) { return b.title === title; })); render(); toast('Sitat lagret'); })
+          .catch(fail);
+      });
+
+      // ---------- Kindle-notatfil (My Clippings.txt) ----------
+      // Tittellinjen i Kindle-filen er rotete (forlag, ISBN, «Anna's Archive» …),
+      // så den renses og matches mot eksisterende bøker på begynnelsen av tittelen.
+      function cleanTitle(raw) {
+        var t = raw.replace(/^﻿/, '').trim(), a = '', m = t.match(/^(.*?) -- (.*?)(?: -- |$)/);
+        if (m) { t = m[1]; a = m[2]; }
+        else { m = t.match(/^(.*) \(([^()]*)\)\s*(\(EpubPressX\))?$/); if (m) { t = m[1]; a = m[2]; } }
+        t = t.replace(/_ /g, ': ').replace(/_/g, ' ').replace(/\s*\(EpubPressX\)/, '').trim();
+        if (t.indexOf(':') >= 0 && t.length > 60) t = t.split(':')[0];
+        return { title: t, author: a.replace(/\[.*?\]/g, '').trim() };
+      }
+      function findBook(t) {
+        var n = norm(t); if (!n) return -1;
+        return D.findIndex(function (b) {
+          var m = norm(b.title);
+          return m === n || (m.length >= 8 && n.indexOf(m) === 0) || (n.length >= 8 && m.indexOf(n) === 0) || m.replace(/^the /, '') === n.replace(/^the /, '');
+        });
+      }
+      function parseClips(txt) {
+        var out = [];
+        txt.replace(/\r/g, '').split('==========').forEach(function (e) {
+          var L = e.trim().split('\n'); if (L.length < 4) return;
+          if (!/Highlight|Markering|Utheving/i.test(L[1])) return; // hopper over notater og bokmerker
+          var pg = (L[1].match(/(?:page|side)\s+(\d+)/i) || [])[1] || '';
+          var t = L.slice(3).join(' ').trim(); if (t) out.push({ raw: L[0], p: pg, t: t });
+        });
+        return out;
+      }
+      $('mk-up').addEventListener('click', function () { $('mk-f1').click(); });
+      $('mk-f1').addEventListener('change', function (e) {
+        var f = e.target.files[0]; e.target.value = ''; if (!f) return;
+        f.text().then(function (txt) {
+          var clips = parseClips(txt);
+          if (!clips.length) { toast('Fant ingen markeringer i filen'); return; }
+          var allq = D.map(function (b) { return b.quotes.map(function (q) { return norm(q.t); }); });
+          var seen = {}; allq.forEach(function (a) { a.forEach(function (x) { seen[x] = 1; }); });
+          var items = [], dup = 0, titles = {};
+          D.forEach(function (b) { titles[b.title] = 1; });
+          clips.forEach(function (c) {
+            var n = norm(c.t);
+            // Samme sitat kan være lagret som et lengre eller kortere utdrag: regnes som kjent.
+            if (seen[n] || allq.some(function (a) { return a.some(function (x) { return x.length > 20 && (x.indexOf(n) >= 0 || n.indexOf(x) >= 0); }); })) { dup++; return; }
+            var ct = cleanTitle(c.raw), bi = findBook(ct.title);
+            var title = bi >= 0 ? D[bi].title : ct.title, author = bi >= 0 ? D[bi].author : ct.author;
+            items.push({ title: title, author: author, text: c.t, page: c.p }); seen[n] = 1;
+          });
+          if (!items.length) { toast('Ingen nye sitater (' + dup + ' fantes fra før)'); return; }
+          var before = maxId(), newB = 0, newT = {};
+          items.forEach(function (i) { if (!titles[i.title] && !newT[i.title]) { newT[i.title] = 1; newB++; } });
+          api('/api/import', { method: 'POST', body: { items: items } })
+            .then(function () { qs = ''; $('mk-q').value = ''; return loadAll(before); })
+            .then(function () { toast(items.length + ' nye sitater (' + newB + ' nye bøker), ' + dup + ' fantes fra før'); })
+            .catch(fail);
+        });
+      });
+
+      // ---------- last ned data ----------
+      function download(blob, name) {
+        var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click();
+        setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
+      }
+      $('mk-exp').addEventListener('click', function () {
+        var clean = D.map(function (b) { return { title: b.title, author: b.author, quotes: b.quotes.map(function (q) { return { t: q.t, p: q.p }; }) }; });
+        download(new Blob([JSON.stringify(clean)], { type: 'application/json' }), 'markeringer-sikkerhetskopi.json');
+        toast('Sikkerhetskopi lastet ned');
+      });
+
+      // ---------- EPUB ----------
+      // EPUB er en zip-fil. Her skrives den uten komprimering (stored), så vi ikke
+      // trenger noe bibliotek. «mimetype» må ligge først og ukomprimert.
+      var crcT = (function () { var t = []; for (var n = 0; n < 256; n++) { var c = n; for (var k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+      function crc(b) { var c = 0xFFFFFFFF; for (var i = 0; i < b.length; i++) c = crcT[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+      function zip(files) {
+        var enc = new TextEncoder(), parts = [], cd = [], off = 0;
+        function u16(v) { return [v & 255, v >> 8 & 255]; }
+        function u32(v) { return [v & 255, v >> 8 & 255, v >> 16 & 255, v >>> 24 & 255]; }
+        files.forEach(function (f) {
+          var nb = enc.encode(f[0]), d = typeof f[1] === 'string' ? enc.encode(f[1]) : f[1], c = crc(d);
+          var h = new Uint8Array([0x50, 0x4b, 3, 4].concat(u16(20), u16(0x0800), u16(0), u16(0), u16(0x21), u32(c), u32(d.length), u32(d.length), u16(nb.length), u16(0)));
+          parts.push(h, nb, d);
+          cd.push(new Uint8Array([0x50, 0x4b, 1, 2].concat(u16(20), u16(20), u16(0x0800), u16(0), u16(0), u16(0x21), u32(c), u32(d.length), u32(d.length), u16(nb.length), u16(0), u16(0), u16(0), u16(0), u32(0), u32(off))), nb);
+          off += h.length + nb.length + d.length;
+        });
+        var cdLen = cd.reduce(function (a, b) { return a + b.length; }, 0);
+        var end = new Uint8Array([0x50, 0x4b, 5, 6, 0, 0, 0, 0].concat(u16(files.length), u16(files.length), u32(cdLen), u32(off), [0, 0]));
+        return new Blob(parts.concat(cd, [end]), { type: 'application/epub+zip' });
+      }
+      function makeEpub(cover) {
+        function x(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+        var xml = '<?xml version="1.0" encoding="utf-8"?>';
+        var f = [
+          ['mimetype', 'application/epub+zip'],
+          ['META-INF/container.xml', xml + '<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container"><rootfiles><rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/></rootfiles></container>'],
+          ['OEBPS/style.css', 'body{font-family:serif;line-height:1.5}h1{margin:1em 0}blockquote{margin:0 0 1em 0;padding-left:.8em;border-left:3px solid #999}']
+        ];
+        var man = ['<item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>', '<item id="css" href="style.css" media-type="text/css"/>'];
+        var spine = [], nav = [];
+        if (cover) {
+          f.push(['OEBPS/cover.png', cover]);
+          f.push(['OEBPS/cover.xhtml', xml + '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Forside</title><style>body{margin:0;text-align:center}img{max-width:100%;max-height:100vh}</style></head><body><img src="cover.png" alt="Forside"/></body></html>']);
+          man.unshift('<item id="cover-image" href="cover.png" media-type="image/png" properties="cover-image"/>', '<item id="cover" href="cover.xhtml" media-type="application/xhtml+xml"/>');
+          spine.push('<itemref idref="cover"/>');
+        }
+        D.forEach(function (b, i) {
+          var fn = 'c' + ('000' + i).slice(-3) + '.xhtml', t = b.title + (b.author ? ' – ' + b.author : '');
+          f.push(['OEBPS/' + fn, xml + '<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="nb"><head><title>' + x(t) + '</title><link rel="stylesheet" href="style.css"/></head><body><h1>' + x(t) + '</h1>' +
+            b.quotes.map(function (q) { return '<blockquote><p>' + x(q.t) + (q.p ? ' (s. ' + x(q.p) + ')' : '') + '</p></blockquote>'; }).join('') + '</body></html>']);
+          man.push('<item id="c' + i + '" href="' + fn + '" media-type="application/xhtml+xml"/>');
+          spine.push('<itemref idref="c' + i + '"/>');
+          nav.push('<li><a href="' + fn + '">' + x(t) + '</a></li>');
+        });
+        f.push(['OEBPS/nav.xhtml', xml + '<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"><head><title>Innhold</title></head><body><nav epub:type="toc"><h1>Innhold</h1><ol>' + nav.join('') + '</ol></nav></body></html>']);
+        f.push(['OEBPS/content.opf', xml + '<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="id"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="id">urn:uuid:markeringer-gaute</dc:identifier><dc:title>Mine markeringer fra Kindle</dc:title><dc:creator>Gaute Aaløkken</dc:creator><dc:language>nb</dc:language>' + (cover ? '<meta name="cover" content="cover-image"/>' : '') + '<meta property="dcterms:modified">' + new Date().toISOString().slice(0, 19) + 'Z</meta></metadata><manifest>' + man.join('') + '</manifest><spine>' + spine.join('') + '</spine></package>']);
+        return zip(f);
+      }
+      $('mk-epub').addEventListener('click', function () {
+        // Forsiden hentes fra public/. Mangler den, lages E-puben uten forside.
+        fetch('/markeringer-forside.png').then(function (r) { if (!r.ok) throw 0; return r.arrayBuffer(); })
+          .then(function (b) { return new Uint8Array(b); }, function () { return null; })
+          .then(function (cover) { download(makeEpub(cover), 'Mine_markeringer_fra_Kindle.epub'); toast('EPUB lastet ned'); });
+      });
+
+      setToken(token);
+      $('mk-main').innerHTML = '<p class="mk-au">Laster …</p>';
+      loadAll().catch(function () { $('mk-main').innerHTML = '<p class="mk-au">Kunne ikke hente sitatene akkurat nå. Prøv igjen senere.</p>'; });
+    })();
+  </script>
+</Layout>
+
+<style is:global>
+  /* is:global fordi listene og kortene bygges av JavaScript etter at siden er lastet. */
+  .mk { max-width: 1100px; margin: 60px auto; padding: 0 20px; }
+  .mk-head h1 { font-family: var(--font-mono); font-weight: 500; font-size: clamp(2rem, 5vw, 3.25rem); margin: 0; }
+  .mk-sub { font-family: var(--font-mono); font-size: 0.85rem; color: var(--ink-subtle); margin: 8px 0 0; }
+  .mk-bar { display: flex; flex-wrap: wrap; gap: 8px; margin: 28px 0 32px; }
+  .mk input[type='search'], .mk-dlg input, .mk-dlg select, .mk-dlg textarea {
+    width: 100%; box-sizing: border-box; border: 1px solid var(--line-strong); background: var(--surface-raised);
+    color: var(--ink); padding: 10px 12px; font: inherit; border-radius: 0;
+  }
+  .mk input[type='search'] { flex: 1 1 240px; width: auto; }
+  .mk-dlg textarea { min-height: 120px; resize: vertical; }
+  .mk-btn { border: 1px solid var(--ink); background: var(--surface-raised); color: var(--ink); padding: 10px 16px; font-family: var(--font-mono); font-size: 0.85rem; cursor: pointer; border-radius: 0; }
+  .mk-btn:hover { background: var(--surface-sunken); }
+  .mk-primary { background: var(--ink); color: var(--ink-inverse); }
+  .mk-primary:hover { background: var(--ink-muted); }
+  .mk-admin { display: none; }
+  .mk-in .mk-admin { display: inline-block; }
+  .mk-in .mk-x.mk-admin { display: inline; }
+  .mk-grid { display: grid; grid-template-columns: 300px 1fr; gap: 40px; align-items: start; }
+  @media (max-width: 800px) { .mk-grid { grid-template-columns: 1fr; gap: 24px; } }
+  .mk-nav { position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow: auto; border-top: 1px solid var(--line); }
+  @media (max-width: 800px) { .mk-nav { position: static; max-height: 260px; } }
+  .mk-nav a { display: flex; justify-content: space-between; gap: 12px; padding: 8px 4px; border-bottom: 1px solid var(--line-soft); color: var(--ink); text-decoration: none; font-size: 0.9rem; line-height: 1.35; }
+  .mk-nav a:hover { background: var(--surface-sunken); }
+  .mk-nav a.on { background: var(--ink); color: var(--ink-inverse); padding-left: 8px; padding-right: 8px; }
+  .mk-nav small { font-family: var(--font-mono); color: var(--ink-subtle); }
+  .mk-nav a.on small { color: var(--ink-inverse); }
+  .mk-main h2 { font-family: var(--font-mono); font-weight: 500; font-size: 1.5rem; margin: 0; }
+  .mk-au { color: var(--ink-subtle); font-family: var(--font-mono); font-size: 0.85rem; margin: 6px 0 28px; }
+  .mk-main blockquote { margin: 0 0 24px; padding: 0 0 0 18px; border-left: 2px solid var(--ink); line-height: 1.6; }
+  .mk-main blockquote.mk-new { border-left-color: var(--success); }
+  .mk-meta { display: flex; justify-content: space-between; gap: 12px; margin-top: 6px; font-family: var(--font-mono); font-size: 0.8rem; color: var(--ink-subtle); }
+  .mk-x { background: none; border: 0; padding: 0; color: var(--ink-subtle); font: inherit; cursor: pointer; text-decoration: underline; }
+  .mk-x:hover { color: var(--danger); }
+  .mk mark { background: var(--line); color: inherit; }
+  .mk-dlg { border: 1px solid var(--ink); border-radius: 0; background: var(--surface-raised); color: var(--ink); max-width: 520px; width: 92%; padding: 24px; }
+  .mk-dlg::backdrop { background: var(--overlay, rgba(0, 0, 0, 0.6)); }
+  .mk-dlg h2 { font-family: var(--font-mono); font-weight: 500; margin: 0 0 8px; }
+  .mk-dlg label { display: block; margin: 16px 0 4px; font-size: 0.85rem; color: var(--ink-muted); }
+  .mk-right { display: flex; justify-content: flex-end; gap: 8px; margin-top: 24px; }
+  .mk-toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--ink-inverse); padding: 10px 18px; font-family: var(--font-mono); font-size: 0.85rem; display: none; z-index: 50; max-width: 90vw; }
+</style>
